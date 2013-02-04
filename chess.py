@@ -2,6 +2,11 @@ import kivy
 from kivy.app import App
 from kivy.uix.widget import Widget
 from kivy.uix.gridlayout import GridLayout
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.stacklayout import StackLayout
+from kivy.uix.floatlayout import FloatLayout
+
+
 from kivy.uix.button import Button
 from kivy.config import Config
 from ChessBoard import ChessBoard
@@ -25,9 +30,9 @@ class Chess_app(App):
         self.squares = []
         Config.set('graphics', 'width', '900')
         Config.set('graphics', 'height', '900')
-        parent = Widget(width = Config.getint('graphics', 'width'),
-            height = Config.getint('graphics', 'height'))
-        grid = GridLayout(cols = 8, rows = 9, size = parent.size, spacing = 1)
+#        Config.set('graphics','fullscreen', 1)
+        parent = BoxLayout(size_hint=(1,1))
+        grid = GridLayout(cols = 8, rows = 8, spacing = 1, size_hint=(1, 1))
 
         for i, name in enumerate(SQUARES):
             bt = Button()
@@ -52,30 +57,44 @@ class Chess_app(App):
             grid.add_widget(bt)
             self.squares.append(bt)
 
+
+        b = GridLayout(cols = 2, rows = 1)
         ## Spacers
-        grid.add_widget(Button(background_color=[226, 202, 202, 1]))
-        grid.add_widget(Button(background_color=[226, 202, 202, 1]))
-        grid.add_widget(Button(background_color=[226, 202, 202, 1]))
+#        b.add_widget(Button(spacing=1))
+#        b.add_widget(Button(spacing=1))
+#        b.add_widget(Button(spacing=1))
 
         # Move control buttons
         back_bt = Button(markup=True)
        # back_bt.background_normal="img/empty-l.png"
         back_bt.text="[color=ff3333]Back[/color]"
         back_bt.bind(on_press=self.back)
-        grid.add_widget(back_bt)
+        b.add_widget(back_bt)
 
         fwd_bt = Button(markup=True)
         #fwd_bt.background_normal="img/empty-d.png"
         fwd_bt.text="[color=3333ff]Fwd[/color]"
 
         fwd_bt.bind(on_press=self.fwd)
-        grid.add_widget(fwd_bt)
+        b.add_widget(fwd_bt)
 
-        grid.add_widget(Button(background_color=[226, 202, 202, 1]))
-        grid.add_widget(Button(background_color=[226, 202, 202, 1]))
-        grid.add_widget(Button(background_color=[226, 202, 202, 1]))
+#        b.add_widget(Button(spacing=10))
+#        b.add_widget(Button(spacing=10))
+#        b.add_widget(Button(spacing=10))
+
+#        grid.add_widget(b)
 
         parent.add_widget(grid)
+
+
+        info_grid = GridLayout(cols = 1, rows = 3, spacing = 1, size_hint=(0.4, 1), orientation='vertical')
+        info_grid.add_widget(Button(text="Notation"))
+
+        info_grid.add_widget(Button(text="Analysis"))
+        info_grid.add_widget(Button(text="Text"))
+
+
+        parent.add_widget(info_grid)
         self.refresh_board()
         return parent
 
