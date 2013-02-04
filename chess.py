@@ -59,13 +59,13 @@ class Chess_app(App):
 
         # Move control buttons
         back_bt = Button(markup=True)
-        back_bt.background_normal="img/empty-l.png"
+       # back_bt.background_normal="img/empty-l.png"
         back_bt.text="[color=ff3333]Back[/color]"
         back_bt.bind(on_press=self.back)
         grid.add_widget(back_bt)
 
         fwd_bt = Button(markup=True)
-        fwd_bt.background_normal="img/empty-d.png"
+        #fwd_bt.background_normal="img/empty-d.png"
         fwd_bt.text="[color=3333ff]Fwd[/color]"
 
         fwd_bt.bind(on_press=self.fwd)
