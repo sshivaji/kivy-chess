@@ -53,9 +53,9 @@ class Chess_app(App):
             self.squares.append(bt)
 
         ## Spacers
-        grid.add_widget(Widget())
-        grid.add_widget(Widget())
-        grid.add_widget(Widget())
+        grid.add_widget(Button(background_color=[226, 202, 202, 1]))
+        grid.add_widget(Button(background_color=[226, 202, 202, 1]))
+        grid.add_widget(Button(background_color=[226, 202, 202, 1]))
 
         # Move control buttons
         back_bt = Button(markup=True)
@@ -71,6 +71,9 @@ class Chess_app(App):
         fwd_bt.bind(on_press=self.fwd)
         grid.add_widget(fwd_bt)
 
+        grid.add_widget(Button(background_color=[226, 202, 202, 1]))
+        grid.add_widget(Button(background_color=[226, 202, 202, 1]))
+        grid.add_widget(Button(background_color=[226, 202, 202, 1]))
 
         parent.add_widget(grid)
         self.refresh_board()
