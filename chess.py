@@ -23,8 +23,8 @@ class Chess_app(App):
         self.to_move = None
         self.chessboard = ChessBoard()
         self.squares = []
-        Config.set('graphics', 'width', '1280')
-        Config.set('graphics', 'height', '960')
+        Config.set('graphics', 'width', '900')
+        Config.set('graphics', 'height', '900')
         parent = Widget(width = Config.getint('graphics', 'width'),
             height = Config.getint('graphics', 'height'))
         grid = GridLayout(cols = 8, rows = 9, size = parent.size, spacing = 1)
