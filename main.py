@@ -138,6 +138,6 @@ class Chess_app(App):
 
             if p!=".":
                 p_color = 'w' if p.isupper() else 'b'
-                sq.background_normal="img/Pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
+                sq.background_normal="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
 
 Chess_app().run()
