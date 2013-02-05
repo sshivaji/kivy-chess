@@ -1299,7 +1299,7 @@ class ChessBoard:
         self._reason = self.INVALID_MOVE
         return False            
    
-    def getAllTextMoves(self,format=1):
+    def getAllTextMoves(self, format=1):
         """
         Returns a list of all moves done so far in Algebraic chess notation.
         Returns None if no moves has been made.
@@ -1314,6 +1314,7 @@ class ChessBoard:
         self.gotoFirst()
         while True:
             move = self._moves[self._state_stack_pointer-1]  
+
             res.append(self._formatTextMove(move,format))
             if self._state_stack_pointer >= len(self._state_stack)-1:
                 break

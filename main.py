@@ -1,16 +1,16 @@
 import kivy
+from kivy_util import ScrollableLabel
 from kivy.app import App
-from kivy.uix.widget import Widget
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.stacklayout import StackLayout
-from kivy.uix.floatlayout import FloatLayout
-
+from kivy.core.window import Window
 
 from kivy.uix.button import Button
+from kivy.uix.label import Label
 from kivy.config import Config
 from ChessBoard import ChessBoard
 from sets import Set
+import itertools as it
 
 SQUARES = ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a6",
               "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5", "a4", "b4",
@@ -28,8 +28,8 @@ class Chess_app(App):
         self.to_move = None
         self.chessboard = ChessBoard()
         self.squares = []
-        Config.set('graphics', 'width', '900')
-        Config.set('graphics', 'height', '900')
+#        Config.set('graphics', 'width', '900')
+#        Config.set('graphics', 'height', '900')
 #        Config.set('graphics','fullscreen', 1)
         parent = BoxLayout(size_hint=(1,1))
         grid = GridLayout(cols = 8, rows = 8, spacing = 1, size_hint=(1, 1))
@@ -91,7 +91,9 @@ class Chess_app(App):
 
 
         info_grid = GridLayout(cols = 1, rows = 4, spacing = 1, size_hint=(0.3, 1), orientation='vertical')
-        info_grid.add_widget(Button(text="Notation"))
+        self.game_score = ScrollableLabel().build('New Game')
+
+        info_grid.add_widget(self.game_score)
 
         info_grid.add_widget(Button(text="Analysis"))
         info_grid.add_widget(Button(text="Text"))
@@ -99,11 +101,42 @@ class Chess_app(App):
 
         parent.add_widget(info_grid)
         self.refresh_board()
+
+        self._keyboard = Window.request_keyboard(
+            self._keyboard_closed, self)
+
+        self._keyboard.bind(on_key_down=self._on_keyboard_down)
+
         return parent
 
     def back(self, obj):
         self.chessboard.undo()
         self.refresh_board()
+
+    def _keyboard_closed(self):
+        print 'My keyboard have been closed!'
+        self._keyboard.unbind(on_key_down=self.back)
+        self._keyboard = None
+
+    def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
+#        print 'The key', keycode, 'have been pressed'
+#        print ' - text is %r' % text
+#        print ' - modifiers are %r' % modifiers
+
+        # Keycode is composed of an integer + a string
+        # If we hit escape, release the keyboard
+        if keycode[1] == 'escape':
+            keyboard.release()
+
+        if keycode[1] == 'left':
+            self.back(None)
+        elif keycode[1] == 'right':
+            self.fwd(None)
+
+
+        # Return True to accept the key. Otherwise, it will be used by
+        # the system.
+        return True
 
     def fwd(self, obj):
         self.chessboard.redo()
@@ -111,7 +144,7 @@ class Chess_app(App):
 
     def callback(self, obj):
 #        print 'Button state:%s' %obj.state
-        print 'Square %s was clicked' %(obj.name)
+#        print 'Square %s was clicked' %(obj.name)
         squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
 
 
@@ -139,5 +172,18 @@ class Chess_app(App):
             if p!=".":
                 p_color = 'w' if p.isupper() else 'b'
                 sq.background_normal="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
+
+        # Update game notation
+        all_moves = self.chessboard.getAllTextMoves()
+        if all_moves:
+            score = ""
+            for i, mv in it.izip(it.count(1), all_moves):
+                if i%2==1:
+                    score+="%d. "%((i+1)/2)
+                score+=mv+" "
+                if i%5==0:
+                    score+="\n"
+
+            self.game_score.children[0].text=score
 
 Chess_app().run()
