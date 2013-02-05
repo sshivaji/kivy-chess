@@ -33,7 +33,7 @@ class Chess_app(App):
 #        Config.set('graphics','fullscreen', 1)
         parent = BoxLayout(size_hint=(1,1))
         grid = GridLayout(cols = 8, rows = 8, spacing = 1, size_hint=(1, 1))
-        board_box = BoxLayout(orientation='vertical')
+#        board_box = BoxLayout(orientation='vertical')
 
         for i, name in enumerate(SQUARES):
             bt = Button()
@@ -85,17 +85,17 @@ class Chess_app(App):
 
 #        grid.add_widget(b)
 
-        board_box.add_widget(grid)
-        board_box.add_widget(b)
-        parent.add_widget(board_box)
+#        board_box.add_widget(grid)
+#        board_box.add_widget(b)
+        parent.add_widget(grid)
 
 
-        info_grid = GridLayout(cols = 1, rows = 3, spacing = 1, size_hint=(0.4, 1), orientation='vertical')
+        info_grid = GridLayout(cols = 1, rows = 4, spacing = 1, size_hint=(0.3, 1), orientation='vertical')
         info_grid.add_widget(Button(text="Notation"))
 
         info_grid.add_widget(Button(text="Analysis"))
         info_grid.add_widget(Button(text="Text"))
-
+        info_grid.add_widget(b)
 
         parent.add_widget(info_grid)
         self.refresh_board()
