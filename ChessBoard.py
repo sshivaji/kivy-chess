@@ -927,11 +927,13 @@ class ChessBoard:
         y = int(v[6])
         ep = "-"
         if not (x == 0 and y == 0):
-            if turn == "b" and (self._board[y][x-1] == 'p' or self._board[y][x+1] == 'p'):
-                ep = "%s%s" % ( ("abcdefgh")[x], ("87654321")[y+1])
-            elif turn == "w" and (self._board[y][x-1] == 'P' or self._board[y][x+1] == 'P'):
-                ep = "%s%s" % ( ("abcdefgh")[x], ("87654321")[y-1])                                   
-
+            try:
+                if turn == "b" and (self._board[y][x-1] == 'p' or self._board[y][x+1] == 'p'):
+                    ep = "%s%s" % ( ("abcdefgh")[x], ("87654321")[y+1])
+                elif turn == "w" and (self._board[y][x-1] == 'P' or self._board[y][x+1] == 'P'):
+                    ep = "%s%s" % ( ("abcdefgh")[x], ("87654321")[y-1])
+            except IndexError:
+                pass
         move = (self._state_stack_pointer+1)/2
 
         return "%s %s %s %s %s %d" % (board,turn,kq,ep,fifty,move)

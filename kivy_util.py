@@ -20,11 +20,12 @@ class ScrollableLabel(ScrollView):
         # it does not scroll the scroll view.
 
         self.sv.add_widget(self.summary_label)
+        self.summary_label.markup= True
 
         return self.sv
 
     def _set_summary_height(self, instance, size):
-        print "_set_summary_height", size
+#        print "_set_summary_height", size
         instance.height = size[1]
         instance.width = size[0]
 

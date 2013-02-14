@@ -10,6 +10,9 @@ from kivy.uix.label import Label
 from kivy.config import Config
 from ChessBoard import ChessBoard
 from sets import Set
+from uci import UCIEngine
+from threading import Thread
+
 import itertools as it
 
 SQUARES = ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a6",
@@ -27,7 +30,9 @@ class Chess_app(App):
         self.from_move = None
         self.to_move = None
         self.chessboard = ChessBoard()
+        self.analysis_board = ChessBoard()
         self.squares = []
+        self.use_engine = False
 #        Config.set('graphics', 'width', '900')
 #        Config.set('graphics', 'height', '900')
 #        Config.set('graphics','fullscreen', 1)
@@ -90,12 +95,15 @@ class Chess_app(App):
         parent.add_widget(grid)
 
 
-        info_grid = GridLayout(cols = 1, rows = 4, spacing = 1, size_hint=(0.3, 1), orientation='vertical')
+        info_grid = GridLayout(cols = 1, rows = 4, spacing = 0, size_hint=(0.3, 1), orientation='vertical')
         self.game_score = ScrollableLabel().build('New Game')
 
         info_grid.add_widget(self.game_score)
 
-        info_grid.add_widget(Button(text="Analysis"))
+        self.engine_score = ScrollableLabel().build('Analysis')
+        info_grid.add_widget(self.engine_score)
+
+
         info_grid.add_widget(Button(text="Text"))
         info_grid.add_widget(b)
 
@@ -107,7 +115,10 @@ class Chess_app(App):
 
         self._keyboard.bind(on_key_down=self._on_keyboard_down)
 
+        self.start_engine_thread()
+
         return parent
+
 
     def back(self, obj):
         self.chessboard.undo()
@@ -117,6 +128,69 @@ class Chess_app(App):
         print 'My keyboard have been closed!'
         self._keyboard.unbind(on_key_down=self.back)
         self._keyboard = None
+
+
+    def start_engine_thread(self):
+        t = Thread(target=self.update_engine_output, args=(self.engine_score,))
+        t.daemon = True # thread dies with the program
+        t.start()
+
+    def start_engine(self):
+        uci_engine = UCIEngine()
+        uci_engine.start()
+        uci_engine.configure()
+
+        # Wait until the uci connection is setup
+        while not uci_engine.ready:
+            uci_engine.registerIncomingData()
+
+        uci_engine.startGame()
+        uci_engine.requestMove()
+        self.use_engine = True
+        self.uci_engine=uci_engine
+
+    def update_engine_output(self, output):
+        if not self.use_engine:
+            self.start_engine()
+
+        def parse_score(line):
+            analysis_board = ChessBoard()
+            analysis_board.setFEN(self.chessboard.getFEN())
+            tokens = line.split()
+            try:
+                score_index = tokens.index('score')
+            except ValueError:
+                score_index = -1
+            score = None
+            move_list = []
+            if score_index!=-1 and tokens[score_index+1]=="cp":
+                score = float(tokens[score_index+2])/100*1.0
+            try:
+                line_index = tokens.index('pv')
+#                print "curr_move: %d"%curr_move
+                for mv in tokens[line_index+1:]:
+                    analysis_board.addTextMove(mv)
+                    move_list.append(analysis_board.getLastTextMove())
+#                analysis_board.gotoMove(curr_move)
+
+            except ValueError:
+                line_index = -1
+            variation = self.generate_move_list(move_list,start_move_num=self.chessboard.getMoveCount()+1) if line_index!=-1 else None
+
+            del analysis_board
+            if variation and score:
+                return "[b]%s[/b]\n[color=77b5fe]%s[/color]" %(score,"".join(variation))
+
+        while True:
+            line = self.uci_engine.getOutput()
+            if line:
+#                print line
+                cleaned_line = parse_score(line)
+                if cleaned_line:
+                    output.children[0].text = cleaned_line
+
+
+
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
 #        print 'The key', keycode, 'have been pressed'
@@ -160,6 +234,17 @@ class Chess_app(App):
 #        print "from_move:%s, to_move:%s"%(self.from_move, self.to_move)
 
 
+    def generate_move_list(self, all_moves, start_move_num = 1):
+        score = ""
+        for i, mv in it.izip(it.count(start_move_num), all_moves):
+            if i % 2 == 1:
+                score += "%d. " % ((i + 1) / 2)
+            if mv:
+                score += mv + " "
+            if i % 5 == 0:
+                score += "\n"
+        return score
+
     def refresh_board(self):
         # flatten lists into one list of 64 squares
         squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
@@ -176,14 +261,16 @@ class Chess_app(App):
         # Update game notation
         all_moves = self.chessboard.getAllTextMoves()
         if all_moves:
-            score = ""
-            for i, mv in it.izip(it.count(1), all_moves):
-                if i%2==1:
-                    score+="%d. "%((i+1)/2)
-                score+=mv+" "
-                if i%5==0:
-                    score+="\n"
+            score = self.generate_move_list(all_moves)
 
-            self.game_score.children[0].text=score
+            self.game_score.children[0].text="[color=37c855]%s[/color]"%score
+
+        if self.use_engine:
+#            print self.chessboard.getLastTextMove()
+            self.analysis_board.setFEN(self.chessboard.getFEN())
+            self.uci_engine.stop()
+            self.uci_engine.reportMove(self.chessboard.getLastTextMove(format=0))
+            self.uci_engine.requestMove()
+
 
 Chess_app().run()
