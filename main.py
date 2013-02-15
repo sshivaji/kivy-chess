@@ -95,12 +95,12 @@ class Chess_app(App):
         parent.add_widget(grid)
 
 
-        info_grid = GridLayout(cols = 1, rows = 4, spacing = 0, size_hint=(0.3, 1), orientation='vertical')
-        self.game_score = ScrollableLabel().build('New Game')
+        info_grid = GridLayout(cols = 1, rows = 4, spacing = 1, size_hint=(0.3, 1), orientation='vertical')
+        self.game_score = ScrollableLabel('New Game')
 
         info_grid.add_widget(self.game_score)
 
-        self.engine_score = ScrollableLabel().build('Analysis')
+        self.engine_score = ScrollableLabel('Analysis')
         info_grid.add_widget(self.engine_score)
 
 
@@ -241,8 +241,8 @@ class Chess_app(App):
                 score += "%d. " % ((i + 1) / 2)
             if mv:
                 score += mv + " "
-            if i % 5 == 0:
-                score += "\n"
+#            if i % 5 == 0:
+#                score += "\n"
         return score
 
     def refresh_board(self):
