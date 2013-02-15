@@ -949,7 +949,7 @@ class ChessBoard:
         """
         Returns the current halfmove number. Zero (0) means before first move.
         """
-        return self._state_stack-1
+        return self._state_stack_pointer-1
 
     def gotoMove(self,move):
         """
@@ -1301,7 +1301,7 @@ class ChessBoard:
         self._reason = self.INVALID_MOVE
         return False            
    
-    def getAllTextMoves(self, format=1):
+    def getAllTextMoves(self, format=1, till_current_move=False):
         """
         Returns a list of all moves done so far in Algebraic chess notation.
         Returns None if no moves has been made.
@@ -1313,18 +1313,20 @@ class ChessBoard:
 
         point = self._state_stack_pointer
 
+
         self.gotoFirst()
         while True:
             move = self._moves[self._state_stack_pointer-1]  
 
             res.append(self._formatTextMove(move,format))
-            if self._state_stack_pointer >= len(self._state_stack)-1:
+            if (till_current_move and self._state_stack_pointer >= point-1) or self._state_stack_pointer >= len(self._state_stack)-1:
                 break
             self.redo()
 
         self._state_stack_pointer = point
         self.loadCurState()        
 
+#        print "res: "+str(res)
         return res
 
     def getLastTextMove(self,format=1):

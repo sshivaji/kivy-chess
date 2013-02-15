@@ -175,7 +175,7 @@ class Chess_app(App):
 
             except ValueError:
                 line_index = -1
-            variation = self.generate_move_list(move_list,start_move_num=self.chessboard.getMoveCount()+1) if line_index!=-1 else None
+            variation = self.generate_move_list(move_list,start_move_num=self.chessboard.getCurrentMove()+1) if line_index!=-1 else None
 
             del analysis_board
             if variation and score:
@@ -269,7 +269,7 @@ class Chess_app(App):
 #            print self.chessboard.getLastTextMove()
             self.analysis_board.setFEN(self.chessboard.getFEN())
             self.uci_engine.stop()
-            self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0))
+            self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0, till_current_move=True))
 #            self.uci_engine.reportMove(self.chessboard.getLastTextMove(format=0))
             self.uci_engine.requestMove()
 
