@@ -240,7 +240,7 @@ class Chess_app(App):
             if i % 2 == 1:
                 score += "%d. " % ((i + 1) / 2)
             if mv:
-                score += mv + " "
+                score += " [ref="+mv + "]"+mv+"[/ref] "
 #            if i % 5 == 0:
 #                score += "\n"
         return score
