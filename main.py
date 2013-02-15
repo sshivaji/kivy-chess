@@ -33,12 +33,9 @@ class Chess_app(App):
         self.analysis_board = ChessBoard()
         self.squares = []
         self.use_engine = False
-#        Config.set('graphics', 'width', '900')
-#        Config.set('graphics', 'height', '900')
-#        Config.set('graphics','fullscreen', 1)
+
         parent = BoxLayout(size_hint=(1,1))
         grid = GridLayout(cols = 8, rows = 8, spacing = 1, size_hint=(1, 1))
-#        board_box = BoxLayout(orientation='vertical')
 
         for i, name in enumerate(SQUARES):
             bt = Button()
@@ -110,14 +107,20 @@ class Chess_app(App):
         parent.add_widget(info_grid)
         self.refresh_board()
 
-        self._keyboard = Window.request_keyboard(
-            self._keyboard_closed, self)
-
-        self._keyboard.bind(on_key_down=self._on_keyboard_down)
-
-        self.start_engine_thread()
+        platform = kivy.utils.platform()
+        if self.is_desktop():
+            self._keyboard = Window.request_keyboard(
+                self._keyboard_closed, self)
+            self._keyboard.bind(on_key_down=self._on_keyboard_down)
+            self.start_engine_thread()
 
         return parent
+
+
+    def is_desktop(self):
+        platform = kivy.utils.platform()
+#        print platform
+        return True if platform.startswith('win') or platform.startswith('linux') or platform.startswith('mac') else False
 
 
     def back(self, obj):
@@ -148,6 +151,7 @@ class Chess_app(App):
         uci_engine.requestMove()
         self.use_engine = True
         self.uci_engine=uci_engine
+
 
     def update_engine_output(self, output):
         if not self.use_engine:
@@ -262,8 +266,7 @@ class Chess_app(App):
         all_moves = self.chessboard.getAllTextMoves()
         if all_moves:
             score = self.generate_move_list(all_moves)
-
-            self.game_score.children[0].text="[color=37c855]%s[/color]"%score
+            self.game_score.children[0].text="[color=fcf7da]%s[/color]"%score
 
         if self.use_engine:
 #            print self.chessboard.getLastTextMove()

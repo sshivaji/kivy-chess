@@ -52,7 +52,6 @@ class UCIEngine:
         self.__queuedCommands = []
         self.eng_process = None
         try:
-#                    os.execv(profile.path, [profile.path] + profile.arguments)
             self.eng_process = subprocess.Popen("engines/stockfish-mac", stdout=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=1, close_fds=ON_POSIX)
             self.buffer = Queue()
             t = Thread(target=enqueue_output, args=(self.eng_process.stdout, self.buffer))
