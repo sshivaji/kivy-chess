@@ -166,6 +166,16 @@ class UCIEngine:
         self.__sendCommand('go infinite')
 
 
+    def reportMoves(self, moves):
+        if not self.__haveMoves:
+            self.__positionCommand += ' moves'
+        self.__haveMoves = True
+
+        if moves:
+            str_move_list = " ".join(moves)
+            print "pos_command: %s %s"%(self.__positionCommand, str_move_list)
+            self.__sendCommand("%s %s"%(self.__positionCommand, str_move_list))
+
     def reportMove(self, move):
         """
         """
@@ -174,8 +184,8 @@ class UCIEngine:
         self.__haveMoves = True
         if move:
             self.__positionCommand += ' ' + move
-#            print "position_command"
-#            print self.__positionCommand
+            print "position_command: "
+            print self.__positionCommand
             self.__sendCommand(self.__positionCommand)
 
     def parseLine(self, line):

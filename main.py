@@ -269,7 +269,8 @@ class Chess_app(App):
 #            print self.chessboard.getLastTextMove()
             self.analysis_board.setFEN(self.chessboard.getFEN())
             self.uci_engine.stop()
-            self.uci_engine.reportMove(self.chessboard.getLastTextMove(format=0))
+            self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0))
+#            self.uci_engine.reportMove(self.chessboard.getLastTextMove(format=0))
             self.uci_engine.requestMove()
 
 
