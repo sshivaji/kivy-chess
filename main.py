@@ -4,6 +4,8 @@ from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.core.window import Window
+from kivy.uix.textinput import TextInput
+
 
 from kivy.uix.button import Button
 from kivy.uix.label import Label
@@ -68,18 +70,18 @@ class Chess_app(App):
 #        b.add_widget(Button(spacing=1))
 
         # Move control buttons
-        back_bt = Button(markup=True)
-       # back_bt.background_normal="img/empty-l.png"
-        back_bt.text="[color=ff3333]Back[/color]"
-        back_bt.bind(on_press=self.back)
-        b.add_widget(back_bt)
-
-        fwd_bt = Button(markup=True)
-        #fwd_bt.background_normal="img/empty-d.png"
-        fwd_bt.text="[color=3333ff]Fwd[/color]"
-
-        fwd_bt.bind(on_press=self.fwd)
-        b.add_widget(fwd_bt)
+#        back_bt = Button(markup=True)
+#       # back_bt.background_normal="img/empty-l.png"
+#        back_bt.text="[color=ff3333]Back[/color]"
+#        back_bt.bind(on_press=self.back)
+#        b.add_widget(back_bt)
+#
+#        fwd_bt = Button(markup=True)
+#        #fwd_bt.background_normal="img/empty-d.png"
+#        fwd_bt.text="[color=3333ff]Fwd[/color]"
+#
+#        fwd_bt.bind(on_press=self.fwd)
+#        b.add_widget(fwd_bt)
 
 #        b.add_widget(Button(spacing=10))
 #        b.add_widget(Button(spacing=10))
@@ -89,17 +91,29 @@ class Chess_app(App):
 
 #        board_box.add_widget(grid)
 #        board_box.add_widget(b)
+
+        fen_input = TextInput(text="FEN", focus=True, multiline=False)
+        def on_fen_input(instance):
+            self.chessboard.setFEN(instance.text)
+            self.refresh_board()
+#            print 'The widget', instance.text
+
+        fen_input.bind(on_text_validate=on_fen_input)
+#        self._keyboard.bind(on_key_down=self._on_keyboard_down)
+
+
+        b.add_widget(fen_input)
+
         parent.add_widget(grid)
 
 
         info_grid = GridLayout(cols = 1, rows = 4, spacing = 1, size_hint=(0.3, 1), orientation='vertical')
-        self.game_score = ScrollableLabel('New Game')
+        self.game_score = ScrollableLabel('New Game', ref_callback=self.go_to_move)
 
         info_grid.add_widget(self.game_score)
 
-        self.engine_score = ScrollableLabel('Analysis')
+        self.engine_score = ScrollableLabel('Analysis', ref_callback=self.add_moves)
         info_grid.add_widget(self.engine_score)
-
 
         info_grid.add_widget(Button(text="Text"))
         info_grid.add_widget(b)
@@ -109,13 +123,34 @@ class Chess_app(App):
 
         platform = kivy.utils.platform()
         if self.is_desktop():
-            self._keyboard = Window.request_keyboard(
-                self._keyboard_closed, self)
-            self._keyboard.bind(on_key_down=self._on_keyboard_down)
+#            self._keyboard = Window.request_keyboard(
+#                self._keyboard_closed, self)
+#            self._keyboard.bind(on_key_down=self._on_keyboard_down)
             self.start_engine_thread()
 
         return parent
 
+    def go_to_move(self, instance, value):
+#        print 'Going back to move.. ', value
+
+        move_num, color = value.split(":")
+
+        half_move_num = int(move_num)*2 - 1
+#        print "half_move_num:%d"%half_move_num
+
+        if color == 'b':
+            half_move_num+=1
+
+        self.chessboard.gotoMove(half_move_num)
+        self.refresh_board()
+
+    def add_moves(self, instance, value):
+        for i, mv in enumerate(self.engine_score.raw):
+            if i>=4:
+                break
+            self.chessboard.addTextMove(mv)
+
+        self.refresh_board()
 
     def is_desktop(self):
         platform = kivy.utils.platform()
@@ -128,7 +163,7 @@ class Chess_app(App):
         self.refresh_board()
 
     def _keyboard_closed(self):
-        print 'My keyboard have been closed!'
+#        print 'My keyboard have been closed!'
         self._keyboard.unbind(on_key_down=self.back)
         self._keyboard = None
 
@@ -171,11 +206,9 @@ class Chess_app(App):
                 score = float(tokens[score_index+2])/100*1.0
             try:
                 line_index = tokens.index('pv')
-#                print "curr_move: %d"%curr_move
                 for mv in tokens[line_index+1:]:
                     analysis_board.addTextMove(mv)
                     move_list.append(analysis_board.getLastTextMove())
-#                analysis_board.gotoMove(curr_move)
 
             except ValueError:
                 line_index = -1
@@ -183,18 +216,18 @@ class Chess_app(App):
 
             del analysis_board
             if variation and score:
-                return "[b]%s[/b]\n[color=77b5fe]%s[/color]" %(score,"".join(variation))
+                return move_list, "[b]%s[/b]\n[color=77b5fe]%s[/color]" %(score,"".join(variation))
 
         while True:
             line = self.uci_engine.getOutput()
             if line:
-#                print line
-                cleaned_line = parse_score(line)
-                if cleaned_line:
-                    output.children[0].text = cleaned_line
-
-
-
+                out_score = parse_score(line)
+                if out_score:
+                    raw_line, cleaned_line = out_score
+                    if cleaned_line:
+                        output.children[0].text = cleaned_line
+                    if raw_line:
+                        output.raw = raw_line
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
 #        print 'The key', keycode, 'have been pressed'
@@ -237,14 +270,18 @@ class Chess_app(App):
             self.from_move = None
 #        print "from_move:%s, to_move:%s"%(self.from_move, self.to_move)
 
-
-    def generate_move_list(self, all_moves, start_move_num = 1):
+    def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
         score = ""
+        if raw:
+            return " ".join(all_moves)
         for i, mv in it.izip(it.count(start_move_num), all_moves):
+            move = "b"
             if i % 2 == 1:
                 score += "%d. " % ((i + 1) / 2)
+                move = "w"
+
             if mv:
-                score += " [ref="+mv + "]"+mv+"[/ref] "
+                score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
 #            if i % 5 == 0:
 #                score += "\n"
         return score
@@ -267,6 +304,7 @@ class Chess_app(App):
         if all_moves:
             score = self.generate_move_list(all_moves)
             self.game_score.children[0].text="[color=fcf7da]%s[/color]"%score
+#            self.game_score.raw = self.generate_move_list(all_moves, raw=True)
 
         if self.use_engine:
 #            print self.chessboard.getLastTextMove()

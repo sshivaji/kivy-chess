@@ -826,12 +826,28 @@ class ChessBoard:
         self._game_result = 0
         self.pushState()                      
         self.updateKingLocations()
-                      
+
+    def validateFEN(self, fen):
+        tokens = fen.split(" ")
+
+        # 1st criterion: 6 space-seperated groups?
+        if len(tokens) != 6:
+            return False
+
+        if not tokens[5].isdigit():
+            return False
+
+        return True
+
+
     def setFEN(self,fen):
         """
         Sets the board and states accoring from a Forsyth-Edwards Notation string.
         Ex. 'rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2'
         """
+
+        if not self.validateFEN(fen):
+            return
         self._three_rep_stack = []
         self._state_stack = []
         self._moves = []
