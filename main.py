@@ -112,7 +112,7 @@ class Chess_app(App):
 
         info_grid.add_widget(self.game_score)
 
-        self.engine_score = ScrollableLabel('Analysis', ref_callback=self.add_moves)
+        self.engine_score = ScrollableLabel('[ref=engine_setup]Analysis[/ref]', ref_callback=self.add_eng_moves)
         info_grid.add_widget(self.engine_score)
 
         info_grid.add_widget(Button(text="Text"))
@@ -123,10 +123,10 @@ class Chess_app(App):
 
         platform = kivy.utils.platform()
         if self.is_desktop():
-#            self._keyboard = Window.request_keyboard(
-#                self._keyboard_closed, self)
-#            self._keyboard.bind(on_key_down=self._on_keyboard_down)
-            self.start_engine_thread()
+            self._keyboard = Window.request_keyboard(
+                self._keyboard_closed, self)
+            self._keyboard.bind(on_key_down=self._on_keyboard_down)
+#            self.start_engine_thread()
 
         return parent
 
@@ -144,11 +144,16 @@ class Chess_app(App):
         self.chessboard.gotoMove(half_move_num)
         self.refresh_board()
 
-    def add_moves(self, instance, value):
-        for i, mv in enumerate(self.engine_score.raw):
-            if i>=4:
-                break
-            self.chessboard.addTextMove(mv)
+    def add_eng_moves(self, instance, value):
+#        print value
+        if value=="engine_setup":
+            print "Bringing up engine menu"
+            return
+        else:
+            for i, mv in enumerate(self.engine_score.raw):
+                if i>=1:
+                    break
+                self.chessboard.addTextMove(mv)
 
         self.refresh_board()
 

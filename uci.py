@@ -11,7 +11,6 @@ except ImportError:
 
 ON_POSIX = 'posix' in sys.builtin_module_names
 
-
 LOG_DIR = "logs"
 
 def enqueue_output(out, queue):
