@@ -3,13 +3,17 @@ from kivy_util import ScrollableLabel
 from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.screenmanager import ScreenManager, Screen
+
 from kivy.core.window import Window
 from kivy.uix.textinput import TextInput
-
+from kivy.uix.dropdown import DropDown
 
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.config import Config
+from kivy.config import ConfigParser
+
 from ChessBoard import ChessBoard
 from sets import Set
 from uci import UCIEngine
@@ -26,6 +30,9 @@ light_squares = Set([0,2,4,6,9,11,13,15,16,18,20,22,25,27,29,31,32,34,36,38,41,4
 
 img_piece_abv={"B":"WBishop", "R":"WRook", "N":"WKnight", "Q":"WQueen", "K":"WKing", "P": "WPawn",
 "b":"BBishop", "r":"BRook", "n":"BKnight", "q":"BQueen", "k":"BKing", "p":"BPawn"}
+
+#engine_config = ConfigParser()
+#engine_config.read('resources/engine.ini')
 
 class Chess_app(App):
     def build(self):
@@ -106,7 +113,6 @@ class Chess_app(App):
 
         parent.add_widget(grid)
 
-
         info_grid = GridLayout(cols = 1, rows = 4, spacing = 1, size_hint=(0.3, 1), orientation='vertical')
         self.game_score = ScrollableLabel('New Game', ref_callback=self.go_to_move)
 
@@ -148,6 +154,7 @@ class Chess_app(App):
 #        print value
         if value=="engine_setup":
             print "Bringing up engine menu"
+
             return
         else:
             for i, mv in enumerate(self.engine_score.raw):
