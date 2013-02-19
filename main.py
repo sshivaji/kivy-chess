@@ -4,6 +4,8 @@ from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import ScreenManager, Screen
+from kivy.uix.settings import Settings, SettingItem, SettingsPanel, SettingTitle
+from kivy.uix.image import AsyncImage
 
 from kivy.core.window import Window
 from kivy.uix.textinput import TextInput
@@ -18,7 +20,6 @@ from ChessBoard import ChessBoard
 from sets import Set
 from uci import UCIEngine
 from threading import Thread
-
 import itertools as it
 
 SQUARES = ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a6",
@@ -35,25 +36,49 @@ img_piece_abv={"B":"WBishop", "R":"WRook", "N":"WKnight", "Q":"WQueen", "K":"WKi
 #engine_config.read('resources/engine.ini')
 
 class SettingsScreen(Screen):
-
-    def build(self):
-        parent = BoxLayout(size_hint=(1,1))
-        bt = Button(text='Settings')
-        parent.add_widget(bt)
-
-        def go_back():
-            self.get_root_window().current='main'
-
-
-        back_bt = Button(text='Back to Main')
-        back_bt.bind(on_press=go_back)
-
-        return parent
-
-
-
+    pass
 
 class Chess_app(App):
+    def generate_settings(self):
+
+        settings_panel = Settings() #create instance of Settings
+
+#        def add_one_panel(from_instance):
+#            panel = SettingsPanel(title="I like trains", settings=self)
+#            panel.add_widget(AsyncImage(source="http://i3.kym-cdn.com/entries/icons/original/000/004/795/I-LIKE-TRAINS.jpg"))
+#            settings_panel.add_widget(panel)
+#            print "Hello World from ", from_instance
+
+        panel = SettingsPanel(title="General", settings=self) #create instance of left side panel
+        item1 = SettingItem(panel=panel, title="Board", desc="press that button to see it your self", settings = self) #create instance of one item in left side panel
+        item2 = SettingTitle(title="Level") #another widget in left side panel
+#        button = Button(text="Add one more panel")
+
+#        item1.add_widget(button) #add widget to item1 in left side panel
+#        button.bind(on_release=add_one_panel) #bind that button to function
+
+        panel.add_widget(item1) # add item1 to left side panel
+        panel.add_widget(item2) # add item2 to left side panel
+        settings_panel.add_widget(panel) #add left side panel itself to the settings menu
+        def go_back():
+            self.root.current = 'main'
+        settings_panel.on_close=go_back
+
+        return settings_panel # show the settings interface
+#
+#        parent = BoxLayout(size_hint=(1, 1))
+#        bt = Button(text='Settings')
+#        parent.add_widget(bt)
+#
+#        def go_back(instance):
+#            self.root.current = 'main'
+#
+#        back_bt = Button(text='Back to Main')
+#        back_bt.bind(on_press=go_back)
+#        parent.add_widget(back_bt)
+#
+#        return parent
+
     def build(self):
         self.from_move = None
         self.to_move = None
@@ -118,48 +143,66 @@ class Chess_app(App):
 #        board_box.add_widget(grid)
 #        board_box.add_widget(b)
 
-        fen_input = TextInput(text="FEN", focus=True, multiline=False)
-        def on_fen_input(instance):
-            self.chessboard.setFEN(instance.text)
-            self.refresh_board()
-#            print 'The widget', instance.text
+#        fen_input = TextInput(text="FEN", focus=True, multiline=False)
+#        def on_fen_input(instance):
+#            self.chessboard.setFEN(instance.text)
+#            self.refresh_board()
+##            print 'The widget', instance.text
+#
+#        fen_input.bind(on_text_validate=on_fen_input)
+##        self._keyboard.bind(on_key_down=self._on_keyboard_down)
+#
+#
+#        b.add_widget(fen_input)
 
-        fen_input.bind(on_text_validate=on_fen_input)
-#        self._keyboard.bind(on_key_down=self._on_keyboard_down)
+        settings_bt = Button(markup=True, text='Setup')
+        settings_bt.bind(on_press=self.go_to_settings)
+        b.add_widget(settings_bt)
 
 
-        b.add_widget(fen_input)
+#        self.root.current='settings'
+
 
         parent.add_widget(grid)
 
         info_grid = GridLayout(cols = 1, rows = 4, spacing = 1, size_hint=(0.3, 1), orientation='vertical')
+        info_grid.add_widget(b)
+
+
         self.game_score = ScrollableLabel('New Game', ref_callback=self.go_to_move)
 
         info_grid.add_widget(self.game_score)
 
-        self.engine_score = ScrollableLabel('[ref=engine_setup]Analysis[/ref]', ref_callback=self.add_eng_moves)
+        self.engine_score = ScrollableLabel('[ref=engine_toggle]Analysis[/ref]', ref_callback=self.add_eng_moves)
         info_grid.add_widget(self.engine_score)
 
         info_grid.add_widget(Button(text="Text"))
-        info_grid.add_widget(b)
 
         parent.add_widget(info_grid)
         self.refresh_board()
 
         platform = kivy.utils.platform()
+        self.uci_engine = None
         if self.is_desktop():
             self._keyboard = Window.request_keyboard(
                 self._keyboard_closed, self)
             self._keyboard.bind(on_key_down=self._on_keyboard_down)
-#            self.start_engine_thread()
+
+            self.start_engine_thread()
         sm = ScreenManager()
         board_screen = Screen(name='main')
         board_screen.add_widget(parent)
         sm.add_widget(board_screen)
-        sm.add_widget(SettingsScreen(name='settings'))
 
+        settings_screen = SettingsScreen(name='settings')
+        settings_screen.add_widget(self.generate_settings())
+
+        sm.add_widget(settings_screen)
 
         return sm
+
+    def go_to_settings(self, instance):
+        self.root.current='settings'
 
     def go_to_move(self, instance, value):
 #        print 'Going back to move.. ', value
@@ -176,12 +219,15 @@ class Chess_app(App):
         self.refresh_board()
 
     def add_eng_moves(self, instance, value):
-#        print value
-        if value=="engine_setup":
+        if value=="engine_toggle":
 #            print "Bringing up engine menu"
-            self.root.current='settings'
+            if self.use_engine:
+                self.use_engine = False
+                self.uci_engine.stop()
+            else:
+                self.use_engine = True
 
-            return
+            self.refresh_board()
         else:
             for i, mv in enumerate(self.engine_score.raw):
                 if i>=1:
@@ -212,6 +258,8 @@ class Chess_app(App):
         t.start()
 
     def start_engine(self):
+#        self.use_engine = False
+
         uci_engine = UCIEngine()
         uci_engine.start()
         uci_engine.configure()
@@ -222,7 +270,6 @@ class Chess_app(App):
 
         uci_engine.startGame()
         uci_engine.requestMove()
-        self.use_engine = True
         self.uci_engine=uci_engine
 
 
@@ -254,18 +301,22 @@ class Chess_app(App):
 
             del analysis_board
             if variation and score:
-                return move_list, "[b]%s[/b]\n[color=77b5fe]%s[/color]" %(score,"".join(variation))
+                return move_list, "[b]%s[/b][color=0d4cd6][ref=engine_toggle]         Stop[/ref][/color]\n[color=77b5fe]%s[/color]" %(score,"".join(variation))
 
         while True:
-            line = self.uci_engine.getOutput()
-            if line:
-                out_score = parse_score(line)
-                if out_score:
-                    raw_line, cleaned_line = out_score
-                    if cleaned_line:
-                        output.children[0].text = cleaned_line
-                    if raw_line:
-                        output.raw = raw_line
+            if self.use_engine:
+                line = self.uci_engine.getOutput()
+                if line:
+                    out_score = parse_score(line)
+                    if out_score:
+                        raw_line, cleaned_line = out_score
+                        if cleaned_line:
+                            output.children[0].text = cleaned_line
+                        if raw_line:
+                            output.raw = raw_line
+            else:
+                output.children[0].text = '[ref=engine_toggle]Analysis[/ref]'
+
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
 #        print 'The key', keycode, 'have been pressed'
@@ -345,13 +396,11 @@ class Chess_app(App):
 #            self.game_score.raw = self.generate_move_list(all_moves, raw=True)
 
         if self.use_engine:
-#            print self.chessboard.getLastTextMove()
             self.analysis_board.setFEN(self.chessboard.getFEN())
             self.uci_engine.stop()
             self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0, till_current_move=True))
 #            self.uci_engine.reportMove(self.chessboard.getLastTextMove(format=0))
             self.uci_engine.requestMove()
-
 
 if __name__ == '__main__':
     Chess_app().run()
