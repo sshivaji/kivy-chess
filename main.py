@@ -34,6 +34,25 @@ img_piece_abv={"B":"WBishop", "R":"WRook", "N":"WKnight", "Q":"WQueen", "K":"WKi
 #engine_config = ConfigParser()
 #engine_config.read('resources/engine.ini')
 
+class SettingsScreen(Screen):
+
+    def build(self):
+        parent = BoxLayout(size_hint=(1,1))
+        bt = Button(text='Settings')
+        parent.add_widget(bt)
+
+        def go_back():
+            self.get_root_window().current='main'
+
+
+        back_bt = Button(text='Back to Main')
+        back_bt.bind(on_press=go_back)
+
+        return parent
+
+
+
+
 class Chess_app(App):
     def build(self):
         self.from_move = None
@@ -133,8 +152,14 @@ class Chess_app(App):
                 self._keyboard_closed, self)
             self._keyboard.bind(on_key_down=self._on_keyboard_down)
 #            self.start_engine_thread()
+        sm = ScreenManager()
+        board_screen = Screen(name='main')
+        board_screen.add_widget(parent)
+        sm.add_widget(board_screen)
+        sm.add_widget(SettingsScreen(name='settings'))
 
-        return parent
+
+        return sm
 
     def go_to_move(self, instance, value):
 #        print 'Going back to move.. ', value
@@ -153,7 +178,8 @@ class Chess_app(App):
     def add_eng_moves(self, instance, value):
 #        print value
         if value=="engine_setup":
-            print "Bringing up engine menu"
+#            print "Bringing up engine menu"
+            self.root.current='settings'
 
             return
         else:
@@ -327,4 +353,5 @@ class Chess_app(App):
             self.uci_engine.requestMove()
 
 
-Chess_app().run()
+if __name__ == '__main__':
+    Chess_app().run()
