@@ -6,6 +6,11 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.settings import Settings, SettingItem, SettingsPanel, SettingTitle
 from kivy.uix.image import AsyncImage
+from kivy.uix.screenmanager import FadeTransition
+from kivy.uix.screenmanager import WipeTransition
+from kivy.uix.screenmanager import SwapTransition
+from kivy.uix.screenmanager import SlideTransition
+
 
 from kivy.core.window import Window
 from kivy.uix.textinput import TextInput
@@ -21,6 +26,8 @@ from sets import Set
 from uci import UCIEngine
 from threading import Thread
 import itertools as it
+
+ANALYSIS_HEADER = '[ref=engine_toggle]Analysis[/ref]'
 
 SQUARES = ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a6",
               "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5", "a4", "b4",
@@ -50,15 +57,15 @@ class Chess_app(App):
 #            print "Hello World from ", from_instance
 
         panel = SettingsPanel(title="General", settings=self) #create instance of left side panel
-        item1 = SettingItem(panel=panel, title="Board", desc="press that button to see it your self", settings = self) #create instance of one item in left side panel
-        item2 = SettingTitle(title="Level") #another widget in left side panel
+#        item1 = SettingItem(panel=panel, title="Board", desc="press that button to see it your self", settings = self) #create instance of one item in left side panel
+#        item2 = SettingTitle(title="Level") #another widget in left side panel
 #        button = Button(text="Add one more panel")
 
 #        item1.add_widget(button) #add widget to item1 in left side panel
 #        button.bind(on_release=add_one_panel) #bind that button to function
 
-        panel.add_widget(item1) # add item1 to left side panel
-        panel.add_widget(item2) # add item2 to left side panel
+#        panel.add_widget(item1) # add item1 to left side panel
+#        panel.add_widget(item2) # add item2 to left side panel
         settings_panel.add_widget(panel) #add left side panel itself to the settings menu
         def go_back():
             self.root.current = 'main'
@@ -189,7 +196,7 @@ class Chess_app(App):
             self._keyboard.bind(on_key_down=self._on_keyboard_down)
 
             self.start_engine_thread()
-        sm = ScreenManager()
+        sm = ScreenManager(transition=SlideTransition())
         board_screen = Screen(name='main')
         board_screen.add_widget(parent)
         sm.add_widget(board_screen)
@@ -314,8 +321,8 @@ class Chess_app(App):
                             output.children[0].text = cleaned_line
                         if raw_line:
                             output.raw = raw_line
-            else:
-                output.children[0].text = '[ref=engine_toggle]Analysis[/ref]'
+            elif output.children[0].text != ANALYSIS_HEADER:
+                output.children[0].text = ANALYSIS_HEADER
 
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
