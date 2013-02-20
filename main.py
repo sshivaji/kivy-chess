@@ -56,16 +56,18 @@ class Chess_app(App):
 #            settings_panel.add_widget(panel)
 #            print "Hello World from ", from_instance
 
-        panel = SettingsPanel(title="General", settings=self) #create instance of left side panel
-#        item1 = SettingItem(panel=panel, title="Board", desc="press that button to see it your self", settings = self) #create instance of one item in left side panel
-#        item2 = SettingTitle(title="Level") #another widget in left side panel
+        panel = SettingsPanel(title="Engine") #create instance of left side panel
+        item1 = SettingItem(panel=panel, title="Board") #create instance of one item in left side panel
+        item2 = SettingItem(panel=panel, title="Level") #create instance of one item in left side panel
+
+    #        item2 = SettingTitle(title="Level") #another widget in left side panel
 #        button = Button(text="Add one more panel")
 
 #        item1.add_widget(button) #add widget to item1 in left side panel
 #        button.bind(on_release=add_one_panel) #bind that button to function
 
-#        panel.add_widget(item1) # add item1 to left side panel
-#        panel.add_widget(item2) # add item2 to left side panel
+        panel.add_widget(item1) # add item1 to left side panel
+        panel.add_widget(item2) # add item2 to left side panel
         settings_panel.add_widget(panel) #add left side panel itself to the settings menu
         def go_back():
             self.root.current = 'main'
