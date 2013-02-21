@@ -1,0 +1,165 @@
+# -*- coding: utf-8 -*-
+#
+# This file is part of the python-chess library.
+# Copyright (C) 2012 Niklas Fiekas <niklas.fiekas@tu-clausthal.de>
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+import unittest
+
+import sys; sys.path.extend(['../', './'])
+from square import Square
+from move import Move
+from position import Position
+
+class PositionTestCase(unittest.TestCase):
+    """Tests the position class."""
+
+    def test_default_position(self):
+        """Tests the default position."""
+        pos = Position()
+        self.assertEqual(pos[Square('b1')], Piece('N'))
+        self.assertEqual(pos.fen, "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1")
+        self.assertEqual(pos.turn, "w")
+
+    def test_scholars_mate(self):
+        """Tests the scholars mate."""
+        pos = Position()
+        self.assertTrue(pos.get_castling_right("q"))
+
+        e4 = Move.from_uci('e2e4')
+        self.assertTrue(e4 in pos.get_legal_moves())
+        pos.make_move(e4)
+        self.assertTrue(pos.get_castling_right("q"))
+
+        e5 = Move.from_uci('e7e5')
+        self.assertTrue(e5 in pos.get_legal_moves())
+        self.assertFalse(e4 in pos.get_legal_moves())
+        pos.make_move(e5)
+        self.assertTrue(pos.get_castling_right("q"))
+
+        Qf3 = Move.from_uci('d1f3')
+        self.assertTrue(Qf3 in pos.get_legal_moves())
+        pos.make_move(Qf3)
+        self.assertTrue(pos.get_castling_right("q"))
+
+        Nc6 = Move.from_uci('b8c6')
+        self.assertTrue(Nc6 in pos.get_legal_moves())
+        pos.make_move(Nc6)
+        self.assertTrue(pos.get_castling_right("q"))
+
+        Bc4 = Move.from_uci('f1c4')
+        self.assertTrue(Bc4 in pos.get_legal_moves())
+        pos.make_move(Bc4)
+        self.assertTrue(pos.get_castling_right("q"))
+
+        Rb8 = Move.from_uci('a8b8')
+        self.assertTrue(Rb8 in pos.get_legal_moves())
+        pos.make_move(Rb8)
+        self.assertFalse(pos.get_castling_right("q"))
+
+        self.assertFalse(pos.is_check())
+        self.assertFalse(pos.is_checkmate())
+        self.assertFalse(pos.is_game_over())
+        self.assertFalse(pos.is_stalemate())
+
+        Qf7_mate = Move.from_uci('f3f7')
+        self.assertTrue(Qf7_mate in pos.get_legal_moves())
+        pos.make_move(Qf7_mate)
+
+        self.assertTrue(pos.is_check())
+        self.assertTrue(pos.is_checkmate())
+        self.assertTrue(pos.is_game_over())
+        self.assertFalse(pos.is_stalemate())
+
+        self.assertEqual(pos.fen, "1rbqkbnr/pppp1Qpp/2n5/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQk - 0 4")
+
+    def test_move_info(self):
+        """Tests move info generation."""
+        pos = Position()
+        e4 = pos.get_move_info(Move.from_uci('e2e4'))
+        self.assertEqual(e4.san, 'e4')
+        self.assertFalse(e4.is_check)
+        self.assertFalse(e4.is_checkmate)
+        self.assertFalse(e4.is_castle)
+
+    def test_pawn_captures(self):
+        """Tests pawn captures in the kings gambit."""
+        pos = Position()
+        pos.make_move(pos.get_move_from_san("e4"))
+        pos.make_move(pos.get_move_from_san("e5"))
+        pos.make_move(pos.get_move_from_san("f4"))
+
+        accepted = pos.copy()
+        self.assertTrue(Move.from_uci("e5f4") in accepted.get_pseudo_legal_moves())
+        self.assertTrue(Move.from_uci("e5f4") in accepted.get_legal_moves())
+        accepted.make_move(accepted.get_move_from_san("exf4"))
+
+        wierd_declined = pos.copy()
+        wierd_declined.make_move(wierd_declined.get_move_from_san("d5"))
+        wierd_declined.make_move(wierd_declined.get_move_from_san("exd5"))
+
+
+    def test_single_step_pawn_move(self):
+        """Tests that single step pawn moves are possible."""
+        pos = Position()
+        a3 = Move.from_uci('a2a3')
+        self.assertTrue(a3 in pos.get_pseudo_legal_moves())
+        self.assertTrue(a3 in pos.get_legal_moves())
+        pos.get_move_info(a3)
+        pos.make_move(a3)
+
+    def test_pawn_move_generation(self):
+        """Tests pawn move generation in a specific position from a
+        Kasparov vs. Deep Blue game."""
+        pos = Position("8/2R1P3/8/2pp4/2k1r3/P7/8/1K6 w - - 1 55")
+        list(pos.get_pseudo_legal_moves())
+
+    def test_get_set(self):
+        """Tests the get and set methods."""
+        pos = Position()
+        self.assertEqual(pos["b1"], Piece("N"))
+
+        del pos["e2"]
+        self.assertEqual(pos[Square("e2")], None)
+
+        pos[Square("e4")] = Piece("r")
+        self.assertEqual(pos["e4"], Piece("r"))
+
+    def test_ep_file(self):
+        pos = Position("rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2")
+        self.assertEqual(pos.ep_file, "d")
+
+    def test_san_moves(self):
+        """Tests making moves from SANs."""
+        pos = Position()
+
+        pos.make_move(pos.get_move_from_san('Nc3'))
+        pos.make_move(pos.get_move_from_san('c5'))
+
+        pos.make_move(pos.get_move_from_san('e4'))
+        pos.make_move(pos.get_move_from_san('g6'))
+
+        pos.make_move(pos.get_move_from_san('Nge2'))
+        pos.make_move(pos.get_move_from_san('Bg7'))
+
+        pos.make_move(pos.get_move_from_san('d3'))
+        pos.make_move(pos.get_move_from_san('Bxc3'))
+
+        pos.make_move(pos.get_move_from_san('bxc3'))
+
+        self.assertEqual(pos.fen, 'rnbqk1nr/pp1ppp1p/6p1/2p5/4P3/2PP4/P1P1NPPP/R1BQKB1R b KQkq - 0 5')
+
+if __name__ == '__main__':
+    unittest.main()
