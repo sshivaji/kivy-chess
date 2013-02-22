@@ -16,8 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import chess
 import re
+from game import Game
+from exceptions import PgnError
 
 tag_regex = re.compile(r"\[([A-Za-z0-9]+)\s+\"(.*)\"\]")
 movetext_regex = re.compile(r"""
@@ -127,7 +128,7 @@ class PgnFile(object):
                         pgn_file.add_game(current_game)
                         current_game = None
                 if not current_game:
-                    current_game = chess.Game()
+                    current_game = Game()
                     current_game.headers[tag_name] = tag_value
                     movetext = ""
                 in_tags = True
@@ -137,7 +138,7 @@ class PgnFile(object):
                     movetext += "\n" + line
                     pass
                 else:
-                    raise chess.PgnError("Invalid PGN. Expected header before movetext: %s", repr(line))
+                    raise PgnError("Invalid PGN. Expected header before movetext: %s", repr(line))
                 in_tags = False
 
         if current_game:

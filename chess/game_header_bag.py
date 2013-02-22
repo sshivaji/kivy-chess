@@ -16,12 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import chess
 import collections
 import datetime
 import itertools
 import re
-import types
+from position import Position
 
 date_regex = re.compile(r"^(\?{4}|[0-9]{4})\.(\?\?|[0-9]{2})\.(\?\?|[0-9]{2})$")
 round_regex = re.compile(r"^(\?|[0-9]+)$")
@@ -95,7 +94,7 @@ class GameHeaderBag(collections.MutableMapping):
     further occurences to it. Additional headers are not validated.
 
     >>> import chess
-    >>> bag = chess.GameHeaderBag()
+    >>> bag = GameHeaderBag()
     >>> bag["Annotator"] = "Alekhine"
     >>> bag["annOTator"]
     'Alekhine'
@@ -214,9 +213,9 @@ class GameHeaderBag(collections.MutableMapping):
                 raise ValueError(
                     "Invalid value for Mode header: %s." % repr(value))
         elif key == "FEN":
-            value = chess.Position(value).fen
+            value = Position(value).fen
 
-            if value == chess.Position.START_FEN:
+            if value == Position.START_FEN:
                 if not "FEN" in self:
                     return
             else:
@@ -227,7 +226,7 @@ class GameHeaderBag(collections.MutableMapping):
                 raise ValueError(
                     "FEN header can not be set, when there are already moves.")
 
-            if value == chess.Position.START_FEN:
+            if value == Position.START_FEN:
                 del self["FEN"]
                 del self["SetUp"]
                 return

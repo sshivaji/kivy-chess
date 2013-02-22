@@ -16,8 +16,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import chess
 import types
+from move import Move
 
 class GameNode(object):
     """A node in the tree of a game.
@@ -94,7 +94,7 @@ class GameNode(object):
     def comment(self, value):
         if not isinstance(value, basestring):
             raise TypeError(
-                "Expected comment to be string, got: %s." % comment)
+                "Expected comment to be string, got: %s." % value)
         self.__comment = value
 
     @property
@@ -114,7 +114,7 @@ class GameNode(object):
     def start_comment(self, value):
         if not isinstance(value, basestring):
             raise TypeError(
-                "Expected start comment to be string, got: %s." % comment)
+                "Expected start comment to be string, got: %s." % value)
 
         if value != "" and not self.can_have_start_comment():
             raise ValueError("Game node can not have a start comment.")
@@ -166,7 +166,7 @@ class GameNode(object):
     def __getitem__(self, key):
         if type(key) is types.IntType:
             return self.__variations[key]
-        elif type(key) is chess.Move:
+        elif type(key) is Move:
             for node in self.__variations:
                 if node.move == key:
                     return node
@@ -175,7 +175,7 @@ class GameNode(object):
             raise TypeError("Expected integer or move as key, got: %s." % key)
 
     def __delitem__(self, key):
-        if type(key) is chess.Move:
+        if type(key) is Move:
             for i, node in enumerate(self.__variations):
                 if node.move == key:
                     key = i
@@ -206,7 +206,7 @@ class GameNode(object):
         for i, node in enumerate(self.__variations):
             if node == variation or node.move == variation:
                 return i
-        raise ValueError("No such variation: %s." % repr(value))
+        raise ValueError("No such variation: %s." % repr(variation))
 
     def promote(self, variation):
         """Moves a variation one up, if possible.
@@ -244,7 +244,7 @@ class GameNode(object):
         self.__variations.insert(0, new_mainline)
 
     def __prepare_variation(self, variation):
-        if type(variation) is chess.Move:
+        if type(variation) is Move:
             variation = GameNode(self, variation)
         if variation.move in self:
             raise ValueError("Variation already in set: %s." % variation.move)

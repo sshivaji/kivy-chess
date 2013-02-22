@@ -15,17 +15,18 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from position import Position
+from game_header_bag import GameHeaderBag
 
-import chess
-import re
+import game_node
 
-class Game(chess.GameNode):
+class Game(game_node.GameNode):
     """The root node of a game."""
     def __init__(self, start_comment="", headers=None):
-        chess.GameNode.__init__(self, None, None, (), start_comment)
+        game_node.GameNode.__init__(self, None, None, (), start_comment)
 
         if headers is None:
-            self.__headers = chess.GameHeaderBag(self)
+            self.__headers = GameHeaderBag(self)
         else:
             if not headers.game == self:
                 raise ValueError("Header bag assigned to a different game.")
@@ -40,6 +41,6 @@ class Game(chess.GameNode):
     def position(self):
         """A copy of the initial position of the game."""
         if "FEN" in self.__headers:
-            return chess.Position(self.__headers["FEN"])
+            return Position(self.__headers["FEN"])
         else:
-            return chess.Position()
+            return Position()

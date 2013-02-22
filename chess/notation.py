@@ -26,7 +26,6 @@ from square import Square
 
 class AbstractNotation(object):
 
-
     def __init__(self, position, move):
 
         resulting_position = position.copy().make_move(move)

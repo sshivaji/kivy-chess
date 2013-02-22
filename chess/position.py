@@ -551,10 +551,10 @@ class Position(object):
             black_has_bishop = self.get_piece_counts([BLACK])[BISHOP] != 0
             if white_has_bishop and black_has_bishop:
                 color = None
-                for square in chess.Square.get_all():
+                for square in Square.get_all():
                     p = self._pieces[square._x88]
                     if p and Piece.klass(p) == BISHOP:
-                        if color != None and color != square.is_light():
+                        if color and color != square.is_light():
                             return False
                         color = square.is_light()
                 return True
