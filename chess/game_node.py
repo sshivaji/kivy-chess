@@ -18,6 +18,8 @@
 
 import types
 from move import Move
+from notation import SanNotation
+#from position import Position
 
 class GameNode(object):
     """A node in the tree of a game.
@@ -72,6 +74,12 @@ class GameNode(object):
     def previous_node(self):
         """The previous node of the game."""
         return self.__previous_node
+
+    @property
+    def get_prev_moves(self):
+        if self.previous_node and self.previous_node.get_prev_moves and self.move:
+            return self.previous_node.get_prev_moves + " "+ str(self.move)
+        return " "
 
     @property
     def move(self):
@@ -227,7 +235,7 @@ class GameNode(object):
             A game node or move to demote.
         """
         i = self.index(variation)
-        if i < len(self._variations) - 1:
+        if i < len(self.__variations) - 1:
             old = self.__variations[i + 1]
             self.__variations[i + 1] = self.__variations[i]
             self.__variations[i] = old
