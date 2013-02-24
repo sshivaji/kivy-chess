@@ -77,7 +77,7 @@ class AbstractNotation(object):
     def __hash__(self):
         return hash(self._text)
 
-    def _set_text(self):
+    def _set_text(self, position):
         raise NotImplementedError()
 
     @classmethod
@@ -89,7 +89,6 @@ class SanNotation(AbstractNotation):
 
     #FIXME remove hard coded symbols
     san_regex = re.compile('^([NBKRQ])?([a-h])?([1-8])?x?([a-h][1-8])(=[NBRQ])?(\+|#)?$')
-
 
     def _set_text(self, position):
 
@@ -210,10 +209,6 @@ class SanNotation(AbstractNotation):
                 raise MoveError("No legal move matches %s." % san)
 
             return Move(source, target, matches.group(5) or None)
-
-
-
-        
 
 if __name__ == '__main__':
 

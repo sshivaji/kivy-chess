@@ -423,7 +423,7 @@ class Position(object):
             return False
 
         # If the square below the pawn is not empty then it not possible.
-        y = 2 if self.turn == WHITE else 5
+        y = 2 if self.fen.turn == WHITE else 5
         x88 = X88.from_x_and_y(x, y) 
         if self[x88]:
             return False
@@ -433,7 +433,7 @@ class Position(object):
         for _x in xs:
             x88 = X88.from_x_and_y(_x, y) 
             piece = self._pieces[x88] 
-            if Piece.is_klass_color(piece, PAWN, Piece.opposite_color(self.fen._to_move)):
+            if Piece.is_klass_and_color(piece, PAWN, Piece.opposite_color(self.fen._to_move)):
                 return True
         # Else its just not possible.
         return False

@@ -22,6 +22,7 @@ from kivy.config import Config
 from kivy.config import ConfigParser
 
 import chess
+from chess.game import Game
 from chess import Move
 #from ChessBoard import ChessBoard
 from sets import Set
@@ -93,7 +94,10 @@ class Chess_app(App):
     def build(self):
         self.from_move = None
         self.to_move = None
-        self.chessboard = chess.Position()
+        self.game = Game()
+        self.chessboard = self.game
+        self.scoresheet = []
+#        self.chessboard = chess.Position()
 #        self.analysis_board = chess.Position()
 
 #        self.chessboard = ChessBoard()
@@ -246,10 +250,12 @@ class Chess_app(App):
             for i, mv in enumerate(self.engine_score.raw):
                 if i>=1:
                     break
-#                print "move:"
+                print "move:"
+                print mv
 #                print type(mv)
                 try:
-                    self.chessboard.make_move(mv)
+#                    self.chessboard.make_move(mv)
+                    self.chessboard = self.chessboard.add_variation(mv)
                 except chess.move.MoveError:
                     pass
 #                self.chessboard.addTextMove(mv)
@@ -298,7 +304,7 @@ class Chess_app(App):
             self.start_engine()
 
         def parse_score(line):
-            analysis_board = chess.Position(fen=self.chessboard.fen.text)
+            analysis_board = chess.Position(fen=self.chessboard.position.fen.text)
 #            analysis_board.setFEN(self.chessboard.fen)
             tokens = line.split()
             try:
@@ -318,11 +324,11 @@ class Chess_app(App):
 
             except ValueError:
                 line_index = -1
-            variation = self.generate_move_list(move_list,start_move_num=self.chessboard.fen._full_move+1) if line_index!=-1 else None
+            variation = self.generate_move_list(move_list,start_move_num=self.chessboard.position.fen._full_move+1) if line_index!=-1 else None
 
             del analysis_board
             if variation and score:
-                return move_list, "[b]%s[/b][color=0d4cd6][ref=engine_toggle]         Stop[/ref][/color]\n[color=77b5fe]%s[/color]" %(score,"".join(variation))
+                return move_list, "[color=0d4cd6][ref=engine_toggle]Stop[/ref]    [/color][b]%s[/b]\n[color=77b5fe]%s[/color]" %(score,"".join(variation))
 
         while True:
             if self.use_engine:
@@ -376,7 +382,9 @@ class Chess_app(App):
             self.to_move = obj.name
 
             try:
-                self.chessboard.make_move(Move.from_uci(self.from_move+self.to_move))
+                move = Move.from_uci(self.from_move+self.to_move)
+                self.chessboard.make_move(move)
+                self.game.add_variation(move)
                 self.refresh_board()
             except chess.MoveError:
                 pass
@@ -408,7 +416,7 @@ class Chess_app(App):
     def refresh_board(self):
         # flatten lists into one list of 64 squares
 #        squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
-        squares = self.chessboard
+        squares = self.chessboard.position
 #        print "squares[0]"
 #        print squares["a8"]
         for i, name in enumerate(SQUARES):
@@ -434,6 +442,9 @@ class Chess_app(App):
         if self.use_engine:
 #            self.analysis_board.setFEN(self.chessboard.fen)
             self.uci_engine.stop()
+            moves_so_far = self.chessboard.get_prev_moves()
+            print "moves_so_far:"+moves_so_far
+            self.uci_engine.reportMoves(moves_so_far)
 #            self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0, till_current_move=True))
 #            self.uci_engine.reportMove(self.chessboard.getLastTextMove(format=0))
             self.uci_engine.requestMove()

@@ -27,7 +27,9 @@ class TestGame(unittest.TestCase):
         assert root[0] == variation
 
         next_var = variation.add_main_variation(Move.from_uci("c7c5"))
-        print next_var.get_prev_moves
+        assert next_var.get_prev_moves() == "  e2e4 c7c5"
+        assert next_var.get_prev_moves(format="san") == "  e2e4 c5"
+
 
 if __name__ == '__main__':
     unittest.main()

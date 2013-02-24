@@ -106,6 +106,7 @@ class Move(object):
         p = Piece.promote_to.index(self._promotion) + 1 if self._promotion else 0
         return self._source_x88 * 137 + self._target_x88 + p
 
+
     @classmethod
     def from_uci(cls, uci):
         """Creates a move object from an UCI move string.

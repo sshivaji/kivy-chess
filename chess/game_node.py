@@ -75,10 +75,12 @@ class GameNode(object):
         """The previous node of the game."""
         return self.__previous_node
 
-    @property
-    def get_prev_moves(self):
-        if self.previous_node and self.previous_node.get_prev_moves and self.move:
-            return self.previous_node.get_prev_moves + " "+ str(self.move)
+    def get_prev_moves(self, format="raw"):
+        if self.previous_node:
+            if format=="raw":
+                return self.previous_node.get_prev_moves() + " " + str(self.move)
+            else:
+                return self.previous_node.get_prev_moves() + " " + str(SanNotation(self.position, self.move))
         return " "
 
     @property
