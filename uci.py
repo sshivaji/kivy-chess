@@ -171,7 +171,7 @@ class UCIEngine:
 
         if moves:
 #            str_move_list = " ".join(moves)
-            print "pos_command: %s %s"%(self.__positionCommand, moves)
+#            print "pos_command: %s %s"%(self.__positionCommand, moves)
             self.__sendCommand("%s %s"%(self.__positionCommand, moves))
 
     def reportMove(self, move):

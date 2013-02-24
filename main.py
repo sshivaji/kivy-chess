@@ -382,15 +382,16 @@ class Chess_app(App):
         squares = self.chessboard
 
         if not self.from_move:
-            if squares[obj.name]:
-                self.from_move = obj.name
+#            if squares[obj.name]:
+            self.from_move = obj.name
         else:
             self.to_move = obj.name
 
             try:
                 move = Move.from_uci(self.from_move+self.to_move)
-                self.chessboard.make_move(move)
-                self.game.add_variation(move)
+                print "move:%s"%move
+#                self.chessboard = self.chessboard.make_move(move)
+                self.chessboard = self.chessboard.add_variation(move)
                 self.refresh_board()
             except chess.MoveError:
                 pass
@@ -439,17 +440,19 @@ class Chess_app(App):
                 sq.background_normal="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
 
         # Update game notation
-#        all_moves = self.chessboard.getAllTextMoves()
-#        if all_moves:
-#            score = self.generate_move_list(all_moves)
-#            self.game_score.children[0].text="[color=fcf7da]%s[/color]"%score
+        all_moves = self.chessboard.get_prev_moves(format="san")
+#        print "all_moves:%s"%all_moves
+
+        if all_moves:
+            score = self.generate_move_list(all_moves)
+            self.game_score.children[0].text="[color=fcf7da]%s[/color]"%score
 #            self.game_score.raw = self.generate_move_list(all_moves, raw=True)
 
         if self.use_engine:
 #            self.analysis_board.setFEN(self.chessboard.fen)
             self.uci_engine.stop()
             moves_so_far = self.chessboard.get_prev_moves()
-            print "moves_so_far:"+moves_so_far
+#            print "moves_so_far:"+moves_so_far
             self.uci_engine.reportMoves(moves_so_far)
 #            self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0, till_current_move=True))
 #            self.uci_engine.reportMove(self.chessboard.getLastTextMove(format=0))
