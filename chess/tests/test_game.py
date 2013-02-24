@@ -29,7 +29,7 @@ class TestGame(unittest.TestCase):
         next_var = variation.add_main_variation(Move.from_uci("c7c5"))
         assert next_var.get_prev_moves() == "  e2e4 c7c5"
         assert next_var.get_prev_moves(format="san") == "  e2e4 c5"
-
+        root.game_score()
 
 if __name__ == '__main__':
     unittest.main()

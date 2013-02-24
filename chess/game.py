@@ -44,3 +44,8 @@ class Game(game_node.GameNode):
             return Position(self.__headers["FEN"])
         else:
             return Position()
+
+    def game_score(self):
+        # Iterate thru all game nodes to produce a 'score sheet'
+        for v in self.__variations:
+            print v.move

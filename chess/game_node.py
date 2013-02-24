@@ -80,7 +80,7 @@ class GameNode(object):
             if format=="raw":
                 return self.previous_node.get_prev_moves() + " " + str(self.move)
             else:
-                return self.previous_node.get_prev_moves() + " " + str(SanNotation(self.position, self.move))
+                return self.previous_node.get_prev_moves() + " " + str(SanNotation(self.previous_node.position, self.move))
         return " "
 
     @property
