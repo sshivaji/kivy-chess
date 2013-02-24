@@ -29,6 +29,7 @@ from sets import Set
 from uci import UCIEngine
 from threading import Thread
 import itertools as it
+from chess.notation import SanNotation
 
 ANALYSIS_HEADER = '[ref=engine_toggle]Analysis[/ref]'
 
@@ -255,7 +256,8 @@ class Chess_app(App):
 #                print type(mv)
                 try:
 #                    self.chessboard.make_move(mv)
-                    self.chessboard = self.chessboard.add_variation(mv)
+#                    SanNotation.to_move(p, san)
+                    self.chessboard = self.chessboard.add_variation(SanNotation.to_move(self.chessboard.position, mv))
                 except chess.move.MoveError:
                     pass
 #                self.chessboard.addTextMove(mv)
@@ -319,8 +321,12 @@ class Chess_app(App):
                 line_index = tokens.index('pv')
                 for mv in tokens[line_index+1:]:
                     move = Move.from_uci(mv)
+                    san = SanNotation(analysis_board, move)
                     analysis_board.make_move(move)
-                    move_list.append(move)
+                    move_list.append(san)
+#
+#                    m = Move.from_uci('b1c3')
+#                    san = SanNotation(p, m)
 
             except ValueError:
                 line_index = -1
