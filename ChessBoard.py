@@ -134,6 +134,9 @@ class ChessBoard:
     def pushState(self):
 
         if self._state_stack_pointer != len(self._state_stack):
+            # Currently overwrites moves if a move already exists
+            print "Overwriting moves"
+            # Removes all previous moves
             self._state_stack = self._state_stack[:self._state_stack_pointer]    
             self._three_rep_stack =  self._three_rep_stack[:self._state_stack_pointer]
             self._moves = self._moves[:self._state_stack_pointer-1]    
@@ -149,7 +152,8 @@ class ChessBoard:
         state_str = self.state2str()
         self._state_stack.append(state_str)
 
-        self._state_stack_pointer = len(self._state_stack)            
+        self._state_stack_pointer = len(self._state_stack)
+
 
     def pushMove(self):
         self._moves.append(deepcopy(self._cur_move))

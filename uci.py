@@ -170,8 +170,11 @@ class UCIEngine:
         self.__haveMoves = True
 
         if moves:
+#            print type(moves)
+            if type(moves) is list:
+                moves = " ".join(moves)
 #            str_move_list = " ".join(moves)
-#            print "pos_command: %s %s"%(self.__positionCommand, moves)
+#            print "debug pos_command: %s %s"%(self.__positionCommand, moves)
             self.__sendCommand("%s %s"%(self.__positionCommand, moves))
 
     def reportMove(self, move):
