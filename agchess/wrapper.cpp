@@ -49,9 +49,21 @@ void testPosition() {
 
  extern "C" {
     using namespace AGChess;
+    StandardPosition current_pos =  StandardPosition();
     void test_c_position() {
-        testPosition();
+      testPosition();
     }
+    
+    void reset_current_pos() {
+      current_pos =  StandardPosition();
+    }
+    
+    void get_board() {
+      cout << current_pos.board();
+      
+    }
+    
+    
 }
 
 void testFEN() {
