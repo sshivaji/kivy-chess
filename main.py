@@ -136,12 +136,13 @@ class Chess_app(App):
 #        back_bt.bind(on_press=self.back)
 #        b.add_widget(back_bt)
 #
-#        fwd_bt = Button(markup=True)
-#        #fwd_bt.background_normal="img/empty-d.png"
-#        fwd_bt.text="[color=3333ff]Fwd[/color]"
-#
-#        fwd_bt.bind(on_press=self.fwd)
-#        b.add_widget(fwd_bt)
+        save_bt = Button(markup=True)
+        #fwd_bt.background_normal="img/empty-d.png"
+        save_bt.text="[color=3333ff]Save[/color]"
+        # save_bt.text="Save"
+
+        save_bt.bind(on_press=self.save)
+        b.add_widget(save_bt)
 
 #        b.add_widget(Button(spacing=10))
 #        b.add_widget(Button(spacing=10))
@@ -351,6 +352,12 @@ class Chess_app(App):
         self.chessboard.redo()
         self.refresh_board()
 
+    def save(self, obj):
+        f = open('game.pgn','w')
+        f.write('Game Header - Analysis \n\n')
+        f.write(self.generate_move_list(self.chessboard.getAllTextMoves(),raw=True))
+        f.close()
+
     def callback(self, obj):
 #        print 'Button state:%s' %obj.state
 #        print 'Square %s was clicked' %(obj.name)
@@ -370,8 +377,8 @@ class Chess_app(App):
 
     def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
         score = ""
-        if raw:
-            return " ".join(all_moves)
+        # if raw:
+        #     return " ".join(all_moves)
         for i, mv in it.izip(it.count(start_move_num), all_moves):
             move = "b"
             if i % 2 == 1:
@@ -379,9 +386,13 @@ class Chess_app(App):
                 move = "w"
 
             if mv:
-                score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
-#            if i % 5 == 0:
-#                score += "\n"
+                if raw:
+                    score += " % s" % mv
+                    if i % 5 == 0:
+                        score += "\n"
+
+                else:
+                    score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
         return score
 
     def refresh_board(self):
