@@ -10,8 +10,7 @@ from kivy.uix.screenmanager import FadeTransition
 from kivy.uix.screenmanager import WipeTransition
 from kivy.uix.screenmanager import SwapTransition
 from kivy.uix.screenmanager import SlideTransition
-from kivy.uix.widget import Widget
-from kivy.uix.image import Image
+
 
 from kivy.core.window import Window
 from kivy.uix.textinput import TextInput
@@ -98,36 +97,30 @@ class Chess_app(App):
         self.use_engine = False
 
         parent = BoxLayout(size_hint=(1,1))
-        grid =  Widget()
-        # print "grid_size:"+str(grid.size)
-        # print "grid_x:"+str(grid.x)
-        # print "grid_y:"+str(grid.y)
-        sqSize = grid.width / 8
-        print "sq_size: "+str(sqSize)
+        grid = GridLayout(cols = 8, rows = 8, spacing = 1, size_hint=(1, 1))
 
-        with grid.canvas:
-            for i, name in enumerate(SQUARES):
-                bt = Image(pos=(20, 20))
-                bt.sq = i
-                bt.name = name
-                bt.border = [0,0,0,0]
-                if i in light_squares:
-                    bt.sq_color = "l"
-                    # bt.background_down = "img/empty-l.png"
-                    bt.source = "img/empty-l.png"
+        for i, name in enumerate(SQUARES):
+            bt = Button()
+            bt.sq = i
+            bt.name = name
+            bt.border = [0,0,0,0]
+            if i in light_squares:
+                bt.sq_color = "l"
+                bt.background_down = "img/empty-l.png"
 
-                #                bt.background_color=[1,1,1,1]
-                else:
-                    bt.sq_color = "d"
-                    # bt.background_down = "img/empty-d.png"
-                    bt.source = "img/empty-d.png"
+            #                bt.background_color=[1,1,1,1]
+            else:
+                bt.sq_color = "d"
+                bt.background_down = "img/empty-d.png"
+
             #                bt.background_color=[0,0,0,0]
-                #                print i
-                bt.bind(on_press=self.callback)
-    #            bt.bind(on_touch_down=self.touch_down_move)
-    #            bt.bind(on_touch_up=self.touch_up_move)
-                grid.add_widget(bt)
-                self.squares.append(bt)
+            #                print i
+            bt.bind(on_press=self.callback)
+#            bt.bind(on_touch_down=self.touch_down_move)
+#            bt.bind(on_touch_up=self.touch_up_move)
+
+            grid.add_widget(bt)
+            self.squares.append(bt)
 
 
         b = BoxLayout(size_hint=(0.15,0.15))
@@ -409,17 +402,13 @@ class Chess_app(App):
         for i, p in enumerate(squares):
             sq = self.squares[i]
             if p==".":
-                # sq.background_normal=sq.background_down
-                sq.source=sq.source
+                sq.background_normal=sq.background_down
 
-
-        if p!=".":
+            if p!=".":
                 p_color = 'w' if p.isupper() else 'b'
-                # sq.background_normal="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
-                sq.source="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
+                sq.background_normal="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
 
-
-    # Update game notation
+        # Update game notation
         all_moves = self.chessboard.getAllTextMoves()
         if all_moves:
             score = self.generate_move_list(all_moves)
