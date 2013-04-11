@@ -2,6 +2,13 @@ kivy-chess
 ==========
 
 Work in progress Chess Application using Kivy.
+
+To Build
+   1. Download Kivy
+   2. Install and test that kivy works
+   3. Execute "kivy main.py"
+   4. To deploy to IOS/android, download the respective toolkits and use this project's rootdir.
+
 Features
    1. Ability to play over human input moves.
    2. Observe engine output on positions.
