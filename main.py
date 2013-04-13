@@ -370,8 +370,13 @@ class Chess_app(App):
         # print "touch_move"
         # print touch
         mv = img.name
-        self.last_touch_down_move = img.name
-        self.process_move(mv)
+        squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
+
+        if squares[SQUARES.index(mv)]!='.':
+            # self.from_move = move
+            self.last_touch_down_move = mv
+
+            # self.process_move(mv)
 
     def touch_up_move(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
@@ -380,39 +385,12 @@ class Chess_app(App):
         # print touch
         mv = img.name
         self.last_touch_up_move = img.name
-        self.process_move(mv)
+        if self.last_touch_up_move != self.last_touch_down_move:
+            self.process_move()
 
-    # def touch_move(self, img, touch):
-    #     if not img.collide_point(touch.x, touch.y):
-    #         return
-    #     print "touch_move"
-    #     print touch
-    #     print img.name
-
-    def process_move(self, move):
-        # print "got_move"
-        # print move
-
-        if self.last_touch_up_move == self.last_touch_down_move:
-            # User clicked on a square to move a piece
-            return
-
-        # self.same_sq_clicks = 0
-
-        # print 'Button state:%s' %obj.state
-        # print 'Square %s was clicked' %(obj.name)
-        squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
-
-        if not self.from_move:
-            if squares[SQUARES.index(move)]!='.':
-                self.from_move = move
-        else:
-            self.to_move = move
-            if self.chessboard.addTextMove(self.from_move+self.to_move):
-                self.refresh_board()
-            self.to_move = None
-            self.from_move = None
-        # print "from_move:%s, to_move:%s"%(self.from_move, self.to_move)
+    def process_move(self):
+        if self.chessboard.addTextMove(self.last_touch_down_move+self.last_touch_up_move):
+            self.refresh_board()
 
     def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
         score = ""
