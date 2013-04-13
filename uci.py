@@ -19,6 +19,13 @@ def enqueue_output(out, queue):
     out.close()
 
 
+class UCIOption:
+
+    def __init__(self, name, value):
+        self.name = name
+        self.value = value
+
+
 class UCIEngine:
 
     def __init__(self):
@@ -138,20 +145,20 @@ class UCIEngine:
         self.__sendCommand('ucinewgame')
         self.__sendCommand(self.__positionCommand)
 
-    def configure(self, options = []):
-        """
+    def configure(self, options):
+        """ Options should be a dictionary
         """
         if not self.readyToConfigure:
             self.__options = options
             return
 
-        for option in options:
-            if not hasattr(option, 'name'):
-                print 'Ignoring unnamed UCI option'
-                continue
-            if option.value == '':
-                continue
-            self.onOutgoingData('setoption ' + option.name + ' value ' + option.value + '\n')
+        for k,v in options.iteritems():
+            # if not hasattr(option, 'name'):
+            #     print 'Ignoring unnamed UCI option'
+            #     continue
+            # if option.value == '':
+            #     continue
+            self.onOutgoingData('setoption name ' + k + ' value ' + v + '\n')
         self.onOutgoingData('isready\n')
 
     def requestMove(self, whiteTime=30000, blackTime=30000):

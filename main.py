@@ -17,6 +17,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.dropdown import DropDown
 
 from kivy.uix.button import Button
+from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.config import Config
 from kivy.config import ConfigParser
@@ -24,6 +25,7 @@ from kivy.config import ConfigParser
 from ChessBoard import ChessBoard
 from sets import Set
 from uci import UCIEngine
+from uci import UCIOption
 from threading import Thread
 import itertools as it
 
@@ -95,15 +97,17 @@ class Chess_app(App):
         self.analysis_board = ChessBoard()
         self.squares = []
         self.use_engine = False
+        self.last_touch_down_move = None
+        self.last_touch_up_move = None
 
         parent = BoxLayout(size_hint=(1,1))
-        grid = GridLayout(cols = 8, rows = 8, spacing = 1, size_hint=(1, 1))
+        grid = GridLayout(cols = 8, rows = 8, spacing = 0, size_hint=(1, 1))
 
         for i, name in enumerate(SQUARES):
-            bt = Button()
+            bt = Image(allow_stretch=True)
             bt.sq = i
             bt.name = name
-            bt.border = [0,0,0,0]
+            # bt.border = [0,0,0,0]
             if i in light_squares:
                 bt.sq_color = "l"
                 bt.background_down = "img/empty-l.png"
@@ -115,9 +119,11 @@ class Chess_app(App):
 
             #                bt.background_color=[0,0,0,0]
             #                print i
-            bt.bind(on_press=self.callback)
-#            bt.bind(on_touch_down=self.touch_down_move)
-#            bt.bind(on_touch_up=self.touch_up_move)
+            # bt.bind(on_press=self.callback)
+            bt.bind(on_touch_down=self.touch_down_move)
+            bt.bind(on_touch_up=self.touch_up_move)
+            # bt.bind(on_touch_up=self.touch_move)
+
 
             grid.add_widget(bt)
             self.squares.append(bt)
@@ -272,14 +278,14 @@ class Chess_app(App):
 
         uci_engine = UCIEngine()
         uci_engine.start()
-        uci_engine.configure()
+        uci_engine.configure({'Threads': '1'})
 
         # Wait until the uci connection is setup
         while not uci_engine.ready:
             uci_engine.registerIncomingData()
 
         uci_engine.startGame()
-        uci_engine.requestMove()
+        # uci_engine.requestMove()
         self.uci_engine=uci_engine
 
 
@@ -358,22 +364,55 @@ class Chess_app(App):
         f.write(self.generate_move_list(self.chessboard.getAllTextMoves(),raw=True))
         f.close()
 
-    def callback(self, obj):
-#        print 'Button state:%s' %obj.state
-#        print 'Square %s was clicked' %(obj.name)
+    def touch_down_move(self, img, touch):
+        if not img.collide_point(touch.x, touch.y):
+            return
+        # print "touch_move"
+        # print touch
+        mv = img.name
+        self.last_touch_down_move = img.name
+        self.process_move(mv)
+
+    def touch_up_move(self, img, touch):
+        if not img.collide_point(touch.x, touch.y):
+            return
+        # print "touch_move"
+        # print touch
+        mv = img.name
+        self.last_touch_up_move = img.name
+        self.process_move(mv)
+
+    # def touch_move(self, img, touch):
+    #     if not img.collide_point(touch.x, touch.y):
+    #         return
+    #     print "touch_move"
+    #     print touch
+    #     print img.name
+
+    def process_move(self, move):
+        # print "got_move"
+        # print move
+
+        if self.last_touch_up_move == self.last_touch_down_move:
+            # User clicked on a square to move a piece
+            return
+
+        # self.same_sq_clicks = 0
+
+        # print 'Button state:%s' %obj.state
+        # print 'Square %s was clicked' %(obj.name)
         squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
 
-
         if not self.from_move:
-            if squares[SQUARES.index(obj.name)]!='.':
-                self.from_move = obj.name
+            if squares[SQUARES.index(move)]!='.':
+                self.from_move = move
         else:
-            self.to_move = obj.name
+            self.to_move = move
             if self.chessboard.addTextMove(self.from_move+self.to_move):
                 self.refresh_board()
             self.to_move = None
             self.from_move = None
-#        print "from_move:%s, to_move:%s"%(self.from_move, self.to_move)
+        # print "from_move:%s, to_move:%s"%(self.from_move, self.to_move)
 
     def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
         score = ""
@@ -402,11 +441,11 @@ class Chess_app(App):
         for i, p in enumerate(squares):
             sq = self.squares[i]
             if p==".":
-                sq.background_normal=sq.background_down
+                sq.source=sq.background_down
 
             if p!=".":
                 p_color = 'w' if p.isupper() else 'b'
-                sq.background_normal="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
+                sq.source="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
 
         # Update game notation
         all_moves = self.chessboard.getAllTextMoves()
