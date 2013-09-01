@@ -1,8 +1,5 @@
 import kivy
-from kivy.graphics import Rectangle
-from kivy.uix.widget import Widget
 from kivy_util import ScrollableLabel
-from kivy_util import ImageWithBackground
 from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
@@ -107,11 +104,10 @@ class Chess_app(App):
         grid = GridLayout(cols = 8, rows = 8, spacing = 0, size_hint=(1, 1))
 
         for i, name in enumerate(SQUARES):
-            bt = Image()
+            bt = Image(allow_stretch=True)
             bt.sq = i
             bt.name = name
-            bt.border = [0,0,0,0]
-#            bt.background_color=(100,0,100,1)
+            # bt.border = [0,0,0,0]
             if i in light_squares:
                 bt.sq_color = "l"
                 bt.background_down = "img/empty-l.png"
