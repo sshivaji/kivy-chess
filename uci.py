@@ -20,14 +20,12 @@ def enqueue_output(out, queue):
 
 
 class UCIOption:
-
     def __init__(self, name, value):
         self.name = name
         self.value = value
 
 
 class UCIEngine:
-
     def __init__(self):
         """Constructor for an AI player.
 
@@ -50,9 +48,6 @@ class UCIEngine:
 
         self.STATE_IDLE = 'IDLE'
         self.STATE_CONNECTING = 'CONNECTING'
-
-#        self.options = None
-
 
         self.options = {}
         self.__queuedCommands = []
@@ -92,7 +87,7 @@ class UCIEngine:
         self.__inCallback = True
         buffer = ''
         try:
-            line = self.buffer.get_nowait() # or q.get(timeout=.1)
+            line = self.buffer.get(timeout=0.3) # or q.get(timeout=.1)
         except Empty:
             pass
 #            print('no output yet')
@@ -253,7 +248,7 @@ class UCIEngine:
 
     def getOutput(self):
         try:
-            line = self.buffer.get_nowait()
+            line = self.buffer.get()
             return line
         except Empty:
             pass
@@ -266,7 +261,6 @@ if __name__=="__main__":
     # Wait until the uci connection is setup
     while not uci_engine.ready:
         uci_engine.registerIncomingData()
-
 
     uci_engine.startGame()
     uci_engine.requestMove()

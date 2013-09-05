@@ -279,6 +279,7 @@ class Chess_app(App):
         uci_engine = UCIEngine()
         uci_engine.start()
         uci_engine.configure({'Threads': '1'})
+        #uci_engine.configure({'Use Sleeping Threads': 'false'})
 
         # Wait until the uci connection is setup
         while not uci_engine.ready:
@@ -294,8 +295,7 @@ class Chess_app(App):
             self.start_engine()
 
         def parse_score(line):
-            analysis_board = ChessBoard()
-            analysis_board.setFEN(self.chessboard.getFEN())
+            self.analysis_board.setFEN(self.chessboard.getFEN())
             tokens = line.split()
             try:
                 score_index = tokens.index('score')
@@ -308,14 +308,14 @@ class Chess_app(App):
             try:
                 line_index = tokens.index('pv')
                 for mv in tokens[line_index+1:]:
-                    analysis_board.addTextMove(mv)
-                    move_list.append(analysis_board.getLastTextMove())
+                    self.analysis_board.addTextMove(mv)
+                    move_list.append(self.analysis_board.getLastTextMove())
 
             except ValueError:
                 line_index = -1
             variation = self.generate_move_list(move_list,start_move_num=self.chessboard.getCurrentMove()+1) if line_index!=-1 else None
 
-            del analysis_board
+            #del analysis_board
             if variation and score:
                 return move_list, "[b]%s[/b][color=0d4cd6][ref=engine_toggle]         Stop[/ref][/color]\n[color=77b5fe]%s[/color]" %(score,"".join(variation))
 
@@ -323,6 +323,7 @@ class Chess_app(App):
             if self.use_engine:
                 line = self.uci_engine.getOutput()
                 if line:
+                    #out_score = None
                     out_score = parse_score(line)
                     if out_score:
                         raw_line, cleaned_line = out_score
@@ -433,7 +434,7 @@ class Chess_app(App):
 #            self.game_score.raw = self.generate_move_list(all_moves, raw=True)
 
         if self.use_engine:
-            self.analysis_board.setFEN(self.chessboard.getFEN())
+            #self.analysis_board.setFEN(self.chessboard.getFEN())
             self.uci_engine.stop()
             self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0, till_current_move=True))
 #            self.uci_engine.reportMove(self.chessboard.getLastTextMove(format=0))
