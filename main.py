@@ -16,11 +16,15 @@ from kivy.core.window import Window
 from kivy.uix.textinput import TextInput
 from kivy.uix.dropdown import DropDown
 
+from kivy.properties import BooleanProperty, ListProperty, ObjectProperty, NumericProperty, StringProperty
+
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.config import Config
 from kivy.config import ConfigParser
+from kivy.uix.scatter import Scatter
+from kivy.utils import get_color_from_hex
 
 from ChessBoard import ChessBoard
 from sets import Set
@@ -38,14 +42,139 @@ SQUARES = ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7
 
 light_squares = Set([0,2,4,6,9,11,13,15,16,18,20,22,25,27,29,31,32,34,36,38,41,43,45,47,48,50,52,54,57,59,61,63])
 
+IMAGE_PIECE_MAP = {
+    "B": "wb",
+    "R": "wr",
+    "N": "wn",
+    "Q": "wq",
+    "K": "wk",
+    "P": "wp",
+    "b": "bb",
+    "r": "br",
+    "n": "bn",
+    "q": "bq",
+    "k": "bk",
+    "p": "bp"
+}
+
 img_piece_abv={"B":"WBishop", "R":"WRook", "N":"WKnight", "Q":"WQueen", "K":"WKing", "P": "WPawn",
 "b":"BBishop", "r":"BRook", "n":"BKnight", "q":"BQueen", "k":"BKing", "p":"BPawn"}
+
+COLOR_MAPS = {
+    'black': (1, 1, 1, 1),
+    'white': (0, 0, 0, 1),
+    'cream': get_color_from_hex('#F9FCC6'),
+    'brown': get_color_from_hex('#969063'),
+    }
+
+DARK_SQUARE = COLOR_MAPS['brown']
+LIGHT_SQUARE = COLOR_MAPS['cream']
 
 #engine_config = ConfigParser()
 #engine_config.read('resources/engine.ini')
 
 class SettingsScreen(Screen):
     pass
+
+class ChessPiece(Scatter):
+
+    image = ObjectProperty(None)
+    moving = BooleanProperty(False)
+    allowed_to_move = BooleanProperty(False)
+
+    hide = BooleanProperty(False)
+
+
+    def __init__(self, image_source, **kwargs):
+        super(ChessPiece, self).__init__(**kwargs)
+
+        self.image = Image(source=image_source)
+        #        self.image.allow_stretch = False
+        self.add_widget(self.image)
+        self.auto_bring_to_front = True
+
+    def on_hide(self, *args):
+        self.remove_widget(self.image)
+
+        if not self.hide:
+            self.add_widget(self.image)
+
+    def set_size(self, size):
+        # Set both sizes otherwise the image
+        # won't sit properly, and the scatter becomes larger than
+        # the image.
+        self.size = size[0], size[1]
+        self.image.size = size[0], size[1]
+
+    def set_pos(self, pos):
+        self.pos = pos[0], pos[1]
+
+    def on_touch_move(self, touch):
+        if not self.allowed_to_move:
+            return
+        if super(ChessPiece, self).on_touch_move(touch):
+            self.moving = True
+
+    def on_touch_up(self, touch):
+        if super(ChessPiece, self).on_touch_up(touch):
+#            if self.parent and self.moving:
+#                app.check_piece_in_square(self)
+
+            self.moving = False
+
+    def on_touch_down(self, touch):
+        if super(ChessPiece, self).on_touch_down(touch):
+            pass
+
+class ChessSquare(Button):
+    coord = NumericProperty(0)
+    piece = ObjectProperty(None, allownone=True)
+    show_piece = BooleanProperty(True)
+    show_coord = BooleanProperty(False)
+
+    def __init__(self, **kwargs):
+        super(ChessSquare, self).__init__(**kwargs)
+#        self.background_color = background_color
+        self.background_normal = ''
+        self.markup = True
+
+    def add_piece(self, piece):
+        self.remove_widget(self.piece)
+        self.piece = piece
+        if self.piece:
+            self.piece.hide = not self.show_piece
+            self.add_widget(piece)
+            piece.set_size(self.size)
+            piece.set_pos(self.pos)
+
+#    def on_release(self):
+#        self.state = 'down'
+#        app.process_move(self)
+
+    def remove_piece(self):
+        if self.piece:
+            self.remove_widget(self.piece)
+
+    def remove_piece(self):
+        if self.piece:
+            self.remove_widget(self.piece)
+
+
+    def on_size(self, instance, size):
+        # print '%s Size: %s' % (get_square_abbr(self.coord), size)
+        if self.piece:
+            self.piece.set_size(size)
+
+
+    def on_pos(self, instance, pos):
+        # print '%s Positions: %s' % (get_square_abbr(self.coord), pos)
+        if self.piece:
+            self.piece.set_pos(pos)
+
+            # def on_touch_down(self, touch):
+            #     if super(ChessSquare, self).on_touch_down(touch):
+            #         app.process_move(self)
+
 
 class Chess_app(App):
     def generate_settings(self):
@@ -104,18 +233,20 @@ class Chess_app(App):
         grid = GridLayout(cols = 8, rows = 8, spacing = 0, size_hint=(1, 1))
 
         for i, name in enumerate(SQUARES):
-            bt = Image(allow_stretch=True)
+            bt = ChessSquare(allow_stretch=True)
             bt.sq = i
             bt.name = name
-            # bt.border = [0,0,0,0]
+#            bt.border = [0.5,0.5,0.5,0.5]
             if i in light_squares:
                 bt.sq_color = "l"
-                bt.background_down = "img/empty-l.png"
 
+#                bt.background_down = "img/empty-l.png"
+                bt.background_color = LIGHT_SQUARE
             #                bt.background_color=[1,1,1,1]
             else:
+                bt.background_color = DARK_SQUARE
                 bt.sq_color = "d"
-                bt.background_down = "img/empty-d.png"
+#                bt.background_down = "img/empty-d.png"
 
             #                bt.background_color=[0,0,0,0]
             #                print i
@@ -384,9 +515,9 @@ class Chess_app(App):
             return
         # print "touch_move"
         # print touch
-        mv = img.name
+#        mv = img.name
         self.last_touch_up_move = img.name
-        if self.last_touch_up_move != self.last_touch_down_move:
+        if self.last_touch_up_move and self.last_touch_down_move and self.last_touch_up_move != self.last_touch_down_move:
             self.process_move()
 
     def process_move(self):
@@ -420,13 +551,17 @@ class Chess_app(App):
         for i, p in enumerate(squares):
             sq = self.squares[i]
             if p==".":
-                sq.source=sq.background_down
+                sq.remove_piece()
+#                sq.background_normal=sq.background_down
 
             if p!=".":
                 p_color = 'w' if p.isupper() else 'b'
-                sq.source="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
-
-        # Update game notation
+#                sq.source="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
+#                sq.background_normal="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
+#                sq.background_normal="img/pieces/Merida/pieces/"+p_color+p.lower()+".png"
+                piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[p])
+                sq.add_piece(piece)
+    # Update game notation
         all_moves = self.chessboard.getAllTextMoves()
         if all_moves:
             score = self.generate_move_list(all_moves)
