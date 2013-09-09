@@ -63,8 +63,10 @@ img_piece_abv={"B":"WBishop", "R":"WRook", "N":"WKnight", "Q":"WQueen", "K":"WKi
 COLOR_MAPS = {
     'black': (1, 1, 1, 1),
     'white': (0, 0, 0, 1),
-    'cream': get_color_from_hex('#F9FCC6'),
-    'brown': get_color_from_hex('#969063'),
+    #'cream': get_color_from_hex('#f9fcc6'),
+    #'brown': get_color_from_hex('#969063'),
+    'cream': get_color_from_hex('#f1ece7'),
+    'brown': get_color_from_hex('#f2a257'),
     }
 
 DARK_SQUARE = COLOR_MAPS['brown']
@@ -134,9 +136,8 @@ class ChessSquare(Button):
 
     def __init__(self, **kwargs):
         super(ChessSquare, self).__init__(**kwargs)
-#        self.background_color = background_color
         self.background_normal = ''
-        self.markup = True
+        self.background_down = ''
 
     def add_piece(self, piece):
         self.remove_widget(self.piece)
@@ -150,10 +151,6 @@ class ChessSquare(Button):
 #    def on_release(self):
 #        self.state = 'down'
 #        app.process_move(self)
-
-    def remove_piece(self):
-        if self.piece:
-            self.remove_widget(self.piece)
 
     def remove_piece(self):
         if self.piece:
@@ -370,7 +367,8 @@ class Chess_app(App):
 #            print "Bringing up engine menu"
             if self.use_engine:
                 self.use_engine = False
-                self.uci_engine.stop()
+                if self.uci_engine:
+                    self.uci_engine.stop()
             else:
                 self.use_engine = True
 
@@ -568,7 +566,7 @@ class Chess_app(App):
             self.game_score.children[0].text="[color=fcf7da]%s[/color]"%score
 #            self.game_score.raw = self.generate_move_list(all_moves, raw=True)
 
-        if self.use_engine:
+        if self.use_engine and self.uci_engine:
             #self.analysis_board.setFEN(self.chessboard.getFEN())
             self.uci_engine.stop()
             self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0, till_current_move=True))

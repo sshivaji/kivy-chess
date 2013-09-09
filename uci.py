@@ -14,7 +14,8 @@ ON_POSIX = 'posix' in sys.builtin_module_names
 LOG_DIR = "logs"
 
 def enqueue_output(out, queue):
-    for line in iter(out.readline, b''):
+    #for line in iter(out.readline, b''):
+    for line in out.readlines():
         queue.put(line)
     out.close()
 
@@ -53,7 +54,7 @@ class UCIEngine:
         self.__queuedCommands = []
         self.eng_process = None
         try:
-            self.eng_process = subprocess.Popen("engines/stockfish-mac", stdout=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=1, close_fds=ON_POSIX)
+            self.eng_process = subprocess.Popen("engines/stockfish4-mac-64", stdout=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=1)
             self.buffer = Queue()
             t = Thread(target=enqueue_output, args=(self.eng_process.stdout, self.buffer))
             t.daemon = True # thread dies with the program
