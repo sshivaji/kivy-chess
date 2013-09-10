@@ -32,6 +32,7 @@ from uci import UCIEngine
 from uci import UCIOption
 from threading import Thread
 import itertools as it
+from time import sleep
 
 ANALYSIS_HEADER = '[ref=engine_toggle]Analysis[/ref]'
 
@@ -460,8 +461,11 @@ class Chess_app(App):
                             output.children[0].text = cleaned_line
                         if raw_line:
                             output.raw = raw_line
-            elif output.children[0].text != ANALYSIS_HEADER:
-                output.children[0].text = ANALYSIS_HEADER
+            else:
+                if output.children[0].text != ANALYSIS_HEADER:
+                        output.children[0].text = ANALYSIS_HEADER
+                sleep(1)
+                # sleep(1)
 
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):

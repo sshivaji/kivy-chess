@@ -3,6 +3,7 @@ import signal
 import sys
 import subprocess
 from threading import Thread
+import select
 
 try:
     from Queue import Queue, Empty
@@ -12,13 +13,6 @@ except ImportError:
 ON_POSIX = 'posix' in sys.builtin_module_names
 
 LOG_DIR = "logs"
-
-def enqueue_output(out, queue):
-    #for line in iter(out.readline, b''):
-    for line in out.readlines():
-        queue.put(line)
-    out.close()
-
 
 class UCIOption:
     def __init__(self, name, value):
@@ -54,14 +48,30 @@ class UCIEngine:
         self.__queuedCommands = []
         self.eng_process = None
         try:
-            self.eng_process = subprocess.Popen("engines/stockfish4-mac-64", stdout=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=1)
+            self.eng_process = subprocess.Popen("engines/stockfish4-mac-64", stdout=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0)
             self.buffer = Queue()
-            t = Thread(target=enqueue_output, args=(self.eng_process.stdout, self.buffer))
+            t = Thread(target=self.enqueue_output, args=(self.eng_process, self.buffer))
             t.daemon = True # thread dies with the program
             t.start()
 
         except OSError:
             print "OS error in starting engine"
+
+    def enqueue_output(self, p, queue):
+        out = p.stdout
+        buf = ''
+        while True:
+            fd, _, _ = select.select([out.fileno()], [], [], 0)
+            if fd:
+                # queue.put(out.readline())
+                tmp = out.read(1)
+                # print tmp
+                if tmp!='':
+                    buf+=tmp
+                    if tmp=="\n":
+                        queue.put(buf)
+                        # print buf
+                        buf = ''
 
     def logText(self, text, style):
         """
