@@ -98,7 +98,7 @@ class ChessPiece(Scatter):
         super(ChessPiece, self).__init__(**kwargs)
 
         self.image = Image(source=image_source)
-        #        self.image.allow_stretch = False
+        self.image.allow_stretch = True
         self.add_widget(self.image)
         self.auto_bring_to_front = True
 
@@ -625,19 +625,19 @@ class Chess_app(App):
         if all_moves:
             score = self.generate_move_list(all_moves)
             self.game_score.children[0].text="[color=fcf7da]%s[/color]"%score
-#            self.game_score.raw = self.generate_move_list(all_moves, raw=True)
 
         if self.use_engine and self.uci_engine:
             #self.analysis_board.setFEN(self.chessboard.getFEN())
             self.uci_engine.stop()
             self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0, till_current_move=True))
-#            self.uci_engine.reportMove(self.chessboard.getLastTextMove(format=0))
             if self.engine_mode == ENGINE_ANALYSIS:
                 self.uci_engine.requestAnalysis()
             else:
                 if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
                     self.uci_engine.requestMove()
-
+        # print squares
+        # for sq in self.chessboard.getBoard():
+        #     print sq
         # for e in self.book.get_entries_for_position(self.chessboard.printBoard()):
         #     print "a"
             # print e
