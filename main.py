@@ -477,7 +477,7 @@ class Chess_app(App):
 
             #del analysis_board
             if variation and score:
-                return move_list, "[b]%s[/b][color=0d4cd6][ref="+ENGINE_ANALYSIS+"]\nStop[/ref][/color]\n[color=77b5fe]%s[/color]" %(score,"".join(variation))
+                return move_list, "[b]%s[/b][color=0d4cd6]     [ref=%s]Stop[/ref][/color]\n[color=77b5fe]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
 
         while True:
             if self.use_engine:
