@@ -101,12 +101,8 @@ class UCIEngine:
             line = self.buffer.get(timeout=0.3) # or q.get(timeout=.1)
         except Empty:
             pass
-#            print('no output yet')
         else: # got line
             buffer = line
-#            print 'got line'
-#            print buffer
-#        self.buffer += self.eng_process.stdout.readline()
         while True:
             index = buffer.find('\n')
             if index < 0:
@@ -167,7 +163,7 @@ class UCIEngine:
             self.onOutgoingData('setoption name ' + k + ' value ' + v + '\n')
         self.onOutgoingData('isready\n')
 
-    def requestMove(self, whiteTime=30000, blackTime=30000):
+    def requestAnalysis(self, whiteTime=30000, blackTime=30000):
         """
         """
         # Some AI's don't work unless assigned some time
@@ -175,6 +171,11 @@ class UCIEngine:
 
 #        self.__sendCommand('go wtime %d btime %d' % (whiteTime, blackTime))
         self.__sendCommand('go infinite')
+
+    def requestMove(self, movetime=5000, whiteTime=30000, blackTime=30000):
+        """
+        """
+        self.__sendCommand('go movetime %s'%movetime)
 
 
     def reportMoves(self, moves):
@@ -245,7 +246,6 @@ class UCIEngine:
             else:
                 move = args[0]
                 self.onMove(move)
-
                 # TODO: Check for additional ponder information
                 return 'move'
 

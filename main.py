@@ -34,7 +34,11 @@ from threading import Thread
 import itertools as it
 from time import sleep
 
-ANALYSIS_HEADER = '[ref=engine_toggle]Analysis[/ref]'
+ENGINE_PLAY = "engine_play"
+
+ENGINE_ANALYSIS = "engine_analysis"
+
+ENGINE_HEADER = '[ref='+ENGINE_ANALYSIS+']Analysis[/ref][ref='+ENGINE_PLAY+']\n\n\nPlay vs Comp [/ref]'
 
 SQUARES = ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a6",
               "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5", "a4", "b4",
@@ -218,6 +222,8 @@ class Chess_app(App):
 #        return parent
 
     def build(self):
+        self.engine_mode = None
+        self.engine_computer_move = True
         self.from_move = None
         self.to_move = None
         self.chessboard = ChessBoard()
@@ -318,7 +324,7 @@ class Chess_app(App):
 
         info_grid.add_widget(self.game_score)
 
-        self.engine_score = ScrollableLabel('[ref=engine_toggle]Analysis[/ref]', ref_callback=self.add_eng_moves)
+        self.engine_score = ScrollableLabel(ENGINE_HEADER, ref_callback=self.add_eng_moves)
         info_grid.add_widget(self.engine_score)
 
         info_grid.add_widget(Button(text="Text"))
@@ -364,7 +370,7 @@ class Chess_app(App):
         self.refresh_board()
 
     def add_eng_moves(self, instance, value):
-        if value=="engine_toggle":
+        if value==ENGINE_ANALYSIS or value== ENGINE_PLAY:
 #            print "Bringing up engine menu"
             if self.use_engine:
                 self.use_engine = False
@@ -372,6 +378,9 @@ class Chess_app(App):
                     self.uci_engine.stop()
             else:
                 self.use_engine = True
+                self.engine_mode = value
+                if value == ENGINE_PLAY:
+                    self.engine_computer_move = True
 
             self.refresh_board()
         else:
@@ -419,6 +428,27 @@ class Chess_app(App):
         # uci_engine.requestMove()
         self.uci_engine=uci_engine
 
+    def parse_bestmove(self, line):
+        best_move = None
+        ponder_move = None
+        if not line.startswith('bestmove'):
+            return best_move, ponder_move
+        tokens = line.split()
+
+        try:
+            bm_index = tokens.index('bestmove')
+            ponder_index = tokens.index('ponder')
+        except ValueError:
+            bm_index = -1
+            ponder_index = -1
+
+        if bm_index!=-1:
+            best_move = tokens[bm_index+1]
+
+        if ponder_index!=-1:
+            ponder_move = tokens[ponder_index+1]
+
+        return best_move, ponder_move
 
     def update_engine_output(self, output):
         if not self.use_engine:
@@ -447,23 +477,37 @@ class Chess_app(App):
 
             #del analysis_board
             if variation and score:
-                return move_list, "[b]%s[/b][color=0d4cd6][ref=engine_toggle]         Stop[/ref][/color]\n[color=77b5fe]%s[/color]" %(score,"".join(variation))
+                return move_list, "[b]%s[/b][color=0d4cd6][ref="+ENGINE_ANALYSIS+"]\nStop[/ref][/color]\n[color=77b5fe]%s[/color]" %(score,"".join(variation))
 
         while True:
             if self.use_engine:
                 line = self.uci_engine.getOutput()
                 if line:
-                    #out_score = None
-                    out_score = parse_score(line)
-                    if out_score:
-                        raw_line, cleaned_line = out_score
-                        if cleaned_line:
-                            output.children[0].text = cleaned_line
-                        if raw_line:
-                            output.raw = raw_line
+                    if self.engine_mode == ENGINE_ANALYSIS:
+                        #out_score = None
+                        out_score = parse_score(line)
+                        if out_score:
+                            raw_line, cleaned_line = out_score
+                            if cleaned_line:
+                                output.children[0].text = cleaned_line
+                            if raw_line:
+                                output.raw = raw_line
+                    elif self.engine_mode == ENGINE_PLAY:
+                        if self.engine_computer_move:
+                            best_move, ponder_move = self.parse_bestmove(line)
+                            if best_move:
+                                self.chessboard.addTextMove(best_move)
+                                self.engine_computer_move = False
+                                self.refresh_board()
+                            else:
+                                output.children[0].text = "Thinking.."
+                                # sleep(1)
+                        else:
+                            output.children[0].text = "Your turn"
+                            # sleep(1)
             else:
-                if output.children[0].text != ANALYSIS_HEADER:
-                        output.children[0].text = ANALYSIS_HEADER
+                if output.children[0].text != ENGINE_HEADER:
+                        output.children[0].text = ENGINE_HEADER
                 sleep(1)
                 # sleep(1)
 
@@ -487,6 +531,7 @@ class Chess_app(App):
         # Return True to accept the key. Otherwise, it will be used by
         # the system.
         return True
+
 
     def fwd(self, obj):
         self.chessboard.redo()
@@ -524,6 +569,8 @@ class Chess_app(App):
 
     def process_move(self):
         if self.chessboard.addTextMove(self.last_touch_down_move+self.last_touch_up_move):
+            if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
+                self.engine_computer_move = True
             self.refresh_board()
 
     def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
@@ -575,7 +622,11 @@ class Chess_app(App):
             self.uci_engine.stop()
             self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0, till_current_move=True))
 #            self.uci_engine.reportMove(self.chessboard.getLastTextMove(format=0))
-            self.uci_engine.requestMove()
+            if self.engine_mode == ENGINE_ANALYSIS:
+                self.uci_engine.requestAnalysis()
+            else:
+                if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
+                    self.uci_engine.requestMove()
 
 if __name__ == '__main__':
     Chess_app().run()
