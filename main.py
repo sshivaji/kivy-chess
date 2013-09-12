@@ -13,6 +13,7 @@ from kivy.uix.screenmanager import SlideTransition
 
 
 from kivy.core.window import Window
+from kivy.clock import Clock
 from kivy.uix.textinput import TextInput
 from kivy.uix.dropdown import DropDown
 
@@ -338,6 +339,7 @@ class Chess_app(App):
             self._keyboard = Window.request_keyboard(
                 self._keyboard_closed, self)
             self._keyboard.bind(on_key_down=self._on_keyboard_down)
+            # Clock.schedule_interval(self.update_engine_output, 0.01)
 
             self.start_engine_thread()
         sm = ScreenManager(transition=SlideTransition())
@@ -406,9 +408,8 @@ class Chess_app(App):
         self._keyboard.unbind(on_key_down=self.back)
         self._keyboard = None
 
-
     def start_engine_thread(self):
-        t = Thread(target=self.update_engine_output, args=(self.engine_score,))
+        t = Thread(target=self.update_engine_output, args=(None,))
         t.daemon = True # thread dies with the program
         t.start()
 
@@ -418,6 +419,9 @@ class Chess_app(App):
         uci_engine = UCIEngine()
         uci_engine.start()
         uci_engine.configure({'Threads': '1'})
+        uci_engine.configure({'OwnBook': 'true'})
+        # uci_engine.configure({'Book File': './books/gm1950.bin'})
+
         #uci_engine.configure({'Use Sleeping Threads': 'false'})
 
         # Wait until the uci connection is setup
@@ -450,42 +454,44 @@ class Chess_app(App):
 
         return best_move, ponder_move
 
-    def update_engine_output(self, output):
-        if not self.use_engine:
+    def parse_score(self, line):
+        self.analysis_board.setFEN(self.chessboard.getFEN())
+        tokens = line.split()
+        try:
+            score_index = tokens.index('score')
+        except ValueError:
+            score_index = -1
+        score = None
+        move_list = []
+        if score_index!=-1 and tokens[score_index+1]=="cp":
+            score = float(tokens[score_index+2])/100*1.0
+        try:
+            line_index = tokens.index('pv')
+            for mv in tokens[line_index+1:]:
+                self.analysis_board.addTextMove(mv)
+                move_list.append(self.analysis_board.getLastTextMove())
+
+        except ValueError:
+            line_index = -1
+        variation = self.generate_move_list(move_list,start_move_num=self.chessboard.getCurrentMove()+1) if line_index!=-1 else None
+
+        #del analysis_board
+        if variation and score:
+            return move_list, "[b]%s[/b][color=0d4cd6]     [ref=%s]Stop[/ref][/color]\n[color=77b5fe]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
+
+
+    def update_engine_output(self, callback):
+        if not self.uci_engine:
             self.start_engine()
 
-        def parse_score(line):
-            self.analysis_board.setFEN(self.chessboard.getFEN())
-            tokens = line.split()
-            try:
-                score_index = tokens.index('score')
-            except ValueError:
-                score_index = -1
-            score = None
-            move_list = []
-            if score_index!=-1 and tokens[score_index+1]=="cp":
-                score = float(tokens[score_index+2])/100*1.0
-            try:
-                line_index = tokens.index('pv')
-                for mv in tokens[line_index+1:]:
-                    self.analysis_board.addTextMove(mv)
-                    move_list.append(self.analysis_board.getLastTextMove())
-
-            except ValueError:
-                line_index = -1
-            variation = self.generate_move_list(move_list,start_move_num=self.chessboard.getCurrentMove()+1) if line_index!=-1 else None
-
-            #del analysis_board
-            if variation and score:
-                return move_list, "[b]%s[/b][color=0d4cd6]     [ref=%s]Stop[/ref][/color]\n[color=77b5fe]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
-
         while True:
+            output = self.engine_score
             if self.use_engine:
                 line = self.uci_engine.getOutput()
                 if line:
                     if self.engine_mode == ENGINE_ANALYSIS:
                         #out_score = None
-                        out_score = parse_score(line)
+                        out_score = self.parse_score(line)
                         if out_score:
                             raw_line, cleaned_line = out_score
                             if cleaned_line:
@@ -498,6 +504,7 @@ class Chess_app(App):
                             if best_move:
                                 self.chessboard.addTextMove(best_move)
                                 self.engine_computer_move = False
+                                output.children[0].text = "Your turn"
                                 self.refresh_board()
                             else:
                                 output.children[0].text = "Thinking.."
@@ -506,10 +513,8 @@ class Chess_app(App):
                             output.children[0].text = "Your turn"
                             # sleep(1)
             else:
-                if output.children[0].text != ENGINE_HEADER:
-                        output.children[0].text = ENGINE_HEADER
-                sleep(1)
-                # sleep(1)
+                # if output.children[0].text != ENGINE_HEADER:
+                output.children[0].text = ENGINE_HEADER
 
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
