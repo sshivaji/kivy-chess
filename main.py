@@ -488,8 +488,6 @@ class Chess_app(App):
             self.start_engine()
 
         while True:
-            sleep(1)
-
             output = self.engine_score
             if self.use_engine:
                 line = self.uci_engine.getOutput()
@@ -520,6 +518,8 @@ class Chess_app(App):
             else:
                 # if output.children[0].text != ENGINE_HEADER:
                 output.children[0].text = ENGINE_HEADER
+                sleep(1)
+
 
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
