@@ -34,6 +34,7 @@ from uci import UCIOption
 from threading import Thread
 import itertools as it
 from time import sleep
+from chess import polyglot_opening_book
 
 ENGINE_PLAY = "engine_play"
 
@@ -233,6 +234,8 @@ class Chess_app(App):
         self.use_engine = False
         self.last_touch_down_move = None
         self.last_touch_up_move = None
+        self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin')
+
 
         parent = BoxLayout(size_hint=(1,1))
         grid = GridLayout(cols = 8, rows = 8, spacing = 0, size_hint=(1, 1))
@@ -420,7 +423,7 @@ class Chess_app(App):
         uci_engine.start()
         uci_engine.configure({'Threads': '1'})
         uci_engine.configure({'OwnBook': 'true'})
-        # uci_engine.configure({'Book File': './books/gm1950.bin'})
+        # uci_engine.configure({'Book File': 'gm1950.bin'})
 
         #uci_engine.configure({'Use Sleeping Threads': 'false'})
 
@@ -485,6 +488,8 @@ class Chess_app(App):
             self.start_engine()
 
         while True:
+            sleep(1)
+
             output = self.engine_score
             if self.use_engine:
                 line = self.uci_engine.getOutput()
@@ -632,6 +637,10 @@ class Chess_app(App):
             else:
                 if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
                     self.uci_engine.requestMove()
+
+        # for e in self.book.get_entries_for_position(self.chessboard.printBoard()):
+        #     print "a"
+            # print e
 
 if __name__ == '__main__':
     Chess_app().run()
