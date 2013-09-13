@@ -324,27 +324,28 @@ class ZobristHasher(object):
         for square in Square.get_all():
             piece = position[square]
             if piece:
-                i = "pPnNbBrRqQkK".index(piece.symbol)
+                i = "pPnNbBrRqQkK".index(piece)
                 key ^= self.__random_array[64 * i + 8 * square.y + square.x]
 
+#        print position.fen._castle_rights
         # Hash in the castling flags.
-        if position.get_castling_right("K"):
+        if "K" in position.fen._castle_rights:
             key ^= self.__random_array[768]
-        if position.get_castling_right("Q"):
+        if "Q" in position.fen._castle_rights:
             key ^= self.__random_array[768 + 1]
-        if position.get_castling_right("k"):
+        if "k" in position.fen._castle_rights:
             key ^= self.__random_array[768 + 2]
-        if position.get_castling_right("q"):
+        if "q" in position.fen._castle_rights:
             key ^= self.__random_array[768 + 3]
 
         # Hash in the en-passant file.
-        if (position.ep_file and
-               position.get_theoretical_ep_right(position.ep_file)):
+        if (position.fen._ep and
+               position.get_theoretical_ep_right(position.fen._ep)):
             i = ord(position.ep_file) - ord("a")
             key ^= self.__random_array[772 + i]
 
         # Hash in the turn.
-        if position.turn == "w":
+        if position.fen.turn == "w":
             key ^= self.__random_array[780]
 
         return key

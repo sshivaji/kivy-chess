@@ -35,12 +35,20 @@ from threading import Thread
 import itertools as it
 from time import sleep
 from chess import polyglot_opening_book
+from chess.position import Position
+from chess.notation import SanNotation
 
 ENGINE_PLAY = "engine_play"
 
 ENGINE_ANALYSIS = "engine_analysis"
 
 ENGINE_HEADER = '[ref='+ENGINE_ANALYSIS+']Analysis[/ref][ref='+ENGINE_PLAY+']\n\n\nPlay vs Comp [/ref]'
+
+BOOK_ON = "Book"
+BOOK_OFF = "Hide"
+
+BOOK_HEADER = '[ref=Book]'+BOOK_ON+'[/ref]'
+
 
 SQUARES = ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a6",
               "b6", "c6", "d6", "e6", "f6", "g6", "h6", "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5", "a4", "b4",
@@ -232,6 +240,7 @@ class Chess_app(App):
         self.analysis_board = ChessBoard()
         self.squares = []
         self.use_engine = False
+        self.book_display = False
         self.last_touch_down_move = None
         self.last_touch_up_move = None
         self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin')
@@ -331,7 +340,9 @@ class Chess_app(App):
         self.engine_score = ScrollableLabel(ENGINE_HEADER, ref_callback=self.add_eng_moves)
         info_grid.add_widget(self.engine_score)
 
-        info_grid.add_widget(Button(text="Text"))
+
+        self.book_panel = ScrollableLabel(BOOK_HEADER, ref_callback=self.add_book_moves)
+        info_grid.add_widget(self.book_panel)
 
         parent.add_widget(info_grid)
         self.refresh_board()
@@ -373,6 +384,18 @@ class Chess_app(App):
 
         self.chessboard.gotoMove(half_move_num)
         self.refresh_board()
+
+    def add_book_moves(self, instance, mv):
+#        print mv
+        if mv == BOOK_OFF:
+            self.book_display = False
+            self.update_book_panel()
+        elif mv == BOOK_ON:
+            self.book_display = True
+            self.update_book_panel()
+        else:
+            self.chessboard.addTextMove(mv)
+            self.refresh_board()
 
     def add_eng_moves(self, instance, value):
         if value==ENGINE_ANALYSIS or value== ENGINE_PLAY:
@@ -603,6 +626,20 @@ class Chess_app(App):
                     score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
         return score
 
+    def update_book_panel(self):
+        if self.book_display:
+            p = Position(fen=self.chessboard.getFEN())
+            self.book_panel.children[0].text = "[ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref]\n"
+            book_entries = 0
+            for e in self.book.get_entries_for_position(p):
+                san = SanNotation(p, e["move"])
+                self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (san, san, e["weight"])
+                book_entries += 1
+                if book_entries >= 5:
+                    break
+        else:
+            self.book_panel.children[0].text = BOOK_HEADER
+
     def refresh_board(self):
         # flatten lists into one list of 64 squares
         squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
@@ -635,12 +672,8 @@ class Chess_app(App):
             else:
                 if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
                     self.uci_engine.requestMove()
-        # print squares
-        # for sq in self.chessboard.getBoard():
-        #     print sq
-        # for e in self.book.get_entries_for_position(self.chessboard.printBoard()):
-        #     print "a"
-            # print e
+
+        self.update_book_panel()
 
 if __name__ == '__main__':
     Chess_app().run()
