@@ -2,12 +2,14 @@ from kivy.resources import resource_find
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.graphics import Rectangle
+from kivy.graphics import Color
 
 class ScrollableLabel(ScrollView):
     def __init__(self, text, ref_callback=None, *args, **kwargs):
         super(ScrollableLabel, self).__init__(*args, **kwargs)
         with self.canvas:
-            self.background = Rectangle(source=resource_find("img/panel.png"), size_hint=(1,1))
+            Color(0.5, .02, 0.91, mode="hsv")
+            self.background = Rectangle(size_hint=(1,1))
         self.label = Label(text=text, size_hint_y=None, pos_hint={'x':0.1, 'y':0.1})
         self.label.bind(texture_size=self._set_summary_height, on_ref_press=ref_callback)
         # self.label.text=text
