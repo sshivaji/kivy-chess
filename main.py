@@ -38,16 +38,20 @@ from chess import polyglot_opening_book
 from chess.position import Position
 from chess.notation import SanNotation
 
+GAME_HEADER = 'New Game'
+
 ENGINE_PLAY = "engine_play"
 
 ENGINE_ANALYSIS = "engine_analysis"
 
-ENGINE_HEADER = '[ref='+ENGINE_ANALYSIS+']Analysis[/ref][ref='+ENGINE_PLAY+']\n\n\nPlay vs Comp [/ref]'
+ENGINE_HEADER = '[b][color=000000][ref='+ENGINE_ANALYSIS\
+                +']Analysis[/ref][ref='+ENGINE_PLAY+']\n\n\n' \
+                'Play vs Comp [/ref][/color][/b]'
 
 BOOK_ON = "Book"
 BOOK_OFF = "Hide"
 
-BOOK_HEADER = '[ref=Book]'+BOOK_ON+'[/ref]'
+BOOK_HEADER = '[b][color=000000][ref=Book]'+BOOK_ON+'[/ref][/color][/b]'
 
 
 SQUARES = ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a6",
@@ -292,7 +296,7 @@ class Chess_app(App):
 #
         save_bt = Button(markup=True)
         #fwd_bt.background_normal="img/empty-d.png"
-        save_bt.text="[color=3333ff]Save[/color]"
+        save_bt.text="Save"
         # save_bt.text="Save"
 
         save_bt.bind(on_press=self.save)
@@ -333,7 +337,7 @@ class Chess_app(App):
         info_grid.add_widget(b)
 
 
-        self.game_score = ScrollableLabel('New Game', ref_callback=self.go_to_move)
+        self.game_score = ScrollableLabel('[color=000000][b]%s[/b][/color]' % GAME_HEADER, ref_callback=self.go_to_move)
 
         info_grid.add_widget(self.game_score)
 
@@ -503,7 +507,17 @@ class Chess_app(App):
 
         #del analysis_board
         if variation and score:
-            return move_list, "[b]%s[/b][color=0d4cd6]     [ref=%s]Stop[/ref][/color]\n[color=77b5fe]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
+            score_float = None
+            try:
+                score_float = float(score)
+            except ValueError, e :
+                print "Cannot convert score to a float"
+                print e
+            if self.chessboard._turn == self.chessboard.BLACK:
+                if score_float:
+                    score_float *= -1
+                    score = score_float
+            return move_list, "[color=000000][b]%s[/b]     [i][ref=%s]Stop[/ref][/i][/color]\n[color=000000]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
 
 
     def update_engine_output(self, callback):
@@ -629,7 +643,7 @@ class Chess_app(App):
     def update_book_panel(self):
         if self.book_display:
             p = Position(fen=self.chessboard.getFEN())
-            self.book_panel.children[0].text = "[ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref]\n"
+            self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
             book_entries = 0
             for e in self.book.get_entries_for_position(p):
                 san = SanNotation(p, e["move"])
@@ -637,6 +651,7 @@ class Chess_app(App):
                 book_entries += 1
                 if book_entries >= 5:
                     break
+            self.book_panel.children[0].text+='[/color]'
         else:
             self.book_panel.children[0].text = BOOK_HEADER
 
@@ -661,7 +676,7 @@ class Chess_app(App):
         all_moves = self.chessboard.getAllTextMoves()
         if all_moves:
             score = self.generate_move_list(all_moves)
-            self.game_score.children[0].text="[color=fcf7da]%s[/color]"%score
+            self.game_score.children[0].text="[color=000000]%s[/color]"%score
 
         if self.use_engine and self.uci_engine:
             #self.analysis_board.setFEN(self.chessboard.getFEN())
