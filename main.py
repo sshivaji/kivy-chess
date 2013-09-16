@@ -26,6 +26,8 @@ from kivy.config import Config
 from kivy.config import ConfigParser
 from kivy.uix.scatter import Scatter
 from kivy.utils import get_color_from_hex
+#from kivy.core.clipboard import Clipboard
+
 
 from ChessBoard import ChessBoard
 from sets import Set
@@ -37,6 +39,7 @@ from time import sleep
 from chess import polyglot_opening_book
 from chess.position import Position
 from chess.notation import SanNotation
+
 
 GAME_HEADER = 'New Game'
 
@@ -203,21 +206,37 @@ class Chess_app(App):
 #            settings_panel.add_widget(panel)
 #            print "Hello World from ", from_instance
 
-        panel = SettingsPanel(title="Engine") #create instance of left side panel
-        item1 = SettingItem(panel=panel, title="Board") #create instance of one item in left side panel
-        item2 = SettingItem(panel=panel, title="Level") #create instance of one item in left side panel
+        engine_panel = SettingsPanel(title="Engine") #create instance of left side panel
+        board_panel = SettingsPanel(title="Board") #create instance of left side panel
 
-    #        item2 = SettingTitle(title="Level") #another widget in left side panel
-#        button = Button(text="Add one more panel")
+        setup_pos_item = SettingItem(panel=board_panel, title="Input FEN") #create instance of one item in left side panel
+        fen_input = TextInput(text="", focus=True, multiline=False, use_bubble = True)
+#        print Clipboard['application/data']
 
-#        item1.add_widget(button) #add widget to item1 in left side panel
-#        button.bind(on_release=add_one_panel) #bind that button to function
+        def on_fen_input(instance):
+            if self.chessboard.setFEN(instance.text):
+                self.refresh_board()
+                self.start_pos_changed = True
+                self.custom_fen = instance.text
 
-        panel.add_widget(item1) # add item1 to left side panel
-        panel.add_widget(item2) # add item2 to left side panel
-        settings_panel.add_widget(panel) #add left side panel itself to the settings menu
+        ##            print 'The widget', instance.text
+        #
+        fen_input.bind(on_text_validate=on_fen_input)
+
+
+        setup_pos_item.add_widget(fen_input)
+        level_item = SettingItem(panel=engine_panel, title="Level") #create instance of one item in left side panel
+
+        board_panel.add_widget(setup_pos_item) # add item1 to left side panel
+
+        engine_panel.add_widget(level_item) # add item2 to left side panel
+
+        settings_panel.add_widget(board_panel)
+        settings_panel.add_widget(engine_panel) #add left side panel itself to the settings menu
+
         def go_back():
             self.root.current = 'main'
+
         settings_panel.on_close=go_back
 
         return settings_panel # show the settings interface
@@ -236,6 +255,8 @@ class Chess_app(App):
 #        return parent
 
     def build(self):
+        self.custom_fen = None
+        self.start_pos_changed = False
         self.engine_mode = None
         self.engine_computer_move = True
         self.from_move = None
@@ -315,8 +336,8 @@ class Chess_app(App):
 #        def on_fen_input(instance):
 #            self.chessboard.setFEN(instance.text)
 #            self.refresh_board()
-##            print 'The widget', instance.text
-#
+###            print 'The widget', instance.text
+##
 #        fen_input.bind(on_text_validate=on_fen_input)
 ##        self._keyboard.bind(on_key_down=self._on_keyboard_down)
 #
@@ -560,10 +581,9 @@ class Chess_app(App):
 
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
-#        print 'The key', keycode, 'have been pressed'
-#        print ' - text is %r' % text
-#        print ' - modifiers are %r' % modifiers
-
+        if self.root.current!="main":
+            return False
+#        print self.root.current
         # Keycode is composed of an integer + a string
         # If we hit escape, release the keyboard
         if keycode[1] == 'escape':
@@ -573,7 +593,6 @@ class Chess_app(App):
             self.back(None)
         elif keycode[1] == 'right':
             self.fwd(None)
-
 
         # Return True to accept the key. Otherwise, it will be used by
         # the system.
@@ -682,6 +701,9 @@ class Chess_app(App):
             #self.analysis_board.setFEN(self.chessboard.getFEN())
             self.uci_engine.stop()
             self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0, till_current_move=True))
+            if self.start_pos_changed:
+                self.uci_engine.sendFen(self.custom_fen)
+                self.start_pos_changed = False
             if self.engine_mode == ENGINE_ANALYSIS:
                 self.uci_engine.requestAnalysis()
             else:

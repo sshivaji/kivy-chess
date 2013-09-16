@@ -851,7 +851,7 @@ class ChessBoard:
         """
 
         if not self.validateFEN(fen):
-            return
+            return False
         self._three_rep_stack = []
         self._state_stack = []
         self._moves = []
@@ -905,6 +905,7 @@ class ChessBoard:
         self._three_rep_stack.append(three_state)              
 
         self.updateKingLocations()
+        return True
 
     def getFEN(self):
         """
