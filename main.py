@@ -11,7 +11,6 @@ from kivy.uix.screenmanager import WipeTransition
 from kivy.uix.screenmanager import SwapTransition
 from kivy.uix.screenmanager import SlideTransition
 
-
 from kivy.core.window import Window
 from kivy.clock import Clock
 from kivy.uix.textinput import TextInput
@@ -27,7 +26,6 @@ from kivy.config import ConfigParser
 from kivy.uix.scatter import Scatter
 from kivy.utils import get_color_from_hex
 #from kivy.core.clipboard import Clipboard
-
 
 from ChessBoard import ChessBoard
 from sets import Set
@@ -101,7 +99,6 @@ class SettingsScreen(Screen):
     pass
 
 class ChessPiece(Scatter):
-
     image = ObjectProperty(None)
     moving = BooleanProperty(False)
     allowed_to_move = BooleanProperty(False)
@@ -210,6 +207,13 @@ class Chess_app(App):
         board_panel = SettingsPanel(title="Board") #create instance of left side panel
 
         setup_pos_item = SettingItem(panel=board_panel, title="Input FEN") #create instance of one item in left side panel
+
+        def go_to_setup_board(value):
+            self.root.current = 'setup_board'
+
+        setup_board_item = SettingItem(panel=board_panel, title="Setup Board") #create instance of one item in left side panel
+        setup_board_item.bind(on_release=go_to_setup_board)
+
         fen_input = TextInput(text="", focus=True, multiline=False, use_bubble = True)
 #        print Clipboard['application/data']
 
@@ -228,6 +232,7 @@ class Chess_app(App):
         level_item = SettingItem(panel=engine_panel, title="Level") #create instance of one item in left side panel
 
         board_panel.add_widget(setup_pos_item) # add item1 to left side panel
+        board_panel.add_widget(setup_board_item)
 
         engine_panel.add_widget(level_item) # add item2 to left side panel
 
@@ -254,6 +259,53 @@ class Chess_app(App):
 #
 #        return parent
 
+    def create_chess_board(self, squares, type="main"):
+        if type == "main":
+            grid = GridLayout(cols=8, rows=8, spacing=0, size_hint=(1, 1))
+        else:
+            grid = GridLayout(cols=8, rows=10, spacing=0, size_hint=(1, 1))
+
+        for i, name in enumerate(SQUARES):
+            bt = ChessSquare(allow_stretch=True)
+            bt.sq = i
+            bt.name = name
+            if i in light_squares:
+                bt.sq_color = "l"
+                bt.background_color = LIGHT_SQUARE
+            else:
+                bt.background_color = DARK_SQUARE
+                bt.sq_color = "d"
+
+            if type=="main":
+                bt.bind(on_touch_down=self.touch_down_move)
+                bt.bind(on_touch_up=self.touch_up_move)
+            else:
+                bt.bind(on_touch_down = self.touch_down_setup)
+                bt.bind(on_touch_up = self.touch_up_setup)
+
+
+            grid.add_widget(bt)
+            squares.append(bt)
+
+        if type!="main":
+            for i in ["R", "N", "B", "Q", "K", "P", "r", "n", "b", "q", "k", "p"]:
+                bt = ChessSquare(allow_stretch=True)
+                bt.sq = i
+                bt.name = i
+                bt.sq_color = "l"
+                bt.background_color = LIGHT_SQUARE
+
+                piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[i])
+                bt.add_piece(piece)
+
+                bt.bind(on_touch_down = self.touch_down_setup)
+                bt.bind(on_touch_up = self.touch_up_setup)
+
+                grid.add_widget(bt)
+
+
+        return grid
+
     def build(self):
         self.custom_fen = None
         self.start_pos_changed = False
@@ -264,93 +316,31 @@ class Chess_app(App):
         self.chessboard = ChessBoard()
         self.analysis_board = ChessBoard()
         self.squares = []
+        self.setup_board_squares = []
         self.use_engine = False
         self.book_display = False
         self.last_touch_down_move = None
         self.last_touch_up_move = None
+        self.last_touch_down_setup = None
+        self.last_touch_up_setup = None
         self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin')
 
 
         parent = BoxLayout(size_hint=(1,1))
-        grid = GridLayout(cols = 8, rows = 8, spacing = 0, size_hint=(1, 1))
-
-        for i, name in enumerate(SQUARES):
-            bt = ChessSquare(allow_stretch=True)
-            bt.sq = i
-            bt.name = name
-#            bt.border = [0.5,0.5,0.5,0.5]
-            if i in light_squares:
-                bt.sq_color = "l"
-
-#                bt.background_down = "img/empty-l.png"
-                bt.background_color = LIGHT_SQUARE
-            #                bt.background_color=[1,1,1,1]
-            else:
-                bt.background_color = DARK_SQUARE
-                bt.sq_color = "d"
-#                bt.background_down = "img/empty-d.png"
-
-            #                bt.background_color=[0,0,0,0]
-            #                print i
-            # bt.bind(on_press=self.callback)
-            bt.bind(on_touch_down=self.touch_down_move)
-            bt.bind(on_touch_up=self.touch_up_move)
-            # bt.bind(on_touch_up=self.touch_move)
-
-
-            grid.add_widget(bt)
-            self.squares.append(bt)
+        grid = self.create_chess_board(self.squares)
 
 
         b = BoxLayout(size_hint=(0.15,0.15))
-        ## Spacers
-#        b.add_widget(Button(spacing=1))
-#        b.add_widget(Button(spacing=1))
-#        b.add_widget(Button(spacing=1))
 
-        # Move control buttons
-#        back_bt = Button(markup=True)
-#       # back_bt.background_normal="img/empty-l.png"
-#        back_bt.text="[color=ff3333]Back[/color]"
-#        back_bt.bind(on_press=self.back)
-#        b.add_widget(back_bt)
-#
         save_bt = Button(markup=True)
-        #fwd_bt.background_normal="img/empty-d.png"
         save_bt.text="Save"
-        # save_bt.text="Save"
 
         save_bt.bind(on_press=self.save)
         b.add_widget(save_bt)
 
-#        b.add_widget(Button(spacing=10))
-#        b.add_widget(Button(spacing=10))
-#        b.add_widget(Button(spacing=10))
-
-#        grid.add_widget(b)
-
-#        board_box.add_widget(grid)
-#        board_box.add_widget(b)
-
-#        fen_input = TextInput(text="FEN", focus=True, multiline=False)
-#        def on_fen_input(instance):
-#            self.chessboard.setFEN(instance.text)
-#            self.refresh_board()
-###            print 'The widget', instance.text
-##
-#        fen_input.bind(on_text_validate=on_fen_input)
-##        self._keyboard.bind(on_key_down=self._on_keyboard_down)
-#
-#
-#        b.add_widget(fen_input)
-
         settings_bt = Button(markup=True, text='Setup')
         settings_bt.bind(on_press=self.go_to_settings)
         b.add_widget(settings_bt)
-
-
-#        self.root.current='settings'
-
 
         parent.add_widget(grid)
 
@@ -390,6 +380,18 @@ class Chess_app(App):
         settings_screen.add_widget(self.generate_settings())
 
         sm.add_widget(settings_screen)
+
+        setup_board_screen = Screen(name='setup_board')
+        setup_widget = self.create_chess_board(self.setup_board_squares, type="setup")
+
+        def go_to_main_screen(value):
+            if self.root:
+                self.root.current = 'main'
+
+        bk = Button(text="Back", on_press=go_to_main_screen)
+        setup_widget.add_widget(bk)
+        setup_board_screen.add_widget(setup_widget)
+        sm.add_widget(setup_board_screen)
 
         return sm
 
@@ -622,6 +624,26 @@ class Chess_app(App):
             self.last_touch_down_move = mv
 
             # self.process_move(mv)
+
+    def touch_down_setup(self, img, touch):
+        if not img.collide_point(touch.x, touch.y):
+            return
+            # print "touch_move"
+        # print touch
+        mv = img.name
+        self.last_touch_down_setup = mv
+
+    def touch_up_setup(self, img, touch):
+        if not img.collide_point(touch.x, touch.y):
+            return
+
+        self.last_touch_up_setup = img.name
+        if self.last_touch_up_setup and self.last_touch_down_setup and self.last_touch_up_setup != self.last_touch_down_setup:
+
+            print "touch_down_setup:"
+            print self.last_touch_down_setup
+            print "touch_up_setup:"
+            print self.last_touch_up_setup
 
     def touch_up_move(self, img, touch):
         if not img.collide_point(touch.x, touch.y):

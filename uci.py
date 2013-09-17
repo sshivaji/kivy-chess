@@ -177,6 +177,9 @@ class UCIEngine:
         """
         self.__sendCommand('go movetime %s'%movetime)
 
+    def sendFen(self, fen):
+        self.__positionCommand = "position fen "+fen
+        self.__sendCommand(self.__positionCommand)
 
     def reportMoves(self, moves):
         if not self.__haveMoves:
