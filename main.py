@@ -44,6 +44,12 @@ GAME_HEADER = 'New Game'
 
 ENGINE_PLAY = "engine_play"
 
+ENGINE_PLAY_STOP = "play_stop"
+
+ENGINE_PLAY_HINT = "play_hint"
+
+YOURTURN_MENU = "[color=000000]Your turn\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint[/ref][/color]"
+
 ENGINE_ANALYSIS = "engine_analysis"
 
 ENGINE_HEADER = '[b][color=000000][ref='+ENGINE_ANALYSIS\
@@ -477,13 +483,20 @@ class Chess_app(App):
             self.chessboard.addTextMove(mv)
             self.refresh_board()
 
+    def stop_engine(self):
+        self.use_engine = False
+        if self.uci_engine:
+            self.uci_engine.stop()
+
     def add_eng_moves(self, instance, value):
-        if value==ENGINE_ANALYSIS or value== ENGINE_PLAY:
+#        print "value:"
+#        print value
+#        print "instance:"
+#        print instance
+        if value==ENGINE_ANALYSIS or value==ENGINE_PLAY:
 #            print "Bringing up engine menu"
             if self.use_engine:
-                self.use_engine = False
-                if self.uci_engine:
-                    self.uci_engine.stop()
+                self.stop_engine()
             else:
                 self.use_engine = True
                 self.engine_mode = value
@@ -491,6 +504,12 @@ class Chess_app(App):
                     self.engine_computer_move = True
 
             self.refresh_board()
+        elif value == ENGINE_PLAY_STOP:
+#            self.stop_engine()
+            self.engine_mode = ENGINE_ANALYSIS
+            self.refresh_board()
+        elif value == ENGINE_PLAY_HINT:
+            print "engine_hint.."
         else:
             for i, mv in enumerate(self.engine_score.raw):
                 if i>=1:
@@ -634,13 +653,13 @@ class Chess_app(App):
                             if best_move:
                                 self.chessboard.addTextMove(best_move)
                                 self.engine_computer_move = False
-                                output.children[0].text = "[color=000000]Your turn[/color]"
+                                output.children[0].text = YOURTURN_MENU
                                 self.refresh_board()
                             else:
                                 output.children[0].text = "[color=000000]Thinking..[/color]"
                                 # sleep(1)
                         else:
-                            output.children[0].text = "[color=000000]Your turn[/color]"
+                            output.children[0].text = YOURTURN_MENU
                             # sleep(1)
             else:
                 # if output.children[0].text != ENGINE_HEADER:
