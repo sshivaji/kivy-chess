@@ -25,6 +25,7 @@ from kivy.config import Config
 from kivy.config import ConfigParser
 from kivy.uix.scatter import Scatter
 from kivy.utils import get_color_from_hex
+from kivy.uix.togglebutton import ToggleButton
 #from kivy.core.clipboard import Clipboard
 
 from ChessBoard import ChessBoard
@@ -91,6 +92,8 @@ COLOR_MAPS = {
 
 DARK_SQUARE = COLOR_MAPS['brown']
 LIGHT_SQUARE = COLOR_MAPS['cream']
+
+INITIAL_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
 #engine_config = ConfigParser()
 #engine_config.read('resources/engine.ini')
@@ -263,7 +266,7 @@ class Chess_app(App):
         if type == "main":
             grid = GridLayout(cols=8, rows=8, spacing=0, size_hint=(1, 1))
         else:
-            grid = GridLayout(cols=8, rows=10, spacing=0, size_hint=(1, 1))
+            grid = GridLayout(cols=8, rows=11, spacing=0, size_hint=(1, 1))
 
         for i, name in enumerate(SQUARES):
             bt = ChessSquare(allow_stretch=True)
@@ -280,26 +283,27 @@ class Chess_app(App):
                 bt.bind(on_touch_down=self.touch_down_move)
                 bt.bind(on_touch_up=self.touch_up_move)
             else:
-                bt.bind(on_touch_down = self.touch_down_setup)
-                bt.bind(on_touch_up = self.touch_up_setup)
+                bt.bind(on_touch_down=self.touch_down_setup)
+                bt.bind(on_touch_up=self.touch_up_setup)
 
 
             grid.add_widget(bt)
             squares.append(bt)
 
         if type!="main":
-            for i in ["R", "N", "B", "Q", "K", "P", "r", "n", "b", "q", "k", "p"]:
+            for i in ["R", "N", "B", "Q", "K", "P", ".", ".", "r", "n", "b", "q", "k", "p", ".", "."]:
                 bt = ChessSquare(allow_stretch=True)
                 bt.sq = i
                 bt.name = i
                 bt.sq_color = "l"
                 bt.background_color = LIGHT_SQUARE
 
-                piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[i])
-                bt.add_piece(piece)
+                if i!=".":
+                    piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[i])
+                    bt.add_piece(piece)
 
-                bt.bind(on_touch_down = self.touch_down_setup)
-                bt.bind(on_touch_up = self.touch_up_setup)
+                bt.bind(on_touch_down=self.touch_down_setup)
+                bt.bind(on_touch_up=self.touch_up_setup)
 
                 grid.add_widget(bt)
 
@@ -314,6 +318,7 @@ class Chess_app(App):
         self.from_move = None
         self.to_move = None
         self.chessboard = ChessBoard()
+        self.setup_chessboard = ChessBoard(clear=True)
         self.analysis_board = ChessBoard()
         self.squares = []
         self.setup_board_squares = []
@@ -388,8 +393,56 @@ class Chess_app(App):
             if self.root:
                 self.root.current = 'main'
 
-        bk = Button(text="Back", on_press=go_to_main_screen)
-        setup_widget.add_widget(bk)
+        def setup_board_change_tomove(value):
+            if value.state=="normal":
+                # print "black to move"
+                self.setup_chessboard._turn = self.setup_chessboard.BLACK
+            else:
+                # print "white to move"
+                self.setup_chessboard._turn = self.setup_chessboard.WHITE
+
+        def render_setup_board(bt):
+            if bt.text == "Clear":
+                self.setup_chessboard.clearBoard()
+            else:
+                self.setup_chessboard.setInitialBoard()
+            squares = [item for sublist in self.setup_chessboard.getBoard() for item in sublist]
+            for i, p in enumerate(squares):
+                self.fill_chess_board(self.setup_board_squares, i, p)
+
+        def validate_setup_board(value):
+            # print "validating setup board.."
+            self.setup_chessboard.resetBoard(change_turn=False, castle=False)
+            # self.setup_chessboard.printBoard()
+            fen = self.setup_chessboard.getFEN()
+            if fen == INITIAL_BOARD_FEN:
+                # print "new game.."
+                self.chessboard.setInitialBoard()
+                self.chessboard.resetBoard()
+                self.refresh_board()
+                self.root.current = 'main'
+            elif self.chessboard.setFEN(fen):
+                self.start_pos_changed = True
+                self.custom_fen = fen
+
+                self.refresh_board()
+                self.root.current = 'main'
+
+        wtm = ToggleButton(text="White to move", state="down", on_press=setup_board_change_tomove)
+        setup_widget.add_widget(wtm)
+
+        clear = Button(text="Clear", on_press=render_setup_board)
+        setup_widget.add_widget(clear)
+
+        initial = Button(text="Initial", on_press=render_setup_board)
+        setup_widget.add_widget(initial)
+
+        validate = Button(text="OK", on_press=validate_setup_board)
+        setup_widget.add_widget(validate)
+
+        cancel = Button(text="Cancel", on_press=go_to_main_screen)
+        setup_widget.add_widget(cancel)
+
         setup_board_screen.add_widget(setup_widget)
         sm.add_widget(setup_board_screen)
 
@@ -512,36 +565,50 @@ class Chess_app(App):
         tokens = line.split()
         try:
             score_index = tokens.index('score')
-        except ValueError:
+        except ValueError, e:
             score_index = -1
         score = None
+        score_type = ""
         move_list = []
-        if score_index!=-1 and tokens[score_index+1]=="cp":
-            score = float(tokens[score_index+2])/100*1.0
+
+        # print line
+        if score_index!=-1:
+            score_type = tokens[score_index+1]
+            if tokens[score_index+1]=="cp":
+                score = float(tokens[score_index+2])/100*1.0
+                try:
+                    score = float(score)
+                except ValueError, e :
+                    print "Cannot convert score to a float"
+                    print e
+            elif tokens[score_index+1]=="mate":
+                score = int(tokens[score_index+2])
+                try:
+                    score = int(score)
+                except ValueError, e :
+                    print "Cannot convert Mate number of moves to a int"
+                    print e
+            if self.chessboard._turn == self.chessboard.BLACK:
+                if score:
+                    score *= -1
         try:
             line_index = tokens.index('pv')
             for mv in tokens[line_index+1:]:
                 self.analysis_board.addTextMove(mv)
                 move_list.append(self.analysis_board.getLastTextMove())
-
-        except ValueError:
+        except ValueError, e:
             line_index = -1
         variation = self.generate_move_list(move_list,start_move_num=self.chessboard.getCurrentMove()+1) if line_index!=-1 else None
 
         #del analysis_board
-        if variation and score:
-            score_float = None
-            try:
-                score_float = float(score)
-            except ValueError, e :
-                print "Cannot convert score to a float"
-                print e
-            if self.chessboard._turn == self.chessboard.BLACK:
-                if score_float:
-                    score_float *= -1
-                    score = score_float
+        if variation and score is not None:
+            if score_type == "mate":
+                score = score_type + " " + str(score)
             return move_list, "[color=000000][b]%s[/b]     [i][ref=%s]Stop[/ref][/i][/color]\n[color=000000]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
-
+        # else:
+        #     print "no score/var"
+        #     print variation
+        #     print score
 
     def update_engine_output(self, callback):
         if not self.uci_engine:
@@ -636,14 +703,33 @@ class Chess_app(App):
     def touch_up_setup(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
             return
-
         self.last_touch_up_setup = img.name
         if self.last_touch_up_setup and self.last_touch_down_setup and self.last_touch_up_setup != self.last_touch_down_setup:
+            # print "touch_down_setup:"
+            # print self.last_touch_down_setup
+            # print len(self.last_touch_down_setup)
+            # print "touch_up_setup:"
+            # print self.last_touch_up_setup
+            # print len(self.last_touch_up_setup)
+            if len(self.last_touch_down_setup)==1 and len(self.last_touch_up_setup)==2:
+                index = SQUARES.index(self.last_touch_up_setup)
+                self.setup_chessboard._board[index//8][index%8]= self.last_touch_down_setup
+                self.fill_chess_board(self.setup_board_squares, SQUARES.index(self.last_touch_up_setup), self.last_touch_down_setup)
+            elif len(self.last_touch_down_setup)==2 and len(self.last_touch_up_setup)==1:
+                index = SQUARES.index(self.last_touch_down_setup)
+                self.setup_chessboard._board[index//8][index%8]= '.'
+                self.fill_chess_board(self.setup_board_squares, SQUARES.index(self.last_touch_down_setup), '.')
+            elif len(self.last_touch_down_setup)==2 and len(self.last_touch_up_setup)==2:
+                from_index = SQUARES.index(self.last_touch_down_setup)
+                to_index = SQUARES.index(self.last_touch_up_setup)
 
-            print "touch_down_setup:"
-            print self.last_touch_down_setup
-            print "touch_up_setup:"
-            print self.last_touch_up_setup
+                from_piece = self.setup_chessboard._board[from_index//8][from_index%8]
+                self.setup_chessboard._board[to_index//8][to_index%8] = self.setup_chessboard._board[from_index//8][from_index%8]
+                self.setup_chessboard._board[from_index//8][from_index%8] = '.'
+                self.fill_chess_board(self.setup_board_squares, SQUARES.index(self.last_touch_down_setup), '.')
+                self.fill_chess_board(self.setup_board_squares, SQUARES.index(self.last_touch_up_setup), from_piece)
+                # self.setup_chessboard.printBoard()
+
 
     def touch_up_move(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
@@ -696,24 +782,27 @@ class Chess_app(App):
         else:
             self.book_panel.children[0].text = BOOK_HEADER
 
+    def fill_chess_board(self, squares, i, p):
+        sq = squares[i]
+        # print sq.name
+        if p == ".":
+            sq.remove_piece()
+        #                sq.background_normal=sq.background_down
+        if p != ".":
+            p_color = 'w' if p.isupper() else 'b'
+            #                sq.source="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
+            #                sq.background_normal="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
+            #                sq.background_normal="img/pieces/Merida/pieces/"+p_color+p.lower()+".png"
+            piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[p])
+            sq.add_piece(piece)
+            # Update game notation
+
     def refresh_board(self):
         # flatten lists into one list of 64 squares
         squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
 
         for i, p in enumerate(squares):
-            sq = self.squares[i]
-            if p==".":
-                sq.remove_piece()
-#                sq.background_normal=sq.background_down
-
-            if p!=".":
-                p_color = 'w' if p.isupper() else 'b'
-#                sq.source="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
-#                sq.background_normal="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
-#                sq.background_normal="img/pieces/Merida/pieces/"+p_color+p.lower()+".png"
-                piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[p])
-                sq.add_piece(piece)
-    # Update game notation
+            self.fill_chess_board(self.squares, i, p)
         all_moves = self.chessboard.getAllTextMoves()
         if all_moves:
             score = self.generate_move_list(all_moves)

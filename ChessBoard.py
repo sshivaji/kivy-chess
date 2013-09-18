@@ -83,9 +83,12 @@ class ChessBoard:
     
     _promotion_value = 0
     
-    def __init__(self):
-        self.resetBoard()
-
+    def __init__(self, clear=False):
+        if clear:
+            self.clearBoard()
+        else:
+            self.setInitialBoard()
+            self.resetBoard()
     def state2str(self):
 
         b = ""
@@ -801,12 +804,21 @@ class ChessBoard:
     #----------------------------------------------------------------------------
     # PUBLIC METHODS
     #----------------------------------------------------------------------------
-    
-    def resetBoard(self):
-        """
-        Resets the chess board and all states.
-        """
+
+    def clearBoard(self):
         self._board = [
+            ['.']*8,
+            ['.']*8,
+            ['.']*8,
+            ['.']*8,
+            ['.']*8,
+            ['.']*8,
+            ['.']*8,
+            ['.']*8
+        ]
+
+    def setInitialBoard(self):
+         self._board = [
             ['r','n','b','q','k','b','n','r'],
             ['p']*8,
             ['.']*8,
@@ -816,11 +828,23 @@ class ChessBoard:
             ['P']*8,
             ['R','N','B','Q','K','B','N','R']
             ]
-        self._turn = self.WHITE
-        self._white_king_castle = True
-        self._white_queen_castle = True
-        self._black_king_castle = True
-        self._black_queen_castle = True
+
+    def resetBoard(self, change_turn=True, castle=True):
+        """
+        Resets the chess board and all states.
+        """
+        if change_turn:
+            self._turn = self.WHITE
+        if castle:
+            self._white_king_castle = True
+            self._white_queen_castle = True
+            self._black_king_castle = True
+            self._black_queen_castle = True
+        else:
+            self._white_king_castle = False
+            self._white_queen_castle = False
+            self._black_king_castle = False
+            self._black_queen_castle = False
         self._ep = [0,0]
         self._fifty = 0
         self._three_rep_stack = []
