@@ -634,13 +634,13 @@ class Chess_app(App):
                             if best_move:
                                 self.chessboard.addTextMove(best_move)
                                 self.engine_computer_move = False
-                                output.children[0].text = "Your turn"
+                                output.children[0].text = "[color=000000]Your turn[/color]"
                                 self.refresh_board()
                             else:
-                                output.children[0].text = "Thinking.."
+                                output.children[0].text = "[color=000000]Thinking..[/color]"
                                 # sleep(1)
                         else:
-                            output.children[0].text = "Your turn"
+                            output.children[0].text = "[color=000000]Your turn[/color]"
                             # sleep(1)
             else:
                 # if output.children[0].text != ENGINE_HEADER:
