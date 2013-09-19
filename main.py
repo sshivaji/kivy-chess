@@ -297,16 +297,17 @@ class Chess_app(App):
             squares.append(bt)
 
         if type!="main":
-            for i in ["R", "N", "B", "Q", "K", "P", ".", ".", "r", "n", "b", "q", "k", "p", ".", "."]:
+            for i in [".", "R", "N", "B", "Q", "K", "P",  ".", ".", "r", "n", "b", "q", "k", "p", "."]:
                 bt = ChessSquare(allow_stretch=True)
                 bt.sq = i
                 bt.name = i
-                bt.sq_color = "l"
-                bt.background_color = LIGHT_SQUARE
+                # bt.sq_color = "l"
+
 
                 if i!=".":
                     piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[i])
                     bt.add_piece(piece)
+                # bt.background_color = BLACK
 
                 bt.bind(on_touch_down=self.touch_down_setup)
                 bt.bind(on_touch_up=self.touch_up_setup)
