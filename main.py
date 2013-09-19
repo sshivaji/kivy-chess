@@ -273,7 +273,7 @@ class Chess_app(App):
         if type == "main":
             grid = GridLayout(cols=8, rows=8, spacing=1, size_hint=(1, 1))
         else:
-            grid = GridLayout(cols=8, rows=11, spacing=1, size_hint=(1, 1))
+            grid = GridLayout(cols=8, rows=12, spacing=1, size_hint=(1, 1))
 
         for i, name in enumerate(SQUARES):
             bt = ChessSquare(allow_stretch=True)
@@ -298,7 +298,7 @@ class Chess_app(App):
             squares.append(bt)
 
         if type!="main":
-            for i in [".", "R", "N", "B", "Q", "K", "P",  ".", ".", "r", "n", "b", "q", "k", "p", "."]:
+            for index, i in enumerate([".", ".", ".", ".", ".", ".", ".", ".", ".", "R", "N", "B", "Q", "K", "P",  ".", ".", "r", "n", "b", "q", "k", "p", "."]):
                 bt = ChessSquare(allow_stretch=True)
                 bt.sq = i
                 bt.name = i
@@ -307,6 +307,11 @@ class Chess_app(App):
                 if i!=".":
                     piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[i])
                     bt.add_piece(piece)
+                    if index%2==0:
+                        bt.background_color = DARK_SQUARE
+                    else:
+                        bt.background_color = LIGHT_SQUARE
+
                 else:
                     bt.background_color = COLOR_MAPS["black"]
 
