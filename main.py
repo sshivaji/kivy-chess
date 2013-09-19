@@ -10,6 +10,7 @@ from kivy.uix.screenmanager import FadeTransition
 from kivy.uix.screenmanager import WipeTransition
 from kivy.uix.screenmanager import SwapTransition
 from kivy.uix.screenmanager import SlideTransition
+from kivy.graphics import Color
 
 from kivy.core.window import Window
 from kivy.clock import Clock
@@ -88,7 +89,7 @@ img_piece_abv={"B":"WBishop", "R":"WRook", "N":"WKnight", "Q":"WQueen", "K":"WKi
 "b":"BBishop", "r":"BRook", "n":"BKnight", "q":"BQueen", "k":"BKing", "p":"BPawn"}
 
 COLOR_MAPS = {
-    'black': (1, 1, 1, 1),
+    'black': get_color_from_hex('#000000'),
     'white': (0, 0, 0, 1),
     #'cream': get_color_from_hex('#f9fcc6'),
     #'brown': get_color_from_hex('#969063'),
@@ -270,9 +271,9 @@ class Chess_app(App):
 
     def create_chess_board(self, squares, type="main"):
         if type == "main":
-            grid = GridLayout(cols=8, rows=8, spacing=0, size_hint=(1, 1))
+            grid = GridLayout(cols=8, rows=8, spacing=1, size_hint=(1, 1))
         else:
-            grid = GridLayout(cols=8, rows=11, spacing=0, size_hint=(1, 1))
+            grid = GridLayout(cols=8, rows=11, spacing=1, size_hint=(1, 1))
 
         for i, name in enumerate(SQUARES):
             bt = ChessSquare(allow_stretch=True)
@@ -303,10 +304,12 @@ class Chess_app(App):
                 bt.name = i
                 # bt.sq_color = "l"
 
-
                 if i!=".":
                     piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[i])
                     bt.add_piece(piece)
+                else:
+                    bt.background_color = COLOR_MAPS["black"]
+
                 # bt.background_color = BLACK
 
                 bt.bind(on_touch_down=self.touch_down_setup)
