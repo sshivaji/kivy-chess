@@ -39,6 +39,7 @@ from time import sleep
 from chess import polyglot_opening_book
 from chess.position import Position
 from chess.notation import SanNotation
+from chess.move import MoveError
 
 
 GAME_HEADER = 'New Game'
@@ -782,7 +783,7 @@ class Chess_app(App):
         for i, mv in it.izip(it.count(start_move_num), all_moves):
             move = "b"
             if i % 2 == 1:
-                score += "%d. " % ((i + 1) / 2)
+                score += " %d. " % ((i + 1) / 2)
                 move = "w"
 
             if mv:
@@ -801,11 +802,14 @@ class Chess_app(App):
             self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
             book_entries = 0
             for e in self.book.get_entries_for_position(p):
-                san = SanNotation(p, e["move"])
-                self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (san, san, e["weight"])
-                book_entries += 1
-                if book_entries >= 5:
-                    break
+                try:
+                    san = SanNotation(p, e["move"])
+                    self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (san, san, e["weight"])
+                    book_entries += 1
+                    if book_entries >= 5:
+                        break
+                except MoveError:
+                    print "Cannot parse move"
             self.book_panel.children[0].text+='[/color]'
         else:
             self.book_panel.children[0].text = BOOK_HEADER
