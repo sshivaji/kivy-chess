@@ -58,6 +58,7 @@ class GameNode(object):
 
     def __init__(self, previous_node, move, nags=[], comment="",
                  start_comment=""):
+        self.__variations = []
         self.__previous_node = previous_node
         self.__move = move
 
@@ -68,8 +69,6 @@ class GameNode(object):
         self.comment = comment
         self.start_comment = start_comment
 
-        self.__variations = []
-
     @property
     def previous_node(self):
         """The previous node of the game."""
@@ -77,7 +76,7 @@ class GameNode(object):
 
     def get_prev_moves(self, format="raw"):
         if self.previous_node:
-            if format=="raw":
+            if format == "raw":
                 return self.previous_node.get_prev_moves() + " " + str(self.move)
             else:
                 return self.previous_node.get_prev_moves() + " " + str(SanNotation(self.previous_node.position, self.move))
@@ -295,3 +294,23 @@ class GameNode(object):
             The game node or move to remove.
         """
         del self.__variations[self.index(variation)]
+
+    def walk_tree(self, variation, move):
+        for v in variation:
+            move += 1
+            if v.__variations:
+                print "(",
+            # print v.get_prev_moves()
+            print move/2,
+            print v.move,
+
+            if v.__variations:
+                # print " ( "
+                self.walk_tree(v.__variations, move)
+                print ")",
+
+            # print ")"
+
+    def game_score(self):
+        self.walk_tree(self.__variations, move=0)
+        # self.walk(self)

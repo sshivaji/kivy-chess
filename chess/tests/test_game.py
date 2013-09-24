@@ -22,6 +22,7 @@ class TestGame(unittest.TestCase):
     def test_move_list(self):
         root = Game()
         variation = root.add_main_variation(Move.from_uci("e2e4"))
+
         assert len(root) == 1
         assert root[Move.from_uci("e2e4")] == variation
         assert root[0] == variation
@@ -29,7 +30,15 @@ class TestGame(unittest.TestCase):
         next_var = variation.add_main_variation(Move.from_uci("c7c5"))
         assert next_var.get_prev_moves() == "  e2e4 c7c5"
         assert next_var.get_prev_moves(format="san") == "  e2e4 c5"
+
+        v2 = root.add_variation(Move.from_uci("d2d4"))
+        v2.add_main_variation(Move.from_uci("g8f6"))
+
+        variation.add_variation(Move.from_uci("d7d5")).add_variation(Move.from_uci("e4d5"))
+        # variation.add_variation(Move.from_uci("ed5"))
+
         root.game_score()
+
 
 if __name__ == '__main__':
     unittest.main()

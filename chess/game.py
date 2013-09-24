@@ -18,13 +18,13 @@
 from position import Position
 from game_header_bag import GameHeaderBag
 
-import game_node
+from game_node import GameNode
 
-class Game(game_node.GameNode):
+
+class Game(GameNode):
     """The root node of a game."""
     def __init__(self, start_comment="", headers=None):
-        game_node.GameNode.__init__(self, None, None, (), start_comment)
-
+        GameNode.__init__(self, None, None, (), start_comment)
         if headers is None:
             self.__headers = GameHeaderBag(self)
         else:
@@ -44,8 +44,3 @@ class Game(game_node.GameNode):
             return Position(self.__headers["FEN"])
         else:
             return Position()
-
-    def game_score(self):
-        # Iterate thru all game nodes to produce a 'score sheet'
-        for v in self.__variations:
-            print v.move
