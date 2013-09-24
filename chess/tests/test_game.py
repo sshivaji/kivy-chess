@@ -35,7 +35,9 @@ class TestGame(unittest.TestCase):
         v2.add_main_variation(Move.from_uci("g8f6"))
 
         variation.add_variation(Move.from_uci("d7d5")).add_variation(Move.from_uci("e4d5"))
-        # variation.add_variation(Move.from_uci("ed5"))
+        variation.add_variation(Move.from_uci("c7c6")).add_variation(Move.from_uci("d2d4")).add_variation(Move.from_uci("d7d5")).add_variation(Move.from_uci("b1c3"))
+
+    # variation.add_variation(Move.from_uci("ed5"))
 
         root.game_score()
 

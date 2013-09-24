@@ -61,10 +61,11 @@ class GameNode(object):
         self.__variations = []
         self.__previous_node = previous_node
         self.__move = move
+        self.__san = None
 
         if move:
             self.__position = previous_node.position.make_move(move)
-
+            self.__san = SanNotation( previous_node.position, move)
         self.__nags = nags
         self.comment = comment
         self.start_comment = start_comment
@@ -296,21 +297,25 @@ class GameNode(object):
         del self.__variations[self.index(variation)]
 
     def walk_tree(self, variation, move):
+        move += 1
+
         for v in variation:
-            move += 1
+            try:
+                v.is_main_variation()
+            except AttributeError:
+                print "[",
+            if move % 2 == 1:
+                print (move + 1)/2,
+            if v.__san:
+                print v.__san,
+            else:
+                print v.move
             if v.__variations:
-                print "(",
-            # print v.get_prev_moves()
-            print move/2,
-            print v.move,
-
-            if v.__variations:
-                # print " ( "
                 self.walk_tree(v.__variations, move)
-                print ")",
-
-            # print ")"
+                try:
+                    v.is_main_variation()
+                except AttributeError:
+                    print "]",
 
     def game_score(self):
         self.walk_tree(self.__variations, move=0)
-        # self.walk(self)
