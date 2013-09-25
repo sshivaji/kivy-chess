@@ -62,6 +62,10 @@ class GameNode(object):
         self.__previous_node = previous_node
         self.__move = move
         self.__san = None
+        if previous_node:
+            self.half_move_num = previous_node.half_move_num + 1
+        else:
+            self.half_move_num = 1
 
         if move:
             self.__position = previous_node.position.make_move(move)
@@ -253,7 +257,7 @@ class GameNode(object):
         del self.__variations[i]
         self.__variations.insert(0, new_mainline)
 
-    def __prepare_variation(self, variation):
+    def prepare_variation(self, variation):
         if type(variation) is Move:
             variation = GameNode(self, variation)
         if variation.move in self:
@@ -271,7 +275,7 @@ class GameNode(object):
         :return:
             The game node that has been added.
         """
-        variation = self.__prepare_variation(variation)
+        variation = self.prepare_variation(variation)
         self.__variations.append(variation)
         return variation
 
@@ -284,7 +288,7 @@ class GameNode(object):
         :return:
             The game node that has been added.
         """
-        variation = self.__prepare_variation(variation)
+        variation = self.prepare_variation(variation)
         self.__variations.insert(0, variation)
         return variation
 

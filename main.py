@@ -42,6 +42,7 @@ from chess.notation import SanNotation
 from chess.move import MoveError
 from chess.move import Move
 from chess.game import Game
+from chess.game_node import GameNode
 from chess import piece
 
 GAME_HEADER = 'New Game'
@@ -492,7 +493,9 @@ class Chess_app(App):
             self.book_display = True
             self.update_book_panel()
         else:
-            self.chessboard.addTextMove(mv)
+            self.chessboard = self.chessboard.add_variation(Move.from_uci(mv))
+
+            # self.chessboard.addTextMove(mv)
             self.refresh_board()
 
     def stop_engine(self):
@@ -505,7 +508,7 @@ class Chess_app(App):
 #        print value
 #        print "instance:"
 #        print instance
-        if value==ENGINE_ANALYSIS or value==ENGINE_PLAY:
+        if value == ENGINE_ANALYSIS or value == ENGINE_PLAY:
 #            print "Bringing up engine menu"
             if self.use_engine:
                 self.stop_engine()
@@ -524,12 +527,9 @@ class Chess_app(App):
             print "engine_hint.."
         else:
             for i, mv in enumerate(self.engine_score.raw):
-                if i>=1:
+                if i >= 1:
                     break
-                self.chessboard.add_variation(SanNotation.to_move(self.chessboard.position, mv))
-
-                #                self.chessboard.addTextMove(mv)
-
+                self.chessboard = self.chessboard.add_variation(self.chessboard.add_variation(Move.from_uci(mv)))
         self.refresh_board()
 
     def is_desktop(self):
@@ -594,9 +594,9 @@ class Chess_app(App):
         return best_move, ponder_move
 
     def parse_score(self, line):
-        self.analysis_board = Position(fen=str(self.chessboard.position.fen))
+        # p = Position(fen=str(self.chessboard.position.fen))
+        # analysis_board = GameNode(self.chessboard, None)
 
-#        self.analysis_board.setFEN(self.chessboard.position.fen)
         tokens = line.split()
         try:
             score_index = tokens.index('score')
@@ -609,14 +609,14 @@ class Chess_app(App):
         # print line
         if score_index!=-1:
             score_type = tokens[score_index+1]
-            if tokens[score_index+1]=="cp":
+            if tokens[score_index+1] == "cp":
                 score = float(tokens[score_index+2])/100*1.0
                 try:
                     score = float(score)
                 except ValueError, e :
                     print "Cannot convert score to a float"
                     print e
-            elif tokens[score_index+1]=="mate":
+            elif tokens[score_index+1] == "mate":
                 score = int(tokens[score_index+2])
                 try:
                     score = int(score)
@@ -629,12 +629,14 @@ class Chess_app(App):
         try:
             line_index = tokens.index('pv')
             for mv in tokens[line_index+1:]:
-#                self.analysis_board.addTextMove(mv)
-                self.chessboard.add_variation(SanNotation.to_move(self.chessboard.position, mv))
-#                move_list.append(self.analysis_board.__move)
+                # print mv
+               # self.analysis_board.addTextMove(mv)
+               #  move = SanNotation.to_move(self.chessboard.position, mv)
+                # variation_board = self.chessboard.prepare_variation(move)
+                move_list.append(mv)
         except ValueError, e:
             line_index = -1
-        variation = self.generate_move_list(move_list,start_move_num=self.chessboard.getCurrentMove()+1) if line_index!=-1 else None
+        variation = self.generate_move_list(move_list,start_move_num=(self.chessboard.half_move_num/2)+1) if line_index!=-1 else None
 
         #del analysis_board
         if variation and score is not None:
@@ -669,7 +671,7 @@ class Chess_app(App):
                             best_move, ponder_move = self.parse_bestmove(line)
                             if best_move:
 #                                self.chessboard.addTextMove(best_move)
-                                self.chessboard.add_variation(SanNotation.to_move(self.chessboard.position, mv))
+                                self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
 
                                 self.engine_computer_move = False
                                 output.children[0].text = YOURTURN_MENU
@@ -686,7 +688,7 @@ class Chess_app(App):
                 sleep(1)
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
-        if self.root.current!="main":
+        if self.root.current != "main":
             return False
 #        print self.root.current
         # Keycode is composed of an integer + a string
@@ -785,22 +787,6 @@ class Chess_app(App):
             pass
             # TODO: log error
 
-#    def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
-#        score = ""
-#        if raw:
-#            return " ".join(all_moves)
-#        for i, mv in it.izip(it.count(start_move_num), all_moves):
-#            move = "b"
-#            if i % 2 == 1:
-#                score += "%d. " % ((i + 1) / 2)
-#                move = "w"
-#
-#            if mv:
-#                score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
-#            #            if i % 5 == 0:
-#            #                score += "\n"
-#        return score
-
     def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
         score = ""
         if raw:
@@ -822,19 +808,19 @@ class Chess_app(App):
 
     def update_book_panel(self):
         if self.book_display:
-            p = Position(fen=self.chessboard.getFEN())
+            p = Position(fen=str(self.chessboard.position.fen))
             self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
             book_entries = 0
             for e in self.book.get_entries_for_position(p):
                 try:
                     san = SanNotation(p, e["move"])
-                    self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (san, san, e["weight"])
+                    self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (e["move"], san, e["weight"])
                     book_entries += 1
                     if book_entries >= 5:
                         break
                 except MoveError:
                     print "Cannot parse move"
-            self.book_panel.children[0].text+='[/color]'
+            self.book_panel.children[0].text += '[/color]'
         else:
             self.book_panel.children[0].text = BOOK_HEADER
 
