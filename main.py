@@ -40,7 +40,7 @@ from chess import polyglot_opening_book
 from chess.position import Position
 from chess.notation import SanNotation
 from chess.move import MoveError
-
+from chess.game import Game
 
 GAME_HEADER = 'New Game'
 
@@ -287,7 +287,7 @@ class Chess_app(App):
                 bt.background_color = DARK_SQUARE
                 bt.sq_color = "d"
 
-            if type=="main":
+            if type == "main":
                 bt.bind(on_touch_down=self.touch_down_move)
                 bt.bind(on_touch_up=self.touch_up_move)
             else:
@@ -424,7 +424,7 @@ class Chess_app(App):
                 self.setup_chessboard.setInitialBoard()
             squares = [item for sublist in self.setup_chessboard.getBoard() for item in sublist]
             for i, p in enumerate(squares):
-                self.fill_chess_board(self.setup_board_squares, i, p)
+                self.fill_chess_board(self.setup_board_squares[i], p)
 
         def validate_setup_board(value):
             # print "validating setup board.."
@@ -676,8 +676,6 @@ class Chess_app(App):
                 output.children[0].text = ENGINE_HEADER
                 sleep(1)
 
-
-
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
         if self.root.current!="main":
             return False
@@ -743,11 +741,11 @@ class Chess_app(App):
             if len(self.last_touch_down_setup)==1 and len(self.last_touch_up_setup)==2:
                 index = SQUARES.index(self.last_touch_up_setup)
                 self.setup_chessboard._board[index//8][index%8]= self.last_touch_down_setup
-                self.fill_chess_board(self.setup_board_squares, SQUARES.index(self.last_touch_up_setup), self.last_touch_down_setup)
+                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.last_touch_down_setup)
             elif len(self.last_touch_down_setup)==2 and len(self.last_touch_up_setup)==1:
                 index = SQUARES.index(self.last_touch_down_setup)
                 self.setup_chessboard._board[index//8][index%8]= '.'
-                self.fill_chess_board(self.setup_board_squares, SQUARES.index(self.last_touch_down_setup), '.')
+                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], '.')
             elif len(self.last_touch_down_setup)==2 and len(self.last_touch_up_setup)==2:
                 from_index = SQUARES.index(self.last_touch_down_setup)
                 to_index = SQUARES.index(self.last_touch_up_setup)
@@ -755,8 +753,8 @@ class Chess_app(App):
                 from_piece = self.setup_chessboard._board[from_index//8][from_index%8]
                 self.setup_chessboard._board[to_index//8][to_index%8] = self.setup_chessboard._board[from_index//8][from_index%8]
                 self.setup_chessboard._board[from_index//8][from_index%8] = '.'
-                self.fill_chess_board(self.setup_board_squares, SQUARES.index(self.last_touch_down_setup), '.')
-                self.fill_chess_board(self.setup_board_squares, SQUARES.index(self.last_touch_up_setup), from_piece)
+                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], '.')
+                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], from_piece)
                 # self.setup_chessboard.printBoard()
 
 
@@ -814,17 +812,10 @@ class Chess_app(App):
         else:
             self.book_panel.children[0].text = BOOK_HEADER
 
-    def fill_chess_board(self, squares, i, p):
-        sq = squares[i]
-        # print sq.name
+    def fill_chess_board(self, sq, p):
         if p == ".":
             sq.remove_piece()
-        #                sq.background_normal=sq.background_down
         if p != ".":
-            p_color = 'w' if p.isupper() else 'b'
-            #                sq.source="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
-            #                sq.background_normal="img/pieces/Merida/"+sq.sq_color+p_color+p.lower()+".png"
-            #                sq.background_normal="img/pieces/Merida/pieces/"+p_color+p.lower()+".png"
             piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[p])
             sq.add_piece(piece)
             # Update game notation
@@ -832,9 +823,10 @@ class Chess_app(App):
     def refresh_board(self):
         # flatten lists into one list of 64 squares
         squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
+#        squares = self.chessboard.position
 
         for i, p in enumerate(squares):
-            self.fill_chess_board(self.squares, i, p)
+            self.fill_chess_board(self.squares[i], p)
         all_moves = self.chessboard.getAllTextMoves()
         if all_moves:
             score = self.generate_move_list(all_moves)
