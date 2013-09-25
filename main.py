@@ -29,7 +29,7 @@ from kivy.utils import get_color_from_hex
 from kivy.uix.togglebutton import ToggleButton
 #from kivy.core.clipboard import Clipboard
 
-from ChessBoard import ChessBoard
+#from ChessBoard import ChessBoard
 from sets import Set
 from uci import UCIEngine
 from uci import UCIOption
@@ -40,7 +40,9 @@ from chess import polyglot_opening_book
 from chess.position import Position
 from chess.notation import SanNotation
 from chess.move import MoveError
+from chess.move import Move
 from chess.game import Game
+from chess import piece
 
 GAME_HEADER = 'New Game'
 
@@ -333,9 +335,9 @@ class Chess_app(App):
         self.engine_computer_move = True
         self.from_move = None
         self.to_move = None
-        self.chessboard = ChessBoard()
-        self.setup_chessboard = ChessBoard(clear=True)
-        self.analysis_board = ChessBoard()
+        self.chessboard = Game()
+        self.setup_chessboard = Game()
+        self.analysis_board = Game()
         self.squares = []
         self.setup_board_squares = []
         self.use_engine = False
@@ -524,7 +526,9 @@ class Chess_app(App):
             for i, mv in enumerate(self.engine_score.raw):
                 if i>=1:
                     break
-                self.chessboard.addTextMove(mv)
+                self.chessboard.add_variation(SanNotation.to_move(self.chessboard.position, mv))
+
+                #                self.chessboard.addTextMove(mv)
 
         self.refresh_board()
 
@@ -590,7 +594,9 @@ class Chess_app(App):
         return best_move, ponder_move
 
     def parse_score(self, line):
-        self.analysis_board.setFEN(self.chessboard.getFEN())
+        self.analysis_board = Position(fen=str(self.chessboard.position.fen))
+
+#        self.analysis_board.setFEN(self.chessboard.position.fen)
         tokens = line.split()
         try:
             score_index = tokens.index('score')
@@ -617,14 +623,15 @@ class Chess_app(App):
                 except ValueError, e :
                     print "Cannot convert Mate number of moves to a int"
                     print e
-            if self.chessboard._turn == self.chessboard.BLACK:
+            if self.chessboard.position.fen._to_move == piece.BLACK:
                 if score:
                     score *= -1
         try:
             line_index = tokens.index('pv')
             for mv in tokens[line_index+1:]:
-                self.analysis_board.addTextMove(mv)
-                move_list.append(self.analysis_board.getLastTextMove())
+#                self.analysis_board.addTextMove(mv)
+                self.chessboard.add_variation(SanNotation.to_move(self.chessboard.position, mv))
+#                move_list.append(self.analysis_board.__move)
         except ValueError, e:
             line_index = -1
         variation = self.generate_move_list(move_list,start_move_num=self.chessboard.getCurrentMove()+1) if line_index!=-1 else None
@@ -661,7 +668,9 @@ class Chess_app(App):
                         if self.engine_computer_move:
                             best_move, ponder_move = self.parse_bestmove(line)
                             if best_move:
-                                self.chessboard.addTextMove(best_move)
+#                                self.chessboard.addTextMove(best_move)
+                                self.chessboard.add_variation(SanNotation.to_move(self.chessboard.position, mv))
+
                                 self.engine_computer_move = False
                                 output.children[0].text = YOURTURN_MENU
                                 self.refresh_board()
@@ -711,13 +720,10 @@ class Chess_app(App):
         # print "touch_move"
         # print touch
         mv = img.name
-        squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
+        squares = self.chessboard.position
 
-        if squares[SQUARES.index(mv)]!='.':
-            # self.from_move = move
+        if squares[mv]:
             self.last_touch_down_move = mv
-
-            # self.process_move(mv)
 
     def touch_down_setup(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
@@ -769,15 +775,36 @@ class Chess_app(App):
             self.process_move()
 
     def process_move(self):
-        if self.chessboard.addTextMove(self.last_touch_down_move+self.last_touch_up_move):
+#        if self.chessboard.addTextMove(self.last_touch_down_move+self.last_touch_up_move):
+        try:
+            self.chessboard = self.chessboard.add_variation(Move.from_uci(self.last_touch_down_move+self.last_touch_up_move))
             if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
                 self.engine_computer_move = True
             self.refresh_board()
+        except MoveError:
+            pass
+            # TODO: log error
+
+#    def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
+#        score = ""
+#        if raw:
+#            return " ".join(all_moves)
+#        for i, mv in it.izip(it.count(start_move_num), all_moves):
+#            move = "b"
+#            if i % 2 == 1:
+#                score += "%d. " % ((i + 1) / 2)
+#                move = "w"
+#
+#            if mv:
+#                score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
+#            #            if i % 5 == 0:
+#            #                score += "\n"
+#        return score
 
     def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
         score = ""
-        # if raw:
-        #     return " ".join(all_moves)
+        if raw:
+             return " ".join(all_moves)
         for i, mv in it.izip(it.count(start_move_num), all_moves):
             move = "b"
             if i % 2 == 1:
@@ -789,7 +816,6 @@ class Chess_app(App):
                     score += " % s" % mv
                     if i % 5 == 0:
                         score += "\n"
-
                 else:
                     score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
         return score
@@ -813,21 +839,28 @@ class Chess_app(App):
             self.book_panel.children[0].text = BOOK_HEADER
 
     def fill_chess_board(self, sq, p):
-        if p == ".":
-            sq.remove_piece()
-        if p != ".":
+#        print "p:%s"%p
+#        print "sq:%s"%sq
+#        if p == ".":
+#            sq.remove_piece()
+        if p:
             piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[p])
             sq.add_piece(piece)
+        else:
+            sq.remove_piece()
             # Update game notation
 
     def refresh_board(self):
         # flatten lists into one list of 64 squares
-        squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
-#        squares = self.chessboard.position
+#        squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
+        squares = self.chessboard.position
 
-        for i, p in enumerate(squares):
-            self.fill_chess_board(self.squares[i], p)
-        all_moves = self.chessboard.getAllTextMoves()
+        for i, p in enumerate(SQUARES):
+            self.fill_chess_board(self.squares[i], squares[p])
+
+#        all_moves = self.chessboard.getAllTextMoves()
+        all_moves = self.chessboard.get_prev_moves(format="san")
+
         if all_moves:
             score = self.generate_move_list(all_moves)
             self.game_score.children[0].text="[color=000000]%s[/color]"%score
@@ -835,7 +868,9 @@ class Chess_app(App):
         if self.use_engine and self.uci_engine:
             #self.analysis_board.setFEN(self.chessboard.getFEN())
             self.uci_engine.stop()
-            self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0, till_current_move=True))
+#            moves_so_far = self.chessboard.get_prev_moves()
+            self.uci_engine.reportMoves(self.chessboard.get_prev_moves())
+        #            self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0, till_current_move=True))
             if self.start_pos_changed:
                 self.uci_engine.sendFen(self.custom_fen)
                 self.start_pos_changed = False
