@@ -54,7 +54,7 @@ ENGINE_PLAY_STOP = "play_stop"
 
 ENGINE_PLAY_HINT = "play_hint"
 
-YOURTURN_MENU = "[color=000000]Your turn\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint[/ref][/color]"
+YOURTURN_MENU = "[color=000000]Your turn\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint: {0}[/ref][/color]"
 
 ENGINE_ANALYSIS = "engine_analysis"
 
@@ -339,6 +339,7 @@ class Chess_app(App):
         self.to_move = None
         self.chessboard = Game()
         self.chessboard_root = self.chessboard
+        self.ponder_move = None
 
         self.setup_chessboard = Game()
         self.squares = []
@@ -527,7 +528,8 @@ class Chess_app(App):
             self.engine_mode = ENGINE_ANALYSIS
             self.refresh_board()
         elif value == ENGINE_PLAY_HINT:
-            print "engine_hint.."
+#            print "engine_hint.."
+            self.engine_score.children[0].text = YOURTURN_MENU.format(self.ponder_move)
         else:
             for i, mv in enumerate(self.engine_score.raw):
                 if i >= 1:
@@ -678,19 +680,19 @@ class Chess_app(App):
                                 output.raw = raw_line
                     elif self.engine_mode == ENGINE_PLAY:
                         if self.engine_computer_move:
-                            best_move, ponder_move = self.parse_bestmove(line)
+                            best_move, self.ponder_move = self.parse_bestmove(line)
                             if best_move:
 #                                self.chessboard.addTextMove(best_move)
                                 self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
 
                                 self.engine_computer_move = False
-                                output.children[0].text = YOURTURN_MENU
+                                output.children[0].text = YOURTURN_MENU.format("hidden")
                                 self.refresh_board()
                             else:
                                 output.children[0].text = "[color=000000]Thinking..[/color]"
                                 # sleep(1)
                         else:
-                            output.children[0].text = YOURTURN_MENU
+                            output.children[0].text = YOURTURN_MENU.format("hidden")
                             # sleep(1)
             else:
                 # if output.children[0].text != ENGINE_HEADER:
@@ -863,7 +865,7 @@ class Chess_app(App):
             self.fill_chess_board(self.squares[i], squares[p])
 
 #        all_moves = self.chessboard.getAllTextMoves()
-        print self.chessboard_root.game_score()
+#        print self.chessboard_root.game_score()
 
         all_moves = self.chessboard.get_prev_moves(format="san")
 #        print all_moves
