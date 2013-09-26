@@ -16,12 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import libchess
 import struct
 
 # TODO: Also allow writing to opening books and document the class.
-from move import Move
-from square import Square
-from zobrist_hasher import ZobristHasher
 
 class PolyglotOpeningBook(object):
     def __init__(self, path):
@@ -57,8 +55,7 @@ class PolyglotOpeningBook(object):
 
     def seek_position(self, position):
         # Calculate the position hash.
-        hasher = ZobristHasher(ZobristHasher.POLYGLOT_RANDOM_ARRAY)
-        key = hasher.hash_position(position)
+        key = position.__hash__()
 
         # Do a binary search.
         start = 0
@@ -95,40 +92,11 @@ class PolyglotOpeningBook(object):
 
     def next(self):
         raw_entry = self.next_raw()
-
-        source_x = ((raw_entry[1] >> 6) & 077) & 0x7
-        source_y = (((raw_entry[1] >> 6) & 077) >> 3) & 0x7
-
-        target_x = (raw_entry[1] & 077) & 0x7
-        target_y = ((raw_entry[1] & 077) >> 3) & 0x7
-
-        promote = (raw_entry[1] >> 12) & 0x7
-
-        move = Move(
-            source=Square.from_x_and_y(source_x, source_y),
-            target=Square.from_x_and_y(target_x, target_y),
-            promotion="nbrq"[promote + 1] if promote else None)
-
-        # Replace the non standard castling moves.
-        if move.uci == "e1h1":
-            move = Move.from_uci("e1g1")
-        elif move.uci == "e1a1":
-            move = Move.from_uci("e1c1")
-        elif move.uci == "e8h8":
-            move = Move.from_uci("e8g8")
-        elif move.uci == "e8a8":
-            move = Move.from_uci("e8c8")
-
-        return {
-            "position_hash": raw_entry[0],
-            "move": move,
-            "weight": raw_entry[2],
-            "learn": raw_entry[3]
-        }
+        return libchess.PolyglotOpeningBookEntry(raw_entry[0], raw_entry[1],
+                                              raw_entry[2], raw_entry[3])
 
     def get_entries_for_position(self, position):
-        hasher = ZobristHasher(ZobristHasher.POLYGLOT_RANDOM_ARRAY)
-        position_hash = hasher.hash_position(position)
+        position_hash = position.__hash__()
 
         # Seek the position. Stop iteration if no entry exists.
         try:
@@ -139,7 +107,7 @@ class PolyglotOpeningBook(object):
         # Iterate.
         while True:
             entry = self.next()
-            if entry["position_hash"] == position_hash:
+            if entry.key == position_hash:
                 yield entry
             else:
                 break

@@ -16,8 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import libchess as chess
 import types
+import libchess
+# from move import Move
+# from notation import SanNotation
+#from position import Position
 
 class GameNode(object):
     """A node in the tree of a game.
@@ -56,27 +59,34 @@ class GameNode(object):
 
     def __init__(self, previous_node, move, nags=[], comment="",
                  start_comment=""):
+        self.__variations = []
         self.__previous_node = previous_node
         self.__move = move
-
+        self.__san = None
         if previous_node:
             self.half_move_num = previous_node.half_move_num + 1
         else:
             self.half_move_num = 1
-        if move:
-            self.__position = chess.Position(previous_node.position)
-            self.__position.make_move(move)
 
+        if move:
+            self.__position = previous_node.position.make_move(move)
+            # self.__san = SanNotation( previous_node.position, move)
         self.__nags = nags
         self.comment = comment
         self.start_comment = start_comment
-
-        self.__variations = []
 
     @property
     def previous_node(self):
         """The previous node of the game."""
         return self.__previous_node
+
+    def get_prev_moves(self, format="raw"):
+        if self.previous_node:
+            if format == "raw":
+                return self.previous_node.get_prev_moves() + [str(self.move)]
+            # else:
+            #     return self.previous_node.get_prev_moves(format=format) + [str(SanNotation(self.previous_node.position, self.move))]
+        return []
 
     @property
     def move(self):
@@ -88,7 +98,7 @@ class GameNode(object):
     @property
     def position(self):
         """A copy of the position."""
-        return chess.Position(self.__position)
+        return self.__position.copy()
 
     @property
     def comment(self):
@@ -99,7 +109,7 @@ class GameNode(object):
     def comment(self, value):
         if not isinstance(value, basestring):
             raise TypeError(
-                "Expected comment to be string, got: %s." % comment)
+                "Expected comment to be string, got: %s." % value)
         self.__comment = value
 
     @property
@@ -119,7 +129,7 @@ class GameNode(object):
     def start_comment(self, value):
         if not isinstance(value, basestring):
             raise TypeError(
-                "Expected start comment to be string, got: %s." % comment)
+                "Expected start comment to be string, got: %s." % value)
 
         if value != "" and not self.can_have_start_comment():
             raise ValueError("Game node can not have a start comment.")
@@ -130,14 +140,6 @@ class GameNode(object):
     def nags(self):
         """A list of numeric annotation glyphs."""
         return self.__nags
-
-    def get_prev_moves(self, format="raw"):
-        if self.previous_node:
-            if format == "raw":
-                return self.previous_node.get_prev_moves() + [str(self.move)]
-            # else:
-            #     return self.previous_node.get_prev_moves(format=format) + [str(SanNotation(self.previous_node.position, self.move))]
-        return []
 
     def can_have_start_comment(self):
         """:return: If the node can have a start comment.
@@ -179,7 +181,7 @@ class GameNode(object):
     def __getitem__(self, key):
         if type(key) is types.IntType:
             return self.__variations[key]
-        elif type(key) is chess.Move:
+        elif type(key) is libchess.Move:
             for node in self.__variations:
                 if node.move == key:
                     return node
@@ -188,7 +190,7 @@ class GameNode(object):
             raise TypeError("Expected integer or move as key, got: %s." % key)
 
     def __delitem__(self, key):
-        if type(key) is chess.Move:
+        if type(key) is libchess.Move:
             for i, node in enumerate(self.__variations):
                 if node.move == key:
                     key = i
@@ -219,7 +221,7 @@ class GameNode(object):
         for i, node in enumerate(self.__variations):
             if node == variation or node.move == variation:
                 return i
-        raise ValueError("No such variation: %s." % repr(value))
+        raise ValueError("No such variation: %s." % repr(variation))
 
     def promote(self, variation):
         """Moves a variation one up, if possible.
@@ -240,7 +242,7 @@ class GameNode(object):
             A game node or move to demote.
         """
         i = self.index(variation)
-        if i < len(self._variations) - 1:
+        if i < len(self.__variations) - 1:
             old = self.__variations[i + 1]
             self.__variations[i + 1] = self.__variations[i]
             self.__variations[i] = old
@@ -256,8 +258,8 @@ class GameNode(object):
         del self.__variations[i]
         self.__variations.insert(0, new_mainline)
 
-    def __prepare_variation(self, variation):
-        if type(variation) is chess.Move:
+    def prepare_variation(self, variation):
+        if type(variation) is libchess.Move:
             variation = GameNode(self, variation)
         if variation.move in self:
             raise ValueError("Variation already in set: %s." % variation.move)
@@ -274,7 +276,7 @@ class GameNode(object):
         :return:
             The game node that has been added.
         """
-        variation = self.__prepare_variation(variation)
+        variation = self.prepare_variation(variation)
         self.__variations.append(variation)
         return variation
 
@@ -287,7 +289,7 @@ class GameNode(object):
         :return:
             The game node that has been added.
         """
-        variation = self.__prepare_variation(variation)
+        variation = self.prepare_variation(variation)
         self.__variations.insert(0, variation)
         return variation
 
@@ -298,3 +300,27 @@ class GameNode(object):
             The game node or move to remove.
         """
         del self.__variations[self.index(variation)]
+
+    def walk_tree(self, variation, move):
+        move += 1
+
+        for v in variation:
+            try:
+                v.is_main_variation()
+            except AttributeError:
+                print "[",
+            if move % 2 == 1:
+                print (move + 1)/2,
+            if v.__san:
+                print v.__san,
+            else:
+                print v.move
+            if v.__variations:
+                self.walk_tree(v.__variations, move)
+                try:
+                    v.is_main_variation()
+                except AttributeError:
+                    print "]",
+
+    def game_score(self):
+        self.walk_tree(self.__variations, move=0)

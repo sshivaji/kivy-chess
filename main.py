@@ -37,13 +37,14 @@ from threading import Thread
 import itertools as it
 from time import sleep
 from chess import polyglot_opening_book
-from chess.position import Position
-from chess.notation import SanNotation
-from chess.move import MoveError
-from chess.move import Move
+from chess.libchess import Position
+# from chess.libchess import SanNotation
+# from chess.libchess import MoveError
+from chess.libchess import Move
 from chess.game import Game
 from chess.game_node import GameNode
-from chess import piece
+from chess.libchess import Piece
+# from chess.libchess import PolyglotOpeningBook
 
 GAME_HEADER = 'New Game'
 
@@ -348,6 +349,7 @@ class Chess_app(App):
         self.last_touch_down_setup = None
         self.last_touch_up_setup = None
         self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin')
+        # self.book = PolyglotOpeningBook("book.bin")
 
 
         parent = BoxLayout(size_hint=(1,1))
@@ -493,7 +495,7 @@ class Chess_app(App):
             self.book_display = True
             self.update_book_panel()
         else:
-            self.chessboard = self.chessboard.add_variation(Move.from_uci(mv))
+            self.chessboard = self.chessboard.add_variation(Move.from_uci(str(mv).encode("utf-8")))
 
             # self.chessboard.addTextMove(mv)
             self.refresh_board()
@@ -623,7 +625,9 @@ class Chess_app(App):
                 except ValueError, e :
                     print "Cannot convert Mate number of moves to a int"
                     print e
-            if self.chessboard.position.fen._to_move == piece.BLACK:
+
+            # print self.chessboard.position.turn
+            if self.chessboard.position.turn == 'b':
                 if score:
                     score *= -1
         try:
@@ -783,7 +787,7 @@ class Chess_app(App):
             if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
                 self.engine_computer_move = True
             self.refresh_board()
-        except MoveError:
+        except Exception:
             pass
             # TODO: log error
 
@@ -808,17 +812,23 @@ class Chess_app(App):
 
     def update_book_panel(self):
         if self.book_display:
-            p = Position(fen=str(self.chessboard.position.fen))
+            p = Position(self.chessboard.position.fen)
+            # print p
             self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
             book_entries = 0
             for e in self.book.get_entries_for_position(p):
                 try:
-                    san = SanNotation(p, e["move"])
-                    self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (e["move"], san, e["weight"])
+                    # print e.move.san
+                    # print type(e.move.uci)
+                    pos = Position(self.chessboard.position.fen)
+                    move_info = pos.make_move(Move.from_uci(e.move.uci))
+                    san = move_info.san
+                    self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (e.move.uci, san, e.weight)
                     book_entries += 1
                     if book_entries >= 5:
                         break
-                except MoveError:
+                except Exception, e:
+                    print e
                     print "Cannot parse move"
             self.book_panel.children[0].text += '[/color]'
         else:
@@ -830,7 +840,8 @@ class Chess_app(App):
 #        if p == ".":
 #            sq.remove_piece()
         if p:
-            piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[p])
+            # print p.symbol
+            piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[p.symbol])
             sq.add_piece(piece)
         else:
             sq.remove_piece()

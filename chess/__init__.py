@@ -16,27 +16,32 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+__author__ = "Niklas Fiekas"
+__copyright__ = "Copyright 2013, Niklas Fiekas"
+__license__ = "GPL"
+__version__ = "0.0.4"
+__maintainer__ = "Niklas Fiekas"
+__email__ = "niklas.fiekas@tu-clausthal.de"
+__status__ = "Development"
+
 import inspect
 
-# Stable.
-#from chess.exceptions import FenError
-#from chess.exceptions import PgnError
-#from chess.exceptions import MoveError
-from piece import Piece
-from square import Square
-from move import Move, MoveError
-from position import Position
-from zobrist_hasher import ZobristHasher
-#from game_header_bag import GameHeaderBag
+# Import from libchess.
+from libchess import START_FEN
+from libchess import opposite_color
+from libchess import Square
+from libchess import Piece
+from libchess import Move
+from libchess import Position
+from libchess import PolyglotOpeningBookEntry
 
-from fen import Fen, FenError
-from notation import SanNotation
+# Stable.
+from chess.game_header_bag import GameHeaderBag
 
 # Design phase.
-#from polyglot_opening_book import PolyglotOpeningBook
-#from game_node import GameNode
-#from game import Game
-#from pgn_file import PgnFile, PgnError
-
+from chess.polyglot_opening_book import PolyglotOpeningBook
+from chess.game_node import GameNode
+from chess.game import Game
+from chess.pgn_file import PgnFile
 
 __all__ = [ name for name, obj in locals().items() if not inspect.ismodule(obj) ]
