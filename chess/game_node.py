@@ -135,8 +135,11 @@ class GameNode(object):
         if self.previous_node:
             if format == "raw":
                 return self.previous_node.get_prev_moves() + [str(self.move)]
-            # else:
-            #     return self.previous_node.get_prev_moves(format=format) + [str(SanNotation(self.previous_node.position, self.move))]
+            else:
+                p = self.previous_node.position
+                move_info = p.make_move(self.move)
+
+                return self.previous_node.get_prev_moves(format=format) + [move_info.san]
         return []
 
     def can_have_start_comment(self):

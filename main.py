@@ -339,7 +339,6 @@ class Chess_app(App):
         self.to_move = None
         self.chessboard = Game()
         self.setup_chessboard = Game()
-        self.analysis_board = Game()
         self.squares = []
         self.setup_board_squares = []
         self.use_engine = False
@@ -531,7 +530,9 @@ class Chess_app(App):
             for i, mv in enumerate(self.engine_score.raw):
                 if i >= 1:
                     break
-                self.chessboard = self.chessboard.add_variation(self.chessboard.add_variation(Move.from_uci(mv)))
+                p = Position(self.chessboard.position)
+                move = p.get_move_from_san(mv)
+                self.chessboard = self.chessboard.add_variation(move)
         self.refresh_board()
 
     def is_desktop(self):
@@ -632,12 +633,15 @@ class Chess_app(App):
                     score *= -1
         try:
             line_index = tokens.index('pv')
+            pos = Position(self.chessboard.position.fen)
             for mv in tokens[line_index+1:]:
-                # print mv
+
+                move_info = pos.make_move(Move.from_uci(mv))
+                san = move_info.san
                # self.analysis_board.addTextMove(mv)
                #  move = SanNotation.to_move(self.chessboard.position, mv)
                 # variation_board = self.chessboard.prepare_variation(move)
-                move_list.append(mv)
+                move_list.append(move_info.san)
         except ValueError, e:
             line_index = -1
         variation = self.generate_move_list(move_list,start_move_num=(self.chessboard.half_move_num/2)+1) if line_index!=-1 else None
@@ -787,7 +791,8 @@ class Chess_app(App):
             if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
                 self.engine_computer_move = True
             self.refresh_board()
-        except Exception:
+        except Exception, e:
+            print e
             pass
             # TODO: log error
 
@@ -857,7 +862,7 @@ class Chess_app(App):
 
 #        all_moves = self.chessboard.getAllTextMoves()
         all_moves = self.chessboard.get_prev_moves(format="san")
-
+#        print all_moves
         if all_moves:
             score = self.generate_move_list(all_moves)
             self.game_score.children[0].text="[color=000000]%s[/color]"%score
