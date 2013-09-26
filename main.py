@@ -54,7 +54,7 @@ ENGINE_PLAY_STOP = "play_stop"
 
 ENGINE_PLAY_HINT = "play_hint"
 
-YOURTURN_MENU = "[color=000000]Your turn\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint: {0}[/ref][/color]"
+YOURTURN_MENU = "[color=000000]Your turn\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint: {0}\nScore: {1} [/ref][/color]"
 
 ENGINE_ANALYSIS = "engine_analysis"
 
@@ -340,6 +340,7 @@ class Chess_app(App):
         self.chessboard = Game()
         self.chessboard_root = self.chessboard
         self.ponder_move = None
+        self.eng_eval = None
 
         self.setup_chessboard = Game()
         self.squares = []
@@ -529,7 +530,14 @@ class Chess_app(App):
             self.refresh_board()
         elif value == ENGINE_PLAY_HINT:
 #            print "engine_hint.."
-            self.engine_score.children[0].text = YOURTURN_MENU.format(self.ponder_move)
+            pos = Position(self.chessboard.position.fen)
+            # print self.ponder_move
+            if self.ponder_move:
+                move_info = pos.make_move(Move.from_uci(self.ponder_move))
+                san = move_info.san
+                self.engine_score.children[0].text = YOURTURN_MENU.format(san, self.eng_eval)
+            else:
+                self.engine_score.children[0].text = YOURTURN_MENU.format("Not available", self.eng_eval)
         else:
             for i, mv in enumerate(self.engine_score.raw):
                 if i >= 1:
@@ -600,10 +608,7 @@ class Chess_app(App):
 
         return best_move, ponder_move
 
-    def parse_score(self, line):
-        # p = Position(fen=str(self.chessboard.position.fen))
-        # analysis_board = GameNode(self.chessboard, None)
-
+    def get_score(self, line):
         tokens = line.split()
         try:
             score_index = tokens.index('score')
@@ -611,23 +616,21 @@ class Chess_app(App):
             score_index = -1
         score = None
         score_type = ""
-        move_list = []
-
         # print line
-        if score_index!=-1:
-            score_type = tokens[score_index+1]
-            if tokens[score_index+1] == "cp":
-                score = float(tokens[score_index+2])/100*1.0
+        if score_index != -1:
+            score_type = tokens[score_index + 1]
+            if tokens[score_index + 1] == "cp":
+                score = float(tokens[score_index + 2]) / 100 * 1.0
                 try:
                     score = float(score)
-                except ValueError, e :
+                except ValueError, e:
                     print "Cannot convert score to a float"
                     print e
-            elif tokens[score_index+1] == "mate":
-                score = int(tokens[score_index+2])
+            elif tokens[score_index + 1] == "mate":
+                score = int(tokens[score_index + 2])
                 try:
                     score = int(score)
-                except ValueError, e :
+                except ValueError, e:
                     print "Cannot convert Mate number of moves to a int"
                     print e
 
@@ -635,6 +638,17 @@ class Chess_app(App):
             if self.chessboard.position.turn == 'b':
                 if score:
                     score *= -1
+            if score_type == "mate":
+                score = score_type + " " + str(score)
+        return score
+
+    def parse_score(self, line):
+        # p = Position(fen=str(self.chessboard.position.fen))
+        # analysis_board = GameNode(self.chessboard, None)
+        # print line
+        score = self.get_score(line)
+        move_list = []
+        tokens = line.split()
         try:
             line_index = tokens.index('pv')
             pos = Position(self.chessboard.position.fen)
@@ -652,8 +666,6 @@ class Chess_app(App):
 
         #del analysis_board
         if variation and score is not None:
-            if score_type == "mate":
-                score = score_type + " " + str(score)
             return move_list, "[color=000000][b]%s[/b]     [i][ref=%s]Stop[/ref][/i][/color]\n[color=000000]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
         # else:
         #     print "no score/var"
@@ -669,9 +681,10 @@ class Chess_app(App):
             if self.use_engine:
                 line = self.uci_engine.getOutput()
                 if line:
+                    # print out_score
                     if self.engine_mode == ENGINE_ANALYSIS:
-                        #out_score = None
                         out_score = self.parse_score(line)
+                        #out_score = None
                         if out_score:
                             raw_line, cleaned_line = out_score
                             if cleaned_line:
@@ -681,18 +694,23 @@ class Chess_app(App):
                     elif self.engine_mode == ENGINE_PLAY:
                         if self.engine_computer_move:
                             best_move, self.ponder_move = self.parse_bestmove(line)
+                            score = self.get_score(line)
+                            if score:
+                                self.eng_eval = score
                             if best_move:
+                                # print "outscore: {0}".format(out_score)
+                                # self.eng_eval = out_score
 #                                self.chessboard.addTextMove(best_move)
                                 self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
 
                                 self.engine_computer_move = False
-                                output.children[0].text = YOURTURN_MENU.format("hidden")
+                                output.children[0].text = YOURTURN_MENU.format("hidden", "hidden")
                                 self.refresh_board()
                             else:
                                 output.children[0].text = "[color=000000]Thinking..[/color]"
                                 # sleep(1)
                         else:
-                            output.children[0].text = YOURTURN_MENU.format("hidden")
+                            output.children[0].text = YOURTURN_MENU.format("hidden", "hidden")
                             # sleep(1)
             else:
                 # if output.children[0].text != ENGINE_HEADER:
@@ -830,7 +848,7 @@ class Chess_app(App):
                     # print e.move.san
                     # print type(e.move.uci)
                     pos = Position(self.chessboard.position.fen)
-                    move_info = pos.make_move(Move.from_uci(e.move.uci))
+                    move_info = pos.make_move(e.move.uci)
                     san = move_info.san
                     self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (e.move.uci, san, e.weight)
                     book_entries += 1
