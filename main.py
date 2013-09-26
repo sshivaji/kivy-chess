@@ -338,6 +338,8 @@ class Chess_app(App):
         self.from_move = None
         self.to_move = None
         self.chessboard = Game()
+        self.chessboard_root = self.chessboard
+
         self.setup_chessboard = Game()
         self.squares = []
         self.setup_board_squares = []
@@ -861,6 +863,8 @@ class Chess_app(App):
             self.fill_chess_board(self.squares[i], squares[p])
 
 #        all_moves = self.chessboard.getAllTextMoves()
+        print self.chessboard_root.game_score()
+
         all_moves = self.chessboard.get_prev_moves(format="san")
 #        print all_moves
         if all_moves:

@@ -59,7 +59,11 @@ class GameNode(object):
         self.__previous_node = previous_node
         self.__move = move
 
+        self.__san = None
         if previous_node:
+            p = self.previous_node.position
+            move_info = p.make_move(self.move)
+            self.__san = move_info.san
             self.half_move_num = previous_node.half_move_num + 1
         else:
             self.half_move_num = 1
@@ -136,10 +140,7 @@ class GameNode(object):
             if format == "raw":
                 return self.previous_node.get_prev_moves() + [str(self.move)]
             else:
-                p = self.previous_node.position
-                move_info = p.make_move(self.move)
-
-                return self.previous_node.get_prev_moves(format=format) + [move_info.san]
+                return self.previous_node.get_prev_moves(format=format) + [self.__san]
         return []
 
     def can_have_start_comment(self):
@@ -301,3 +302,27 @@ class GameNode(object):
             The game node or move to remove.
         """
         del self.__variations[self.index(variation)]
+
+    def walk_tree(self, variation, move):
+        move += 1
+
+        for v in variation:
+            try:
+                v.is_main_variation()
+            except AttributeError:
+                print "[",
+            if move % 2 == 1:
+                print (move + 1)/2,
+            if v.__san:
+                print v.__san,
+            else:
+                print v.move
+            if v.__variations:
+                self.walk_tree(v.__variations, move)
+                try:
+                    v.is_main_variation()
+                except AttributeError:
+                    print "]",
+
+    def game_score(self):
+        self.walk_tree(self.__variations, move=0)
