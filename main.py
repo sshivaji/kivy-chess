@@ -848,7 +848,7 @@ class Chess_app(App):
                     # print e.move.san
                     # print type(e.move.uci)
                     pos = Position(self.chessboard.position.fen)
-                    move_info = pos.make_move(e.move.uci)
+                    move_info = pos.make_move(Move.from_uci(e.move.uci))
                     san = move_info.san
                     self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (e.move.uci, san, e.weight)
                     book_entries += 1
