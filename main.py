@@ -662,7 +662,7 @@ class Chess_app(App):
                 move_list.append(move_info.san)
         except ValueError, e:
             line_index = -1
-        variation = self.generate_move_list(move_list,start_move_num=(self.chessboard.half_move_num/2)+1) if line_index!=-1 else None
+        variation = self.generate_move_list(move_list,start_move_num=self.chessboard.half_move_num) if line_index!=-1 else None
 
         #del analysis_board
         if variation and score is not None:
