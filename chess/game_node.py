@@ -55,16 +55,15 @@ class GameNode(object):
     """
 
     def __init__(self, previous_node, move, nags=[], comment="",
-                 start_comment="", custom_pos = None):
+                 start_comment=""):
         self.__previous_node = previous_node
         self.__move = move
 
         self.__san = None
 
-
         if previous_node:
             p = self.previous_node.position
-            move_info = p.make_move(self.move)
+            move_info = p.make_move(move)
             self.__san = move_info.san
             self.half_move_num = previous_node.half_move_num + 1
         else:
@@ -73,10 +72,6 @@ class GameNode(object):
             self.__position = chess.Position(previous_node.position)
             self.__position.make_move(move)
 
-        if custom_pos:
-            p = chess.Position(custom_pos)
-#            p.set_fen(custom_fen)
-            self.__position = p
         self.__nags = nags
         self.comment = comment
         self.start_comment = start_comment

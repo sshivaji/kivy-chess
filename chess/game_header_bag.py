@@ -113,7 +113,7 @@ class GameHeaderBag(collections.MutableMapping):
         "Annotator", "PlyCount", "TimeControl", "Time", "Termination", "Mode",
         "FEN", "SetUp"]
 
-    def __init__(self, game=None):
+    def __init__(self, game=None, fen=None):
         self.__game = game
         self.__headers = {
             "Event": "?",
@@ -124,6 +124,16 @@ class GameHeaderBag(collections.MutableMapping):
             "Black": "?",
             "Result": "*",
         }
+        if fen:
+            self.__headers["FEN"] = fen
+
+    @property
+    def headers(self):
+        return self.__headers
+
+    @property
+    def game(self):
+        return self.__game
 
     def __normalize_key(self, key):
         if not isinstance(key, basestring):
@@ -223,10 +233,9 @@ class GameHeaderBag(collections.MutableMapping):
                 if "FEN" in self and self["FEN"] == value:
                     return
 
-            if self.__game and self.__game.ply > 0:
+            if self.__game and self.__game.half_move_num > 1:
                 raise ValueError(
                     "FEN header can not be set, when there are already moves.")
-
             if value == chess.START_FEN:
                 del self["FEN"]
                 del self["SetUp"]

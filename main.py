@@ -45,6 +45,7 @@ from chess.game import Game
 from chess.game_node import GameNode
 from chess.libchess import Piece
 from chess.libchess import Square
+from chess.game_header_bag import GameHeaderBag
 # from chess.libchess import PolyglotOpeningBook
 
 GAME_HEADER = 'New Game'
@@ -456,9 +457,10 @@ class Chess_app(App):
                 self.refresh_board()
                 self.root.current = 'main'
             else:
-                self.chessboard=Game(custom_pos=self.setup_chessboard)
-#                print self.chessboard.position
-#                self.chessboard.position=self.setup_chessboard
+                g = Game()
+                bag = GameHeaderBag(game=g, fen=fen)
+                g.set_headers(bag)
+                self.chessboard = g
 
                 self.start_pos_changed = True
                 self.custom_fen = fen

@@ -21,8 +21,8 @@ import re
 
 class Game(chess.GameNode):
     """The root node of a game."""
-    def __init__(self, start_comment="", headers=None, custom_pos = None):
-        chess.GameNode.__init__(self, None, None, (), start_comment, custom_pos=custom_pos)
+    def __init__(self, start_comment="", headers=None):
+        chess.GameNode.__init__(self, None, None, (), start_comment)
 
         if headers is None:
             self.__headers = chess.GameHeaderBag(self)
@@ -30,6 +30,10 @@ class Game(chess.GameNode):
             if not headers.game == self:
                 raise ValueError("Header bag assigned to a different game.")
             self.__headers = headers
+            # print headers.__headers
+
+    def set_headers(self, headers):
+        self.__headers = headers
 
     @property
     def headers(self):
@@ -39,7 +43,7 @@ class Game(chess.GameNode):
     @property
     def position(self):
         """A copy of the initial position of the game."""
-        if "FEN" in self.__headers:
-            return chess.Position(self.__headers["FEN"])
+        if "FEN" in self.headers:
+            return chess.Position(self.headers["FEN"])
         else:
             return chess.Position()
