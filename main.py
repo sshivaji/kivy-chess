@@ -44,6 +44,7 @@ from chess.libchess import Move
 from chess.game import Game
 from chess.game_node import GameNode
 from chess.libchess import Piece
+from chess.libchess import Square
 # from chess.libchess import PolyglotOpeningBook
 
 GAME_HEADER = 'New Game'
@@ -342,7 +343,9 @@ class Chess_app(App):
         self.ponder_move = None
         self.eng_eval = None
 
-        self.setup_chessboard = Game()
+        self.setup_chessboard = Position()
+        self.setup_chessboard.clear_board()
+
         self.squares = []
         self.setup_board_squares = []
         self.use_engine = False
@@ -420,32 +423,43 @@ class Chess_app(App):
         def setup_board_change_tomove(value):
             if value.state=="normal":
                 # print "black to move"
-                self.setup_chessboard._turn = self.setup_chessboard.BLACK
+                self.setup_chessboard.set_turn('b')
             else:
                 # print "white to move"
-                self.setup_chessboard._turn = self.setup_chessboard.WHITE
+                self.setup_chessboard.set_turn('w')
 
         def render_setup_board(bt):
             if bt.text == "Clear":
-                self.setup_chessboard.clearBoard()
+                self.setup_chessboard.clear_board()
+#                clearBoard()
             else:
-                self.setup_chessboard.setInitialBoard()
-            squares = [item for sublist in self.setup_chessboard.getBoard() for item in sublist]
-            for i, p in enumerate(squares):
-                self.fill_chess_board(self.setup_board_squares[i], p)
+                self.setup_chessboard.reset()
+#            squares = [item for sublist in self.setup_chessboard.getBoard() for item in sublist]
+#            for i, p in enumerate(squares):
+#                self.fill_chess_board(self.setup_board_squares[i], p)
+
+            for i, p in enumerate(SQUARES):
+                self.fill_chess_board(self.setup_board_squares[i], self.setup_chessboard[p])
 
         def validate_setup_board(value):
             # print "validating setup board.."
-            self.setup_chessboard.resetBoard(change_turn=False, castle=False)
+#            self.setup_chessboard.resetBoard(change_turn=False, castle=False)
             # self.setup_chessboard.printBoard()
-            fen = self.setup_chessboard.getFEN()
+            fen = str(self.setup_chessboard.fen)
+#            print self.setup_chessboard.__repr__
+#            print "custom fen: {0}".format(fen)
+
             if fen == INITIAL_BOARD_FEN:
                 # print "new game.."
-                self.chessboard.setInitialBoard()
-                self.chessboard.resetBoard()
+                self.chessboard = Game()
+#                self.chessboard.resetBoard()
                 self.refresh_board()
                 self.root.current = 'main'
-            elif self.chessboard.setFEN(fen):
+            else:
+                self.chessboard=Game(custom_pos=self.setup_chessboard)
+#                print self.chessboard.position
+#                self.chessboard.position=self.setup_chessboard
+
                 self.start_pos_changed = True
                 self.custom_fen = fen
 
@@ -552,10 +566,10 @@ class Chess_app(App):
 #        print platform
         return True if platform.startswith('win') or platform.startswith('linux') or platform.startswith('mac') else False
 
-
     def back(self, obj):
-        self.chessboard.undo()
-        self.refresh_board()
+        if self.chessboard.previous_node:
+            self.chessboard = self.chessboard.previous_node
+            self.refresh_board()
 
     def _keyboard_closed(self):
 #        print 'My keyboard have been closed!'
@@ -737,8 +751,12 @@ class Chess_app(App):
 
 
     def fwd(self, obj):
-        self.chessboard.redo()
-        self.refresh_board()
+        try:
+            self.chessboard = self.chessboard.variations[0]
+            self.refresh_board()
+        except IndexError:
+            pass
+            # TODO: log error if in debug mode
 
     def save(self, obj):
         f = open('game.pgn','w')
@@ -770,31 +788,27 @@ class Chess_app(App):
             return
         self.last_touch_up_setup = img.name
         if self.last_touch_up_setup and self.last_touch_down_setup and self.last_touch_up_setup != self.last_touch_down_setup:
-            # print "touch_down_setup:"
-            # print self.last_touch_down_setup
-            # print len(self.last_touch_down_setup)
-            # print "touch_up_setup:"
-            # print self.last_touch_up_setup
+#            print "touch_down_setup:"
+#            print self.last_touch_down_setup
+#            # print len(self.last_touch_down_setup)
+#            print "touch_up_setup:"
+#            print self.last_touch_up_setup
             # print len(self.last_touch_up_setup)
             if len(self.last_touch_down_setup)==1 and len(self.last_touch_up_setup)==2:
-                index = SQUARES.index(self.last_touch_up_setup)
-                self.setup_chessboard._board[index//8][index%8]= self.last_touch_down_setup
-                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.last_touch_down_setup)
+                sq = Square(self.last_touch_up_setup)
+                self.setup_chessboard[sq] = Piece(self.last_touch_down_setup)
+                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.setup_chessboard[self.last_touch_up_setup])
+
             elif len(self.last_touch_down_setup)==2 and len(self.last_touch_up_setup)==1:
-                index = SQUARES.index(self.last_touch_down_setup)
-                self.setup_chessboard._board[index//8][index%8]= '.'
-                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], '.')
+                del self.setup_chessboard[self.last_touch_down_setup]
+                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], self.setup_chessboard[self.last_touch_down_setup])
+
             elif len(self.last_touch_down_setup)==2 and len(self.last_touch_up_setup)==2:
-                from_index = SQUARES.index(self.last_touch_down_setup)
-                to_index = SQUARES.index(self.last_touch_up_setup)
-
-                from_piece = self.setup_chessboard._board[from_index//8][from_index%8]
-                self.setup_chessboard._board[to_index//8][to_index%8] = self.setup_chessboard._board[from_index//8][from_index%8]
-                self.setup_chessboard._board[from_index//8][from_index%8] = '.'
-                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], '.')
-                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], from_piece)
-                # self.setup_chessboard.printBoard()
-
+                sq = Square(self.last_touch_up_setup)
+                self.setup_chessboard[sq] = self.setup_chessboard[Square(self.last_touch_down_setup)]
+                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.setup_chessboard[self.last_touch_up_setup])
+                del self.setup_chessboard[self.last_touch_down_setup]
+                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], self.setup_chessboard[self.last_touch_down_setup])
 
     def touch_up_move(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
