@@ -424,10 +424,10 @@ class Chess_app(App):
         def setup_board_change_tomove(value):
             if value.state=="normal":
                 # print "black to move"
-                self.setup_chessboard.set_turn('b')
+                self.setup_chessboard.turn = 'b'
             else:
                 # print "white to move"
-                self.setup_chessboard.set_turn('w')
+                self.setup_chessboard.turn = 'w'
 
         def render_setup_board(bt):
             if bt.text == "Clear":
@@ -443,12 +443,10 @@ class Chess_app(App):
                 self.fill_chess_board(self.setup_board_squares[i], self.setup_chessboard[p])
 
         def validate_setup_board(value):
-            # print "validating setup board.."
-#            self.setup_chessboard.resetBoard(change_turn=False, castle=False)
-            # self.setup_chessboard.printBoard()
+
             fen = str(self.setup_chessboard.fen)
-#            print self.setup_chessboard.__repr__
-#            print "custom fen: {0}".format(fen)
+            # TODO: Support fen positions where castling is possible!
+            fen = fen.replace("KQkq", "-")
 
             if fen == INITIAL_BOARD_FEN:
                 # print "new game.."
