@@ -445,9 +445,33 @@ class Chess_app(App):
         def validate_setup_board(value):
 
             fen = str(self.setup_chessboard.fen)
-            # TODO: Support fen positions where castling is possible!
-            fen = fen.replace("KQkq", "-")
+            can_castle = False
+            castling_fen = ''
+#            print self.setup_chessboard[Square("e1")]
+#            print self.setup_chessboard[Square("a1")]
 
+            if self.setup_chessboard[Square("e1")]=="K" and self.setup_chessboard[Square("h1")]=="R":
+                can_castle = True
+                castling_fen+='K'
+
+            if self.setup_chessboard[Square("e1")]=="K" and self.setup_chessboard[Square("a1")]=="R":
+                can_castle = True
+                castling_fen+='Q'
+
+            if self.setup_chessboard[Square("e8")]=="k" and self.setup_chessboard[Square("h8")]=="r":
+                can_castle = True
+                castling_fen+='k'
+
+            if self.setup_chessboard[Square("e8")]=="k" and self.setup_chessboard[Square("a8")]=="r":
+                can_castle = True
+                castling_fen+='q'
+
+            if not can_castle:
+                castling_fen = '-'
+
+                # TODO: Support fen positions where castling is not possible even if king and rook are on right squares
+            fen = fen.replace("KQkq", castling_fen)
+            print fen
             if fen == INITIAL_BOARD_FEN:
                 # print "new game.."
                 self.chessboard = Game()
