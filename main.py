@@ -1,4 +1,5 @@
 import kivy
+import sys
 from kivy_util import ScrollableLabel
 from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
@@ -46,7 +47,9 @@ from chess.game_node import GameNode
 from chess.libchess import Piece
 from chess.libchess import Square
 from chess.game_header_bag import GameHeaderBag
-# from chess.libchess import PolyglotOpeningBook
+
+# DGT
+from dgt.dgtnix import *
 
 GAME_HEADER = 'New Game'
 
@@ -212,6 +215,9 @@ class ChessSquare(Button):
 class Chess_app(App):
     def generate_settings(self):
 
+        def go_to_setup_board(value):
+            self.root.current = 'setup_board'
+
         settings_panel = Settings() #create instance of Settings
 
 #        def add_one_panel(from_instance):
@@ -222,14 +228,35 @@ class Chess_app(App):
 
         engine_panel = SettingsPanel(title="Engine") #create instance of left side panel
         board_panel = SettingsPanel(title="Board") #create instance of left side panel
-
         setup_pos_item = SettingItem(panel=board_panel, title="Input FEN") #create instance of one item in left side panel
-
-        def go_to_setup_board(value):
-            self.root.current = 'setup_board'
-
         setup_board_item = SettingItem(panel=board_panel, title="Setup Board") #create instance of one item in left side panel
         setup_board_item.bind(on_release=go_to_setup_board)
+
+        dgt_panel = SettingsPanel(title="DGT")
+        setup_dgt_item = SettingItem(panel=dgt_panel, title="Input DGT Device (/dev/..)") #create instance of one item in left side panel
+        self.dgt_dev_input = TextInput(text="/dev/cu.usbserial-00004006", focus=True, multiline=False, use_bubble = True)
+
+        def on_dgt_dev_input(instance):
+            print instance.text
+            ##            print 'The widget', instance.text
+        #
+        self.dgt_dev_input.bind(on_text_validate=on_dgt_dev_input)
+
+        setup_dgt_item.add_widget(self.dgt_dev_input)
+
+        dgt_panel.add_widget(setup_dgt_item)
+        connect_dgt_item = SettingItem(panel=dgt_panel, title="Connect") #create instance of one item in left side panel
+
+        def on_dgt_connect(instance):
+            print "bind"
+            print self.dgt_dev_input.text
+
+        connect_dgt_item.bind(on_press=on_dgt_connect)
+
+        dgt_panel.add_widget(connect_dgt_item)
+
+
+
 
         fen_input = TextInput(text="", focus=True, multiline=False, use_bubble = True)
 #        print Clipboard['application/data']
@@ -254,6 +281,8 @@ class Chess_app(App):
         engine_panel.add_widget(level_item) # add item2 to left side panel
 
         settings_panel.add_widget(board_panel)
+        settings_panel.add_widget(dgt_panel)
+
         settings_panel.add_widget(engine_panel) #add left side panel itself to the settings menu
 
         def go_back():
@@ -357,6 +386,13 @@ class Chess_app(App):
         self.last_touch_up_setup = None
         self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin')
         # self.book = PolyglotOpeningBook("book.bin")
+
+        self.dgtnix = None
+        # Load the library
+        try:
+            self.dgtnix = dgtnix("dgt/libdgtnix.so")
+        except DgtnixError, e:
+            print "unable to load the library : %s " % e
 
 
         parent = BoxLayout(size_hint=(1,1))
