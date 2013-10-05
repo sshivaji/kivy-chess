@@ -483,31 +483,28 @@ class Chess_app(App):
             fen = str(self.setup_chessboard.fen)
             can_castle = False
             castling_fen = ''
-#            print self.setup_chessboard[Square("e1")]
-#            print self.setup_chessboard[Square("a1")]
 
-            if self.setup_chessboard[Square("e1")]=="K" and self.setup_chessboard[Square("h1")]=="R":
+            if self.setup_chessboard[Square("e1")]==Piece("K") and self.setup_chessboard[Square("h1")]==Piece("R"):
                 can_castle = True
                 castling_fen+='K'
 
-            if self.setup_chessboard[Square("e1")]=="K" and self.setup_chessboard[Square("a1")]=="R":
+            if self.setup_chessboard[Square("e1")]==Piece("K") and self.setup_chessboard[Square("a1")]==Piece("R"):
                 can_castle = True
                 castling_fen+='Q'
 
-            if self.setup_chessboard[Square("e8")]=="k" and self.setup_chessboard[Square("h8")]=="r":
+            if self.setup_chessboard[Square("e8")]==Piece("k") and self.setup_chessboard[Square("h8")]==Piece("r"):
                 can_castle = True
                 castling_fen+='k'
 
-            if self.setup_chessboard[Square("e8")]=="k" and self.setup_chessboard[Square("a8")]=="r":
+            if self.setup_chessboard[Square("e8")]==Piece("k") and self.setup_chessboard[Square("a8")]==Piece("r"):
                 can_castle = True
                 castling_fen+='q'
 
             if not can_castle:
                 castling_fen = '-'
 
-                # TODO: Support fen positions where castling is not possible even if king and rook are on right squares
+            # TODO: Support fen positions where castling is not possible even if king and rook are on right squares
             fen = fen.replace("KQkq", castling_fen)
-            print fen
             if fen == INITIAL_BOARD_FEN:
                 # print "new game.."
                 self.chessboard = Game()
