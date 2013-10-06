@@ -54,6 +54,8 @@ from chess.game_header_bag import GameHeaderBag
 from dgt.dgtnix import *
 import os
 
+Clock.max_iteration = 20
+
 GAME_HEADER = 'New Game'
 
 ENGINE_PLAY = "engine_play"
@@ -236,10 +238,31 @@ class Chess_app(App):
             self.validate_device(text)
 
         def on_dgt_connect(instance, value):
-            print "bind"
-            print instance
-            print value
-            print self.dgt_dev_input.text
+        #            print "bind"
+        #            print instance
+        #            print value
+        #            print self.dgt_dev_input.text
+        # Load the library
+            if not value:
+                if self.dgtnix:
+                    self.dgtnix.Close()
+                self.dgt_connected = False
+
+            else:
+                try:
+                    self.dgtnix = dgtnix("dgt/libdgtnix.so")
+                    self.dgtnix.SetOption(dgtnix.DGTNIX_DEBUG, dgtnix.DGTNIX_DEBUG_ON)
+                    # Initialize the driver with port argv[1]
+                    result=self.dgtnix.Init(self.dgt_dev_input.text)
+                    if result < 0:
+                        print "Unable to connect to the device on {0}".format(self.dgt_dev_input.text)
+                    else:
+                        print "The board was found"
+                        self.dgtnix.update()
+                        self.dgt_connected = True
+                except DgtnixError, e:
+                    print "unable to load the library : %s " % e
+
 
         settings_panel = Settings() #create instance of Settings
 
@@ -369,6 +392,17 @@ class Chess_app(App):
 
         return grid
 
+    def dgt_probe(self, *args):
+        if self.dgt_connected and self.dgtnix:
+            new_dgt_fen = self.dgtnix.GetFen('w')
+            if self.dgt_fen:
+                if new_dgt_fen!=self.dgt_fen:
+                    self.dgt_fen = new_dgt_fen
+                    print new_dgt_fen
+            else:
+                self.dgt_fen = new_dgt_fen
+                print new_dgt_fen
+
     def build(self):
         self.custom_fen = None
         self.start_pos_changed = False
@@ -395,14 +429,11 @@ class Chess_app(App):
         self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin')
         # self.book = PolyglotOpeningBook("book.bin")
 
+        self.dgt_connected = False
         self.dgtnix = None
-        # Load the library
-        try:
-            self.dgtnix = dgtnix("dgt/libdgtnix.so")
-        except DgtnixError, e:
-            print "unable to load the library : %s " % e
+        self.dgt_fen = None
 
-
+        Clock.schedule_interval(self.dgt_probe, 1)
         parent = BoxLayout(size_hint=(1,1))
         grid = self.create_chess_board(self.squares)
 
