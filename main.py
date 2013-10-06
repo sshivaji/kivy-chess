@@ -28,6 +28,8 @@ from kivy.config import ConfigParser
 from kivy.uix.scatter import Scatter
 from kivy.utils import get_color_from_hex
 from kivy.uix.togglebutton import ToggleButton
+from kivy.uix.popup import Popup
+from kivy.uix.switch import Switch
 #from kivy.core.clipboard import Clipboard
 
 #from ChessBoard import ChessBoard
@@ -50,6 +52,7 @@ from chess.game_header_bag import GameHeaderBag
 
 # DGT
 from dgt.dgtnix import *
+import os
 
 GAME_HEADER = 'New Game'
 
@@ -213,18 +216,32 @@ class ChessSquare(Button):
 
 
 class Chess_app(App):
+    def validate_device(self, text):
+        if not os.path.exists(text):
+            popup = Popup(title='Sorry, DGT Device NOT found!',
+                content=Label(text="DGT device {0} was NOT found".format(text)),
+                size_hint=(None, None), size=(400, 400))
+            popup.open()
+            return False
+        return True
+
     def generate_settings(self):
 
         def go_to_setup_board(value):
             self.root.current = 'setup_board'
 
-        settings_panel = Settings() #create instance of Settings
+        def on_dgt_dev_input(instance):
+#            print instance.text
+            text = self.dgt_dev_input.text
+            self.validate_device(text)
 
-#        def add_one_panel(from_instance):
-#            panel = SettingsPanel(title="I like trains", settings=self)
-#            panel.add_widget(AsyncImage(source="http://i3.kym-cdn.com/entries/icons/original/000/004/795/I-LIKE-TRAINS.jpg"))
-#            settings_panel.add_widget(panel)
-#            print "Hello World from ", from_instance
+        def on_dgt_connect(instance, value):
+            print "bind"
+            print instance
+            print value
+            print self.dgt_dev_input.text
+
+        settings_panel = Settings() #create instance of Settings
 
         engine_panel = SettingsPanel(title="Engine") #create instance of left side panel
         board_panel = SettingsPanel(title="Board") #create instance of left side panel
@@ -234,29 +251,20 @@ class Chess_app(App):
 
         dgt_panel = SettingsPanel(title="DGT")
         setup_dgt_item = SettingItem(panel=dgt_panel, title="Input DGT Device (/dev/..)") #create instance of one item in left side panel
+#        setup_dgt_item.bind(on_release=on_dgt_dev_input)
         self.dgt_dev_input = TextInput(text="/dev/cu.usbserial-00004006", focus=True, multiline=False, use_bubble = True)
-
-        def on_dgt_dev_input(instance):
-            print instance.text
-            ##            print 'The widget', instance.text
-        #
         self.dgt_dev_input.bind(on_text_validate=on_dgt_dev_input)
 
         setup_dgt_item.add_widget(self.dgt_dev_input)
+#        setup_dgt_item.add_widget(connect_dgt_bt)
+        dgt_switch = Switch()
+        dgt_switch.bind(active=on_dgt_connect)
+
+        connect_dgt_item = SettingItem(panel=dgt_panel, title="Status") #create instance of one item in left side panel
+        connect_dgt_item.add_widget(dgt_switch)
 
         dgt_panel.add_widget(setup_dgt_item)
-        connect_dgt_item = SettingItem(panel=dgt_panel, title="Connect") #create instance of one item in left side panel
-
-        def on_dgt_connect(instance):
-            print "bind"
-            print self.dgt_dev_input.text
-
-        connect_dgt_item.bind(on_press=on_dgt_connect)
-
         dgt_panel.add_widget(connect_dgt_item)
-
-
-
 
         fen_input = TextInput(text="", focus=True, multiline=False, use_bubble = True)
 #        print Clipboard['application/data']
