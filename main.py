@@ -392,16 +392,39 @@ class Chess_app(App):
 
         return grid
 
+    def try_dgt_legal_moves(self, from_fen, to_fen):
+        dgt_first_tok = to_fen.split()[0]
+        for m in Position(from_fen).get_legal_moves():
+            pos = Position(from_fen)
+            mi = pos.make_move(m)
+            cur_first_tok = str(pos).split()[0]
+            if cur_first_tok == dgt_first_tok:
+                self.dgt_fen = to_fen
+                self.process_move(move=str(m))
+
+                return True
+
     def dgt_probe(self, *args):
         if self.dgt_connected and self.dgtnix:
-            new_dgt_fen = self.dgtnix.GetFen('w')
-            if self.dgt_fen:
+            new_dgt_fen = self.dgtnix.GetFen()
+#            print "length of new dgt fen: {0}".format(len(new_dgt_fen))
+#            print "new_dgt_fen just obtained: {0}".format(new_dgt_fen)
+            if self.dgt_fen and new_dgt_fen:
                 if new_dgt_fen!=self.dgt_fen:
-                    self.dgt_fen = new_dgt_fen
-                    print new_dgt_fen
-            else:
+                    if not self.try_dgt_legal_moves(self.chessboard.position.fen, new_dgt_fen):
+                        if self.chessboard.previous_node:
+#                            print new_dgt_fen
+#                            print self.chessboard.previous_node.position.fen
+                            dgt_fen_start = new_dgt_fen.split()[0]
+                            prev_fen_start = self.chessboard.previous_node.position.fen.split()[0]
+                            if dgt_fen_start == prev_fen_start:
+                                self.back('dgt')
+
+            elif new_dgt_fen:
+#                print "fen before write: {0}".format(self.dgt_fen)
                 self.dgt_fen = new_dgt_fen
-                print new_dgt_fen
+#                print "writing fen for first time"
+#                print new_dgt_fen
 
     def build(self):
         self.custom_fen = None
@@ -508,6 +531,12 @@ class Chess_app(App):
             if bt.text == "Clear":
                 self.setup_chessboard.clear_board()
 #                clearBoard()
+            elif bt.text == "DGT":
+                if self.dgt_fen:
+                    fen = self.dgt_fen.split()[0]
+                    fen+=" w KQkq - 0 1"
+                    self.setup_chessboard = Position(fen)
+
             else:
                 self.setup_chessboard.reset()
 #            squares = [item for sublist in self.setup_chessboard.getBoard() for item in sublist]
@@ -570,6 +599,9 @@ class Chess_app(App):
 
         initial = Button(text="Initial", on_press=render_setup_board)
         setup_widget.add_widget(initial)
+
+        dgt = Button(text="DGT", on_press=render_setup_board)
+        setup_widget.add_widget(dgt)
 
         validate = Button(text="OK", on_press=validate_setup_board)
         setup_widget.add_widget(validate)
@@ -655,6 +687,7 @@ class Chess_app(App):
                 p = Position(self.chessboard.position)
                 move = p.get_move_from_san(mv)
                 self.chessboard = self.chessboard.add_variation(move)
+
         self.refresh_board()
 
     def is_desktop(self):
@@ -759,13 +792,13 @@ class Chess_app(App):
         score = self.get_score(line)
         move_list = []
         tokens = line.split()
+        first_mv = None
         try:
             line_index = tokens.index('pv')
             pos = Position(self.chessboard.position.fen)
+            first_mv = tokens[line_index+1]
             for mv in tokens[line_index+1:]:
-
                 move_info = pos.make_move(Move.from_uci(mv))
-                san = move_info.san
                # self.analysis_board.addTextMove(mv)
                #  move = SanNotation.to_move(self.chessboard.position, mv)
                 # variation_board = self.chessboard.prepare_variation(move)
@@ -776,7 +809,7 @@ class Chess_app(App):
 
         #del analysis_board
         if variation and score is not None:
-            return move_list, "[color=000000][b]%s[/b]     [i][ref=%s]Stop[/ref][/i][/color]\n[color=000000]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
+            return first_mv, move_list, "[color=000000][b]%s[/b]     [i][ref=%s]Stop[/ref][/i][/color]\n[color=000000]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
         # else:
         #     print "no score/var"
         #     print variation
@@ -796,7 +829,20 @@ class Chess_app(App):
                         out_score = self.parse_score(line)
                         #out_score = None
                         if out_score:
-                            raw_line, cleaned_line = out_score
+                            first_mv, raw_line, cleaned_line = out_score
+
+                            if self.dgt_connected and self.dgtnix:
+                                # Display score on the DGT clock
+                                score = str(self.get_score(line))
+                                if score.startswith("mate"):
+                                    score = score[4:]
+                                    score = "m "+score
+                                score = score.replace("-", "n")
+                                self.dgtnix.SendToClock(self.format_str_for_dgt(score), False, True)
+                                if first_mv:
+                                    sleep(1)
+                                    self.dgtnix.SendToClock(self.format_move_for_dgt(first_mv), False, False)
+
                             if cleaned_line:
                                 output.children[0].text = cleaned_line
                             if raw_line:
@@ -812,6 +858,9 @@ class Chess_app(App):
                                 # self.eng_eval = out_score
 #                                self.chessboard.addTextMove(best_move)
                                 self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
+                                if self.dgt_connected and self.dgtnix:
+                                    # Print engine move on DGT XL clock
+                                    self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), False, False)
 
                                 self.engine_computer_move = False
                                 output.children[0].text = YOURTURN_MENU.format("hidden", "hidden")
@@ -826,6 +875,19 @@ class Chess_app(App):
                 # if output.children[0].text != ENGINE_HEADER:
                 output.children[0].text = ENGINE_HEADER
                 sleep(1)
+
+    def format_str_for_dgt(self, s):
+        while len(s)>6:
+            s = s[:-1]
+        while len(s) < 6:
+            s = " " + s
+        return s
+
+    def format_move_for_dgt(self, s):
+        mod_s = s[:2]+' '+s[2:]
+        if len(mod_s)<6:
+            mod_s+=" "
+        return mod_s
 
     def _on_keyboard_down(self, keyboard, keycode, text, modifiers):
         if self.root.current != "main":
@@ -916,10 +978,12 @@ class Chess_app(App):
         if self.last_touch_up_move and self.last_touch_down_move and self.last_touch_up_move != self.last_touch_down_move:
             self.process_move()
 
-    def process_move(self):
+    def process_move(self, move = None):
 #        if self.chessboard.addTextMove(self.last_touch_down_move+self.last_touch_up_move):
         try:
-            self.chessboard = self.chessboard.add_variation(Move.from_uci(self.last_touch_down_move+self.last_touch_up_move))
+            if not move:
+                move = self.last_touch_down_move+self.last_touch_up_move
+            self.chessboard = self.chessboard.add_variation(Move.from_uci(move))
             if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
                 self.engine_computer_move = True
             self.refresh_board()
