@@ -534,7 +534,7 @@ class Chess_app(App):
             elif bt.text == "DGT":
                 if self.dgt_fen:
                     fen = self.dgt_fen.split()[0]
-                    fen+=" w KQkq - 0 1"
+                    fen+=" {0} KQkq - 0 1".format(self.setup_chessboard.turn)
                     self.setup_chessboard = Position(fen)
 
             else:
@@ -983,7 +983,12 @@ class Chess_app(App):
         try:
             if not move:
                 move = self.last_touch_down_move+self.last_touch_up_move
-            self.chessboard = self.chessboard.add_variation(Move.from_uci(move))
+            try:
+                self.chessboard = self.chessboard.add_variation(Move.from_uci(move))
+            except ValueError:
+                for v in self.chessboard.variations:
+                    if str(v.move) == move:
+                        self.chessboard = v
             if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
                 self.engine_computer_move = True
             self.refresh_board()
