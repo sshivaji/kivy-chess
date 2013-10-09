@@ -53,6 +53,7 @@ from chess.game_header_bag import GameHeaderBag
 # DGT
 from dgt.dgtnix import *
 import os
+import datetime
 
 Clock.max_iteration = 20
 
@@ -431,6 +432,12 @@ class Chess_app(App):
         self.start_pos_changed = False
         self.engine_mode = None
         self.engine_computer_move = True
+        self.engine_comp_color = 'b'
+        self.time_white = 0
+        self.time_inc_white = 0
+        self.time_black = 0
+        self.time_inc_black = 0
+
         self.from_move = None
         self.to_move = None
         self.chessboard = Game()
@@ -650,6 +657,16 @@ class Chess_app(App):
         if self.uci_engine:
             self.uci_engine.stop()
 
+    def reset_clocks(self):
+        self.time_white = 60
+        self.time_inc_white = 3
+        self.time_black = 420
+        self.time_inc_black = 8
+        if self.engine_comp_color == 'b':
+            # Swap time allotments if comp is black (comp gets less time)
+            self.time_white, self.time_black = self.time_black, self.time_white
+            self.time_inc_white, self.time_inc_black = self.time_inc_black, self.time_inc_white
+
     def add_eng_moves(self, instance, value):
 #        print "value:"
 #        print value
@@ -664,7 +681,8 @@ class Chess_app(App):
                 self.engine_mode = value
                 if value == ENGINE_PLAY:
                     self.engine_computer_move = True
-
+                    self.engine_comp_color = self.chessboard.position.turn
+                    self.reset_clocks()
             self.refresh_board()
         elif value == ENGINE_PLAY_STOP:
 #            self.stop_engine()
@@ -854,10 +872,8 @@ class Chess_app(App):
                             if score:
                                 self.eng_eval = score
                             if best_move:
-                                # print "outscore: {0}".format(out_score)
-                                # self.eng_eval = out_score
-#                                self.chessboard.addTextMove(best_move)
-                                self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
+                                self.add_try_variation(best_move)
+                                # self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
                                 if self.dgt_connected and self.dgtnix:
                                     # Print engine move on DGT XL clock
                                     self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), False, False)
@@ -978,17 +994,20 @@ class Chess_app(App):
         if self.last_touch_up_move and self.last_touch_down_move and self.last_touch_up_move != self.last_touch_down_move:
             self.process_move()
 
+    def add_try_variation(self, move):
+        try:
+            self.chessboard = self.chessboard.add_variation(Move.from_uci(move))
+        except ValueError:
+            for v in self.chessboard.variations:
+                if str(v.move) == move:
+                    self.chessboard = v
+
     def process_move(self, move = None):
 #        if self.chessboard.addTextMove(self.last_touch_down_move+self.last_touch_up_move):
         try:
             if not move:
                 move = self.last_touch_down_move+self.last_touch_up_move
-            try:
-                self.chessboard = self.chessboard.add_variation(Move.from_uci(move))
-            except ValueError:
-                for v in self.chessboard.variations:
-                    if str(v.move) == move:
-                        self.chessboard = v
+            self.add_try_variation(move)
             if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
                 self.engine_computer_move = True
             self.refresh_board()
