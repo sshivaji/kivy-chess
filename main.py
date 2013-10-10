@@ -65,7 +65,7 @@ ENGINE_PLAY_STOP = "play_stop"
 
 ENGINE_PLAY_HINT = "play_hint"
 
-YOURTURN_MENU = "[color=000000]Your turn\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint: {0}\nScore: {1} [/ref][/color]"
+YOURTURN_MENU = "[color=000000][size=16][i]{2}[/i]    [b]{3}[/b][/size]\nYour turn\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint: {0}\nScore: {1} [/ref][/color]"
 
 ENGINE_ANALYSIS = "engine_analysis"
 
@@ -433,6 +433,7 @@ class Chess_app(App):
         self.engine_mode = None
         self.engine_computer_move = True
         self.engine_comp_color = 'b'
+        self.time_last = None
         self.time_white = 0
         self.time_inc_white = 0
         self.time_black = 0
@@ -657,7 +658,23 @@ class Chess_app(App):
         if self.uci_engine:
             self.uci_engine.stop()
 
+    def reset_clock_update(self):
+        self.time_last = datetime.datetime.now()
+
+    def update_time(self, color='w'):
+        current = datetime.datetime.now()
+        seconds_elapsed = (current - self.time_last).total_seconds()
+#        print "seconds_elapsed:{0}".format(seconds_elapsed)
+        self.time_last = current
+        if color == 'w':
+            self.time_white-=seconds_elapsed
+        else:
+            self.time_black-=seconds_elapsed
+
     def reset_clocks(self):
+#        self.white_time_now = time.clock()
+#        self.black_time_now = time.clock()
+        self.time_last = datetime.datetime.now()
         self.time_white = 60
         self.time_inc_white = 3
         self.time_black = 420
@@ -666,7 +683,6 @@ class Chess_app(App):
             # Swap time allotments if comp is black (comp gets less time)
             self.time_white, self.time_black = self.time_black, self.time_white
             self.time_inc_white, self.time_inc_black = self.time_inc_black, self.time_inc_white
-
     def add_eng_moves(self, instance, value):
 #        print "value:"
 #        print value
@@ -695,9 +711,9 @@ class Chess_app(App):
             if self.ponder_move:
                 move_info = pos.make_move(Move.from_uci(self.ponder_move))
                 san = move_info.san
-                self.engine_score.children[0].text = YOURTURN_MENU.format(san, self.eng_eval)
+                self.engine_score.children[0].text = YOURTURN_MENU.format(san, self.eng_eval, None, None)
             else:
-                self.engine_score.children[0].text = YOURTURN_MENU.format("Not available", self.eng_eval)
+                self.engine_score.children[0].text = YOURTURN_MENU.format("Not available", self.eng_eval, None, None)
         else:
             for i, mv in enumerate(self.engine_score.raw):
                 if i >= 1:
@@ -833,6 +849,10 @@ class Chess_app(App):
         #     print variation
         #     print score
 
+
+    def format_time_str(self,time_a):
+        return "%d:%02d" % (int(time_a/60),int(time_a%60))
+
     def update_engine_output(self, callback):
         if not self.uci_engine:
             self.start_engine()
@@ -871,6 +891,7 @@ class Chess_app(App):
                             score = self.get_score(line)
                             if score:
                                 self.eng_eval = score
+                            self.update_time(color=self.engine_comp_color)
                             if best_move:
                                 self.add_try_variation(best_move)
                                 # self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
@@ -879,13 +900,16 @@ class Chess_app(App):
                                     self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), False, False)
 
                                 self.engine_computer_move = False
-                                output.children[0].text = YOURTURN_MENU.format("hidden", "hidden")
                                 self.refresh_board()
+
+                                output.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+
                             else:
-                                output.children[0].text = "[color=000000]Thinking..[/color]"
+                                output.children[0].text = "[color=000000]Thinking..\n[size=16]{0}    [b]{1}[/size][/b][/color]".format(self.format_time_str(self.time_white), self.format_time_str(self.time_black))
                                 # sleep(1)
                         else:
-                            output.children[0].text = YOURTURN_MENU.format("hidden", "hidden")
+#                            self.update_player_time()
+                            output.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
                             # sleep(1)
             else:
                 # if output.children[0].text != ENGINE_HEADER:
@@ -1002,6 +1026,12 @@ class Chess_app(App):
                 if str(v.move) == move:
                     self.chessboard = v
 
+    def update_player_time(self):
+        color = 'w'
+        if self.engine_comp_color == 'w':
+            color = 'b'
+        self.update_time(color=color)
+
     def process_move(self, move = None):
 #        if self.chessboard.addTextMove(self.last_touch_down_move+self.last_touch_up_move):
         try:
@@ -1009,7 +1039,10 @@ class Chess_app(App):
                 move = self.last_touch_down_move+self.last_touch_up_move
             self.add_try_variation(move)
             if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
+                self.update_player_time()
                 self.engine_computer_move = True
+
+            #                self.reset_clock_update()
             self.refresh_board()
         except Exception, e:
             print e
