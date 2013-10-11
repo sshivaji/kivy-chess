@@ -407,26 +407,31 @@ class Chess_app(App):
 
     def dgt_probe(self, *args):
         if self.dgt_connected and self.dgtnix:
-            new_dgt_fen = self.dgtnix.GetFen()
-#            print "length of new dgt fen: {0}".format(len(new_dgt_fen))
-#            print "new_dgt_fen just obtained: {0}".format(new_dgt_fen)
-            if self.dgt_fen and new_dgt_fen:
-                if new_dgt_fen!=self.dgt_fen:
-                    if not self.try_dgt_legal_moves(self.chessboard.position.fen, new_dgt_fen):
-                        if self.chessboard.previous_node:
-#                            print new_dgt_fen
-#                            print self.chessboard.previous_node.position.fen
-                            dgt_fen_start = new_dgt_fen.split()[0]
-                            prev_fen_start = self.chessboard.previous_node.position.fen.split()[0]
-                            if dgt_fen_start == prev_fen_start:
-                                self.back('dgt')
+            try:
+                new_dgt_fen = self.dgtnix.GetFen()
+    #            print "length of new dgt fen: {0}".format(len(new_dgt_fen))
+    #            print "new_dgt_fen just obtained: {0}".format(new_dgt_fen)
+                if self.dgt_fen and new_dgt_fen:
+                    if new_dgt_fen!=self.dgt_fen:
+                        if not self.try_dgt_legal_moves(self.chessboard.position.fen, new_dgt_fen):
+                            if self.chessboard.previous_node:
+    #                            print new_dgt_fen
+    #                            print self.chessboard.previous_node.position.fen
+                                dgt_fen_start = new_dgt_fen.split()[0]
+                                prev_fen_start = self.chessboard.previous_node.position.fen.split()[0]
+                                if dgt_fen_start == prev_fen_start:
+                                    self.back('dgt')
 
-            elif new_dgt_fen:
-#                print "fen before write: {0}".format(self.dgt_fen)
-                self.dgt_fen = new_dgt_fen
-#                print "writing fen for first time"
-#                print new_dgt_fen
+                elif new_dgt_fen:
+                    self.dgt_fen = new_dgt_fen
+                if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
+                    # Print engine move on DGT XL clock
+                    self.dgtnix.SendToClock(self.format_str_for_dgt(self.format_time_str(self.time_white,separator='')+self.format_time_str(self.time_black, separator='')), False, True)
 
+
+            except Exception:
+                    self.dgt_connected = False
+                    self.dgtnix=None
     def build(self):
         self.custom_fen = None
         self.start_pos_changed = False
@@ -434,6 +439,7 @@ class Chess_app(App):
         self.engine_computer_move = True
         self.engine_comp_color = 'b'
         self.time_last = None
+        self.dgt_time = None
         self.time_white = 0
         self.time_inc_white = 0
         self.time_black = 0
@@ -661,6 +667,12 @@ class Chess_app(App):
     def reset_clock_update(self):
         self.time_last = datetime.datetime.now()
 
+    def time_add_increment(self, color='w'):
+        if color == 'w':
+            self.time_white+=self.time_inc_white
+        else:
+            self.time_black+=self.time_inc_black
+
     def update_time(self, color='w'):
         current = datetime.datetime.now()
         seconds_elapsed = (current - self.time_last).total_seconds()
@@ -675,6 +687,7 @@ class Chess_app(App):
 #        self.white_time_now = time.clock()
 #        self.black_time_now = time.clock()
         self.time_last = datetime.datetime.now()
+
         self.time_white = 60
         self.time_inc_white = 3
         self.time_black = 420
@@ -764,6 +777,7 @@ class Chess_app(App):
         self.uci_engine=uci_engine
 
     def parse_bestmove(self, line):
+#        print "line:{0}".format(line)
         best_move = None
         ponder_move = None
         if not line.startswith('bestmove'):
@@ -850,8 +864,8 @@ class Chess_app(App):
         #     print score
 
 
-    def format_time_str(self,time_a):
-        return "%d:%02d" % (int(time_a/60),int(time_a%60))
+    def format_time_str(self,time_a, separator='.'):
+        return "%d%s%02d" % (int(time_a/60), separator, int(time_a%60))
 
     def update_engine_output(self, callback):
         if not self.uci_engine:
@@ -888,6 +902,7 @@ class Chess_app(App):
                     elif self.engine_mode == ENGINE_PLAY:
                         if self.engine_computer_move:
                             best_move, self.ponder_move = self.parse_bestmove(line)
+#                            print "best_move:{0}".format(best_move)
                             score = self.get_score(line)
                             if score:
                                 self.eng_eval = score
@@ -895,18 +910,18 @@ class Chess_app(App):
                             if best_move:
                                 self.add_try_variation(best_move)
                                 # self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
-                                if self.dgt_connected and self.dgtnix:
-                                    # Print engine move on DGT XL clock
-                                    self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), False, False)
 
                                 self.engine_computer_move = False
                                 self.refresh_board()
+                                self.time_add_increment(color=self.engine_comp_color)
+                                if self.dgt_connected and self.dgtnix:
+                                    # Print engine move on DGT XL clock
+                                    self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), False, False)
 
                                 output.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
 
                             else:
                                 output.children[0].text = "[color=000000]Thinking..\n[size=16]{0}    [b]{1}[/size][/b][/color]".format(self.format_time_str(self.time_white), self.format_time_str(self.time_black))
-                                # sleep(1)
                         else:
 #                            self.update_player_time()
                             output.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
@@ -1031,6 +1046,7 @@ class Chess_app(App):
         if self.engine_comp_color == 'w':
             color = 'b'
         self.update_time(color=color)
+        self.time_add_increment(color=color)
 
     def process_move(self, move = None):
 #        if self.chessboard.addTextMove(self.last_touch_down_move+self.last_touch_up_move):
@@ -1135,7 +1151,8 @@ class Chess_app(App):
                 self.uci_engine.requestAnalysis()
             else:
                 if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
-                    self.uci_engine.requestMove()
+                    self.uci_engine.requestMove(wtime=self.time_white, btime=self.time_black,
+                        winc=self.time_inc_white, binc=self.time_inc_black)
 
         self.update_book_panel()
 

@@ -172,10 +172,13 @@ class UCIEngine:
 #        self.__sendCommand('go wtime %d btime %d' % (whiteTime, blackTime))
         self.__sendCommand('go infinite')
 
-    def requestMove(self, movetime=5000, whiteTime=30000, blackTime=30000):
+    def requestMove(self, movetime=None, wtime=30000, btime=30000, winc=None, binc=None):
         """
         """
-        self.__sendCommand('go movetime %s'%movetime)
+        if movetime:
+            self.__sendCommand('go movetime %s'%movetime)
+        else:
+            self.__sendCommand('go wtime {0} btime {1} winc {2} binc {3}'.format(wtime*1000, btime*1000, winc*1000, binc*1000))
 
     def sendFen(self, fen):
         self.__positionCommand = "position fen "+fen
