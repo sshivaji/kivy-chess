@@ -238,6 +238,9 @@ class Chess_app(App):
             text = self.dgt_dev_input.text
             self.validate_device(text)
 
+        def on_dgt_sound(instance, value):
+            self.dgt_clock_sound = value
+
         def on_dgt_connect(instance, value):
         #            print "bind"
         #            print instance
@@ -287,8 +290,17 @@ class Chess_app(App):
         connect_dgt_item = SettingItem(panel=dgt_panel, title="Status") #create instance of one item in left side panel
         connect_dgt_item.add_widget(dgt_switch)
 
+        sound_switch = Switch()
+        sound_switch.bind(active=on_dgt_sound)
+
+        clock_dgt_item = SettingItem(panel=dgt_panel, title="DGT Clock Sound") #create instance of one item in left side panel
+        clock_dgt_item.add_widget(sound_switch)
+
+
         dgt_panel.add_widget(setup_dgt_item)
         dgt_panel.add_widget(connect_dgt_item)
+        dgt_panel.add_widget(clock_dgt_item)
+
 
         fen_input = TextInput(text="", focus=True, multiline=False, use_bubble = True)
 #        print Clipboard['application/data']
@@ -469,6 +481,7 @@ class Chess_app(App):
         self.dgt_connected = False
         self.dgtnix = None
         self.dgt_fen = None
+        self.dgt_clock_sound = False
 
         Clock.schedule_interval(self.dgt_probe, 1)
         parent = BoxLayout(size_hint=(1,1))
@@ -916,7 +929,7 @@ class Chess_app(App):
                                 self.time_add_increment(color=self.engine_comp_color)
                                 if self.dgt_connected and self.dgtnix:
                                     # Print engine move on DGT XL clock
-                                    self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), False, False)
+                                    self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), self.dgt_clock_sound, False)
 
                                 output.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
 
