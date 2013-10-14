@@ -68,9 +68,13 @@ class GameNode(object):
             self.half_move_num = previous_node.half_move_num + 1
         else:
             self.half_move_num = 1
+
         if move:
             self.__position = chess.Position(previous_node.position)
             self.__position.make_move(move)
+#            print GameNode.positions
+
+            GameNode.positions[self.__position.fen] = self
 
         self.__nags = nags
         self.comment = comment
@@ -94,6 +98,10 @@ class GameNode(object):
         previous node.
         """
         return self.__move
+
+    @property
+    def fen(self):
+        return self.__position.fen
 
     @property
     def position(self):
@@ -309,26 +317,31 @@ class GameNode(object):
         """
         del self.__variations[self.index(variation)]
 
-    def walk_tree(self, variation, move):
+    def walk_tree(self, variation, move, format="normal", score=""):
         move += 1
 
         for v in variation:
-            try:
-                v.is_main_variation()
-            except AttributeError:
-                print "[",
+            if not v.is_main_variation():
+                score+= "{0} ".format("(",)
             if move % 2 == 1:
-                print (move + 1)/2,
-            if v.__san:
-                print v.__san,
-            else:
-                print v.move
-            if v.__variations:
-                self.walk_tree(v.__variations, move)
-                try:
-                    v.is_main_variation()
-                except AttributeError:
-                    print "]",
+                score+= "{0} ".format((move + 1)/2,)
 
-    def game_score(self):
-        self.walk_tree(self.__variations, move=0)
+            if format=="ref":
+                score+="[ref={0}]".format(v.fen)
+
+            if v.__san:
+                score+= "{0} ".format(v.__san,)
+            else:
+                score+= "{0} ".format(v.move)
+
+            if format=="ref":
+                score+=" [/ref] "
+
+            if v.__variations:
+                score+=self.walk_tree(v.__variations, move, format=format)
+            if not v.is_main_variation():
+                score+= "{0} ".format(")",)
+        return score
+
+    def game_score(self, format="ref"):
+        return self.walk_tree(self.__variations, move=0, format=format)

@@ -23,6 +23,7 @@ class Game(chess.GameNode):
     """The root node of a game."""
     def __init__(self, start_comment="", headers=None):
         chess.GameNode.__init__(self, None, None, (), start_comment)
+        chess.GameNode.positions={}
 
         if headers is None:
             self.__headers = chess.GameHeaderBag(self)

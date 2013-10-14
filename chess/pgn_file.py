@@ -95,7 +95,10 @@ class PgnFile(object):
             else:
                 in_variation = True
                 pos = variation_stack[-1].position
-                variation_stack[-1] = variation_stack[-1].add_variation(pos.get_move_from_san(str(token)))
+                try:
+                    variation_stack[-1] = variation_stack[-1].add_variation(pos.get_move_from_san(str(token)))
+                except ValueError:
+                    pass
                 variation_stack[-1].start_comment = start_comment
                 start_comment = ""
 

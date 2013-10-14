@@ -57,7 +57,7 @@ if result < 0:
 print "The board was found"
 dgtnix.update()
 #board_out = ""
-#dgtnix.SendToClock("tall  ", True, False)
+dgtnix.SendToClock("tall  ", True, False)
 while True:
    # bd = ""
     print dgtnix.GetFen()

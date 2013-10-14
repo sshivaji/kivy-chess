@@ -47,6 +47,7 @@ from chess.libchess import Position
 # from chess.libchess import MoveError
 from chess.libchess import Move
 from chess.game import Game
+from chess import PgnFile
 from chess.game_node import GameNode
 from chess.libchess import Piece
 from chess.libchess import Square
@@ -478,6 +479,7 @@ class Chess_app(App):
 
         self.from_move = None
         self.to_move = None
+#        games = PgnFile.open('kasparov-deep-blue-1997.pgn')
         self.chessboard = Game()
         self.chessboard_root = self.chessboard
         self.ponder_move = None
@@ -663,19 +665,24 @@ class Chess_app(App):
     def go_to_settings(self, instance):
         self.root.current='settings'
 
-    def go_to_move(self, instance, value):
+    def go_to_move(self, label, fen):
 #        print 'Going back to move.. ', value
+#        print instance
+#        print value
 
-        move_num, color = value.split(":")
-
-        half_move_num = int(move_num)*2 - 1
-#        print "half_move_num:%d"%half_move_num
-
-        if color == 'b':
-            half_move_num+=1
-
-        self.chessboard.gotoMove(half_move_num)
+        self.chessboard = GameNode.positions[fen]
         self.refresh_board()
+
+#        move_num, color = value.split(":")
+#
+#        half_move_num = int(move_num)*2 - 1
+##        print "half_move_num:%d"%half_move_num
+#
+#        if color == 'b':
+#            half_move_num+=1
+#
+#        self.chessboard.gotoMove(half_move_num)
+#        self.refresh_board()
 
     def add_book_moves(self, instance, mv):
 #        print mv
@@ -1006,9 +1013,7 @@ class Chess_app(App):
     def save(self, obj):
         f = open('game.pgn','w')
         f.write('Game Header - Analysis \n\n')
-        # self.chessboard_root.game_score()
-        # sys.stdout.flush()
-        f.write(self.chessboard_root.game_score())
+        f.write(self.chessboard_root.game_score(format="ref"))
         f.write("\n")
         f.close()
 
@@ -1167,11 +1172,13 @@ class Chess_app(App):
 #        all_moves = self.chessboard.getAllTextMoves()
 #        print self.chessboard_root.game_score()
 
-        all_moves = self.chessboard.get_prev_moves(format="san")
-#        print all_moves
+        all_moves = self.chessboard_root.game_score()
+#        all_moves = self.chessboard.get_prev_moves(format="san")
+
+    #        print all_moves
         if all_moves:
             score = self.generate_move_list(all_moves)
-            self.game_score.children[0].text="[color=000000]%s[/color]"%score
+            self.game_score.children[0].text="[color=000000]{0}[/color]".format(all_moves)
 
         if self.use_engine and self.uci_engine:
             #self.analysis_board.setFEN(self.chessboard.getFEN())
