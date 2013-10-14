@@ -459,8 +459,6 @@ class Chess_app(App):
                 if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
                     # Print engine move on DGT XL clock
                     self.dgtnix.SendToClock(self.format_str_for_dgt(self.format_time_str(self.time_white,separator='')+self.format_time_str(self.time_black, separator='')), False, True)
-
-
             except Exception:
                     self.dgt_connected = False
                     self.dgtnix=None
@@ -1008,7 +1006,10 @@ class Chess_app(App):
     def save(self, obj):
         f = open('game.pgn','w')
         f.write('Game Header - Analysis \n\n')
-        f.write(self.generate_move_list(self.chessboard.getAllTextMoves(),raw=True))
+        # self.chessboard_root.game_score()
+        # sys.stdout.flush()
+        f.write(self.chessboard_root.game_score())
+        f.write("\n")
         f.close()
 
     def touch_down_move(self, img, touch):
