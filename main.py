@@ -30,6 +30,8 @@ from kivy.utils import get_color_from_hex
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.popup import Popup
 from kivy.uix.switch import Switch
+from kivy.uix.slider import Slider
+
 #from kivy.core.clipboard import Clipboard
 
 #from ChessBoard import ChessBoard
@@ -305,6 +307,12 @@ class Chess_app(App):
         fen_input = TextInput(text="", focus=True, multiline=False, use_bubble = True)
 #        print Clipboard['application/data']
 
+        def on_level_value(slider, value):
+            # self.level_label.text=value
+            # print slider.value
+            # print type(value)
+            self.level_label.text = "%d" % value
+
         def on_fen_input(instance):
             if self.chessboard.setFEN(instance.text):
                 self.refresh_board()
@@ -318,11 +326,19 @@ class Chess_app(App):
 
         setup_pos_item.add_widget(fen_input)
         level_item = SettingItem(panel=engine_panel, title="Level") #create instance of one item in left side panel
+        level_slider = Slider(min=0, max=20, value=20, step=1)
+        level_slider.bind(value=on_level_value)
+        self.level_label = Label(text=self.engine_level)
+        level_item.add_widget(level_slider)
+        level_current = SettingItem(panel=engine_panel, title="Selected Level") #create instance of one item in left side panel
+        level_current.add_widget(self.level_label)
+
 
         board_panel.add_widget(setup_pos_item) # add item1 to left side panel
         board_panel.add_widget(setup_board_item)
 
         engine_panel.add_widget(level_item) # add item2 to left side panel
+        engine_panel.add_widget(level_current) # add item2 to left side panel
 
         settings_panel.add_widget(board_panel)
         settings_panel.add_widget(dgt_panel)
@@ -331,6 +347,10 @@ class Chess_app(App):
 
         def go_back():
             self.root.current = 'main'
+            if self.engine_level!=self.level_label.text:
+                self.engine_level = self.level_label.text
+                if self.uci_engine:
+                    self.uci_engine.configure({'skill level': self.engine_level})
 
         settings_panel.on_close=go_back
 
@@ -450,6 +470,7 @@ class Chess_app(App):
         self.engine_mode = None
         self.engine_computer_move = True
         self.engine_comp_color = 'b'
+        self.engine_level = '20'
         self.time_last = None
         self.dgt_time = None
         self.time_white = 0
