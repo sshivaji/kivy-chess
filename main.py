@@ -77,9 +77,10 @@ ENGINE_HEADER = '[b][color=000000][ref='+ENGINE_ANALYSIS\
                 'Play vs Comp [/ref][/color][/b]'
 
 BOOK_ON = "Book"
+USER_BOOK_ON = "User Book"
 BOOK_OFF = "Hide"
 
-BOOK_HEADER = '[b][color=000000][ref=Book]'+BOOK_ON+'[/ref][/color][/b]'
+BOOK_HEADER = '[b][color=000000][ref=Book]{0}[/ref][/color][/b]'
 
 
 SQUARES = ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a6",
@@ -372,7 +373,7 @@ class Chess_app(App):
 
     def create_chess_board(self, squares, type="main"):
         if type == "main":
-            grid = GridLayout(cols=8, rows=8, spacing=1, size_hint=(1, 1))
+            grid = GridLayout(cols=8, rows=8, spacing=1, padding=(10,10), size_hint=(1, 1))
         else:
             grid = GridLayout(cols=8, rows=12, spacing=1, size_hint=(1, 1))
 
@@ -504,6 +505,15 @@ class Chess_app(App):
         self.dgt_fen = None
         self.dgt_clock_sound = False
 
+        # user book
+        try:
+            from chess.leveldict import LevelJsonDict
+            self.user_book = LevelJsonDict('book/userbook.db')
+#            print "Created userbook"
+        except ImportError:
+            self.user_book = None
+#            print "cannot import leveldb userbook"
+
         Clock.schedule_interval(self.dgt_probe, 1)
         parent = BoxLayout(size_hint=(1,1))
         grid = self.create_chess_board(self.squares)
@@ -534,9 +544,15 @@ class Chess_app(App):
         self.engine_score = ScrollableLabel(ENGINE_HEADER, ref_callback=self.add_eng_moves)
         info_grid.add_widget(self.engine_score)
 
+        book_grid = GridLayout(cols = 2, rows = 1, spacing = 1, size_hint=(0.3, 1))
 
-        self.book_panel = ScrollableLabel(BOOK_HEADER, ref_callback=self.add_book_moves)
-        info_grid.add_widget(self.book_panel)
+        self.book_panel = ScrollableLabel(BOOK_HEADER.format(BOOK_ON), ref_callback=self.add_book_moves)
+        self.user_book_panel = ScrollableLabel(BOOK_HEADER.format(USER_BOOK_ON), ref_callback=self.add_user_book_moves)
+
+        book_grid.add_widget(self.book_panel)
+        book_grid.add_widget(self.user_book_panel)
+
+        info_grid.add_widget(book_grid)
 
         parent.add_widget(info_grid)
         self.refresh_board()
@@ -683,6 +699,20 @@ class Chess_app(App):
 #
 #        self.chessboard.gotoMove(half_move_num)
 #        self.refresh_board()
+
+    def add_user_book_moves(self, instance, mv):
+#        print str(mv)
+        if mv == BOOK_OFF:
+            self.user_book_display = False
+            self.update_user_book_panel()
+        elif mv == BOOK_ON:
+            self.user_book_display = True
+            self.update_user_book_panel()
+        else:
+            self.chessboard = self.chessboard.add_variation(Move.from_uci(str(mv).encode("utf-8")))
+
+            # self.chessboard.addTextMove(mv)
+            self.refresh_board()
 
     def add_book_moves(self, instance, mv):
 #        print mv
@@ -1013,7 +1043,7 @@ class Chess_app(App):
     def save(self, obj):
         f = open('game.pgn','w')
         f.write('Game Header - Analysis \n\n')
-        f.write(self.chessboard_root.game_score(format="ref"))
+        f.write(self.chessboard_root.game_score(format="regular"))
         f.write("\n")
         f.close()
 
@@ -1124,6 +1154,26 @@ class Chess_app(App):
                     score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
         return score
 
+    def update_user_book_panel(self):
+        if self.user_book_display and self.user_book is not None:
+            self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
+            #            print "found user_book\n"
+            if self.chessboard.position.fen in self.user_book:
+                print "found position"
+            else:
+                print "position not found"
+                self.user_book_panel.children[0].text += "\n[size=16][ref=plusminus]{0}[/ref]".format("+-")
+                self.user_book_panel.children[0].text += "\n[ref=plusequal]{0}[/ref]".format("+=")
+                self.user_book_panel.children[0].text += "\n[ref=equal]{0}[/ref]".format("=")
+                self.user_book_panel.children[0].text += "\n[ref=equalplus]{0}[/ref]".format("=+")
+                self.user_book_panel.children[0].text += "\n[ref=minusplus]{0}[/ref][/size]".format("-+")
+
+            self.book_panel.children[0].text += '[/color]'
+
+        else:
+            self.user_book_panel.children[0].text = BOOK_HEADER.format(USER_BOOK_ON)
+
+
     def update_book_panel(self):
         if self.book_display:
             p = Position(self.chessboard.position.fen)
@@ -1144,9 +1194,24 @@ class Chess_app(App):
                 except Exception, e:
                     print e
                     print "Cannot parse move"
+
+
+
+            # Leveldb opening book schema:
+            # {'fen':
+            #   {
+            #   "moves":["e4", "d4"],
+            #   "annotation":text,
+            #   "eval": number, (higher means better for white) (+-, +=, =, =+, -+)
+            #   "games": game_ids of games played from this position,
+            #   "misc": Extra stuff?
+            #    ""
+            #   }
+            # }
+
             self.book_panel.children[0].text += '[/color]'
         else:
-            self.book_panel.children[0].text = BOOK_HEADER
+            self.book_panel.children[0].text = BOOK_HEADER.format(BOOK_ON)
 
     def fill_chess_board(self, sq, p):
 #        print "p:%s"%p
