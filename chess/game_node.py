@@ -93,6 +93,14 @@ class GameNode(object):
         return self.__variations
 
     @property
+    def san(self):
+        """The move that makes the position of this node from the
+        previous node.
+        """
+        return self.__san
+
+
+    @property
     def move(self):
         """The move that makes the position of this node from the
         previous node.

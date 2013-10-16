@@ -58,6 +58,8 @@ from dgt.dgtnix import *
 import os
 import datetime
 
+BOOK_POSITION_UPDATE = "BOOK_POSITION_UPDATE"
+
 PLUSMINUS = "plusminus"
 
 PLUSEQUAL = "plusequal"
@@ -67,6 +69,12 @@ EQUAL = "equal"
 EQUALPLUS = "equalplus"
 
 MINUSPLUS = "minusplus"
+
+eval_hash = {MINUSPLUS:-2, EQUALPLUS: -1, EQUAL:0, PLUSEQUAL:1, PLUSMINUS:2}
+
+eval_symbol = {MINUSPLUS:"-+", EQUALPLUS: "=+", EQUAL: "=", PLUSEQUAL: "+=", PLUSMINUS: "+-"}
+
+int_eval_hash = {v:k for k, v in eval_hash.iteritems()}
 
 Clock.max_iteration = 20
 
@@ -503,6 +511,7 @@ class Chess_app(App):
         self.setup_board_squares = []
         self.use_engine = False
         self.book_display = False
+        self.user_book_display = False
         self.last_touch_down_move = None
         self.last_touch_up_move = None
         self.last_touch_down_setup = None
@@ -713,18 +722,6 @@ class Chess_app(App):
     def is_position_eval(self, mv):
         return mv == MINUSPLUS or mv == EQUALPLUS or mv == EQUAL or mv == PLUSEQUAL or mv == PLUSMINUS
 
-    def get_int_eval(self, mv):
-        if mv == MINUSPLUS:
-            return -2
-        if mv == EQUALPLUS:
-            return -1
-        if mv == EQUAL:
-            return 0
-        if mv == PLUSEQUAL:
-            return 1
-        if mv == PLUSMINUS:
-            return 2
-
     def add_user_book_moves(self, instance, mv):
 #        print str(mv)
         if mv == BOOK_OFF:
@@ -734,12 +731,39 @@ class Chess_app(App):
             self.user_book_display = True
             self.update_user_book_panel()
         elif self.is_position_eval(mv):
-            self.update_user_book_panel(ev=self.get_int_eval(mv))
+            self.update_user_book_panel(ev=eval_hash[mv])
+        elif mv == BOOK_POSITION_UPDATE:
+            self.update_user_book_positions()
+            self.update_user_book_panel()
+
+        #            self.update_user_book_panel(action=BOOK_POSITION_UPDATE)
         else:
             self.chessboard = self.chessboard.add_variation(Move.from_uci(str(mv).encode("utf-8")))
 
             # self.chessboard.addTextMove(mv)
             self.refresh_board()
+
+    def update_user_book_positions(self):
+        game = self.chessboard
+        while game.previous_node:
+            prev = game.previous_node
+            move = game.move
+            move = str(move)
+            print "move:{0}".format(move)
+            if prev.position.fen not in self.user_book:
+                v = {"moves":[move], "annotation":"",
+                 "eval": None, "games":[], "misc":""}
+                self.user_book[prev.position.fen] = v
+            else:
+                j = self.user_book[prev.position.fen]
+
+                if move not in j["moves"]:
+                    moves = j["moves"]
+                    moves.append(move)
+                    j["moves"]=moves
+                    self.user_book[prev.position.fen]=j
+            game = game.previous_node
+
 
     def add_book_moves(self, instance, mv):
 #        print mv
@@ -1181,34 +1205,56 @@ class Chess_app(App):
                     score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
         return score
 
-    def update_user_book_panel(self, action=None, ev=None):
-        print "input ev:{0}".format(ev)
+    def update_user_book_panel(self, ev=None):
+#        print "input ev:{0}".format(ev)
         if self.user_book_display and self.user_book is not None:
             self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
             #            print "found user_book\n"
+            moves = None
             if self.chessboard.position.fen in self.user_book:
-                print "found position"
-                if ev:
-                    self.user_book[self.chessboard.position.fen]["eval"] = ev
+#                print "found position"
+#                print self.user_book[self.chessboard.position.fen]
+                moves = self.user_book[self.chessboard.position.fen]
+                moves = moves["moves"]
+                if moves:
+                    for m in moves:
+#                        self.user_book_panel.children[0].text += "[b]Set:[/b]\n"
+                        pos = Position(self.chessboard.position.fen)
+                        move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
+                        san = move_info.san
+                        self.user_book_panel.children[0].text += "[ref={0}]{1}[/ref]    \n\n".format(m, san)
+
+                if ev is not None:
+                    j = self.user_book[self.chessboard.position.fen]
+                    j["eval"] = ev
+                    self.user_book[self.chessboard.position.fen] = j
             else:
-                print "position not found"
-                if ev:
+#                print "position not found"
+                if ev is not None:
                     self.user_book[self.chessboard.position.fen] = {"moves":[], "annotation":"",
                                                                   "eval":ev, "games":[], "misc":""}
 
             self.user_book_panel.children[0].text += "[b]Set:[/b]\n"
 
             try:
-                print self.user_book[self.chessboard.position.fen]
+                current_eval = self.user_book[self.chessboard.position.fen]["eval"]
+                current_eval = int_eval_hash[current_eval]
+#                print "current_eval:{0}".format(current_eval)
             except KeyError:
-                print "cant get key"
-            self.user_book_panel.children[0].text += "[ref={1}]{0:>4}[/ref]".format("-+", MINUSPLUS)
-            self.user_book_panel.children[0].text += "[ref={1}]{0:>4}[/ref]".format("=+", EQUALPLUS)
-            self.user_book_panel.children[0].text += "[ref={1}]{0:>4}[/ref]".format("=", EQUAL)
-            self.user_book_panel.children[0].text += "[ref={1}]{0:>4}[/ref]".format("+=", PLUSEQUAL)
-            self.user_book_panel.children[0].text += "[ref={1}]{0:>4}[/ref]".format("+-", PLUSMINUS)
+                current_eval = None
 
+            for k,v in eval_symbol.iteritems():
+#                print k
+                if current_eval is not None and current_eval==k:
+                    self.user_book_panel.children[0].text += "[b][size=24]"
+                self.user_book_panel.children[0].text += "[ref={1}]{0:>4}[/ref]".format(v, k)
+                if current_eval is not None and current_eval==k:
+                    self.user_book_panel.children[0].text += "[/b][/size]"
+
+
+            self.user_book_panel.children[0].text += "[ref={0}]Update[/ref]\n".format(BOOK_POSITION_UPDATE)
             self.book_panel.children[0].text += '[/color]'
+
 
         else:
             self.user_book_panel.children[0].text = BOOK_HEADER.format(USER_BOOK_ON)
@@ -1299,6 +1345,7 @@ class Chess_app(App):
                         winc=self.time_inc_white, binc=self.time_inc_black)
 
         self.update_book_panel()
+        self.update_user_book_panel()
 
 if __name__ == '__main__':
     Chess_app().run()
