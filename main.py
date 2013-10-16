@@ -1,5 +1,8 @@
 import kivy
 import sys
+from kivy.config import Config
+Config.set('graphics', 'fullscreen', 'auto')
+
 from kivy_util import ScrollableLabel
 from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
@@ -23,7 +26,6 @@ from kivy.properties import BooleanProperty, ListProperty, ObjectProperty, Numer
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
-from kivy.config import Config
 from kivy.config import ConfigParser
 from kivy.uix.scatter import Scatter
 from kivy.utils import get_color_from_hex
@@ -58,6 +60,8 @@ from dgt.dgtnix import *
 import os
 import datetime
 
+
+
 BOOK_POSITION_UPDATE = "BOOK_POSITION_UPDATE"
 
 PLUSMINUS = "plusminus"
@@ -70,9 +74,11 @@ EQUALPLUS = "equalplus"
 
 MINUSPLUS = "minusplus"
 
-eval_hash = {MINUSPLUS:-2, EQUALPLUS: -1, EQUAL:0, PLUSEQUAL:1, PLUSMINUS:2}
+NONE = "none"
 
-eval_symbol = {MINUSPLUS:"-+", EQUALPLUS: "=+", EQUAL: "=", PLUSEQUAL: "+=", PLUSMINUS: "+-"}
+eval_hash = {MINUSPLUS:-2, EQUALPLUS: -1, EQUAL:0, PLUSEQUAL:1, PLUSMINUS:2, NONE:5}
+
+eval_symbol = {MINUSPLUS:"-+", EQUALPLUS: "=+", EQUAL: "=", PLUSEQUAL: "+=", PLUSMINUS: "+-", NONE: "None"}
 
 int_eval_hash = {v:k for k, v in eval_hash.iteritems()}
 
@@ -139,6 +145,7 @@ DARK_SQUARE = COLOR_MAPS['brown']
 LIGHT_SQUARE = COLOR_MAPS['cream']
 
 INITIAL_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
 
 #engine_config = ConfigParser()
 #engine_config.read('resources/engine.ini')
@@ -552,7 +559,7 @@ class Chess_app(App):
 
         parent.add_widget(grid)
 
-        info_grid = GridLayout(cols = 1, rows = 4, spacing = 1, size_hint=(0.3, 1), orientation='vertical')
+        info_grid = GridLayout(cols = 1, rows = 5, spacing = 1, size_hint=(0.3, 1), orientation='vertical')
         info_grid.add_widget(b)
 
 
@@ -563,15 +570,15 @@ class Chess_app(App):
         self.engine_score = ScrollableLabel(ENGINE_HEADER, ref_callback=self.add_eng_moves)
         info_grid.add_widget(self.engine_score)
 
-        book_grid = GridLayout(cols = 2, rows = 1, spacing = 1, size_hint=(0.3, 1))
+        # book_grid = GridLayout(cols = 2, rows = 1, spacing = 1, size_hint=(0.3, 1))
 
         self.book_panel = ScrollableLabel(BOOK_HEADER.format(BOOK_ON), ref_callback=self.add_book_moves)
         self.user_book_panel = ScrollableLabel(BOOK_HEADER.format(USER_BOOK_ON), ref_callback=self.add_user_book_moves)
 
-        book_grid.add_widget(self.book_panel)
-        book_grid.add_widget(self.user_book_panel)
+        info_grid.add_widget(self.book_panel)
+        info_grid.add_widget(self.user_book_panel)
 
-        info_grid.add_widget(book_grid)
+        # info_grid.add_widget(book_grid)
 
         parent.add_widget(info_grid)
         self.refresh_board()
@@ -603,7 +610,7 @@ class Chess_app(App):
                 self.root.current = 'main'
 
         def setup_board_change_tomove(value):
-            if value.state=="normal":
+            if value.state == "normal":
                 # print "black to move"
                 self.setup_chessboard.turn = 'b'
             else:
@@ -720,7 +727,7 @@ class Chess_app(App):
 #        self.refresh_board()
 
     def is_position_eval(self, mv):
-        return mv == MINUSPLUS or mv == EQUALPLUS or mv == EQUAL or mv == PLUSEQUAL or mv == PLUSMINUS
+        return mv in eval_symbol.keys()
 
     def add_user_book_moves(self, instance, mv):
 #        print str(mv)
@@ -738,7 +745,7 @@ class Chess_app(App):
 
         #            self.update_user_book_panel(action=BOOK_POSITION_UPDATE)
         else:
-            self.chessboard = self.chessboard.add_variation(Move.from_uci(str(mv).encode("utf-8")))
+            self.add_try_variation(str(mv).encode("utf-8"))
 
             # self.chessboard.addTextMove(mv)
             self.refresh_board()
@@ -1211,6 +1218,7 @@ class Chess_app(App):
             self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
             #            print "found user_book\n"
             moves = None
+            move_text = ""
             if self.chessboard.position.fen in self.user_book:
 #                print "found position"
 #                print self.user_book[self.chessboard.position.fen]
@@ -1222,7 +1230,7 @@ class Chess_app(App):
                         pos = Position(self.chessboard.position.fen)
                         move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
                         san = move_info.san
-                        self.user_book_panel.children[0].text += "[ref={0}]{1}[/ref]    \n\n".format(m, san)
+                        move_text += "[ref={0}]{1}[/ref]\n".format(m, san)
 
                 if ev is not None:
                     j = self.user_book[self.chessboard.position.fen]
@@ -1234,25 +1242,34 @@ class Chess_app(App):
                     self.user_book[self.chessboard.position.fen] = {"moves":[], "annotation":"",
                                                                   "eval":ev, "games":[], "misc":""}
 
-            self.user_book_panel.children[0].text += "[b]Set:[/b]\n"
-
             try:
                 current_eval = self.user_book[self.chessboard.position.fen]["eval"]
                 current_eval = int_eval_hash[current_eval]
+                if current_eval is not None:
+                    self.user_book_panel.children[0].text += "[i][size=14]"
+                    self.user_book_panel.children[0].text += "[ref={1}]{0:>4}[/ref]".format(eval_symbol[current_eval], current_eval)
+                    self.user_book_panel.children[0].text += "[/i][/size]\n\n"
+
 #                print "current_eval:{0}".format(current_eval)
             except KeyError:
                 current_eval = None
 
+            self.user_book_panel.children[0].text += move_text+"\n"
+
+            # self.user_book_panel.children[0].text += "[b]Set:[/b]\n"
+
+
             for k,v in eval_symbol.iteritems():
 #                print k
                 if current_eval is not None and current_eval==k:
-                    self.user_book_panel.children[0].text += "[b][size=24]"
-                self.user_book_panel.children[0].text += "[ref={1}]{0:>4}[/ref]".format(v, k)
-                if current_eval is not None and current_eval==k:
-                    self.user_book_panel.children[0].text += "[/b][/size]"
+                    continue
+                    # self.user_book_panel.children[0].text += "[b][size=24]"
+                self.user_book_panel.children[0].text += "[ref={1}]{0}, [/ref]".format(v, k)
+                # if current_eval is not None and current_eval==k:
+                #     self.user_book_panel.children[0].text += "[/b][/size]"
 
 
-            self.user_book_panel.children[0].text += "[ref={0}]Update[/ref]\n".format(BOOK_POSITION_UPDATE)
+            self.user_book_panel.children[0].text += "\n[ref={0}][b]Update[/b][/ref]\n".format(BOOK_POSITION_UPDATE)
             self.book_panel.children[0].text += '[/color]'
 
 
