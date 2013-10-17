@@ -1,7 +1,8 @@
 import kivy
 import sys
-from kivy.config import Config
-Config.set('graphics', 'fullscreen', 'auto')
+# from kivy.config import Config
+# Config.set('graphics', 'fullscreen', 0)
+# Config.write()
 
 from kivy_util import ScrollableLabel
 from kivy.app import App
@@ -26,13 +27,13 @@ from kivy.properties import BooleanProperty, ListProperty, ObjectProperty, Numer
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
-from kivy.config import ConfigParser
 from kivy.uix.scatter import Scatter
 from kivy.utils import get_color_from_hex
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.popup import Popup
 from kivy.uix.switch import Switch
 from kivy.uix.slider import Slider
+from kivy.graphics import Rectangle
 
 #from kivy.core.clipboard import Clipboard
 
@@ -402,6 +403,8 @@ class Chess_app(App):
         else:
             grid = GridLayout(cols=8, rows=12, spacing=1, size_hint=(1, 1))
 
+
+
         for i, name in enumerate(SQUARES):
             bt = ChessSquare(allow_stretch=True)
             bt.sq = i
@@ -423,6 +426,7 @@ class Chess_app(App):
 
             grid.add_widget(bt)
             squares.append(bt)
+
 
         if type!="main":
             for index, i in enumerate([".", ".", ".", ".", ".", ".", ".", ".", ".", "R", "N", "B", "Q", "K", "P",  ".", ".", "r", "n", "b", "q", "k", "p", "."]):
@@ -448,7 +452,6 @@ class Chess_app(App):
                 bt.bind(on_touch_up=self.touch_up_setup)
 
                 grid.add_widget(bt)
-
 
         return grid
 
@@ -543,6 +546,10 @@ class Chess_app(App):
         Clock.schedule_interval(self.dgt_probe, 1)
         parent = BoxLayout(size_hint=(1,1))
         grid = self.create_chess_board(self.squares)
+        with grid.canvas.before:
+            # grid.canvas.clear()
+            Color(1, 1, 1, 1)
+            Rectangle(size=Window.size)
 
 
         b = BoxLayout(size_hint=(0.15,0.15))
@@ -558,6 +565,7 @@ class Chess_app(App):
         b.add_widget(settings_bt)
 
         parent.add_widget(grid)
+
 
         info_grid = GridLayout(cols = 1, rows = 5, spacing = 1, size_hint=(0.3, 1), orientation='vertical')
         info_grid.add_widget(b)
