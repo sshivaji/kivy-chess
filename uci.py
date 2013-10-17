@@ -59,19 +59,8 @@ class UCIEngine:
 
     def enqueue_output(self, p, queue):
         out = p.stdout
-        buf = ''
         while True:
-            fd, _, _ = select.select([out.fileno()], [], [], 0)
-            if fd:
-                # queue.put(out.readline())
-                tmp = out.read(1)
-                # print tmp
-                if tmp!='':
-                    buf+=tmp
-                    if tmp=="\n":
-                        queue.put(buf)
-                        # print buf
-                        buf = ''
+            queue.put(out.readline())
 
     def logText(self, text, style):
         """
