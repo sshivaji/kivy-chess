@@ -94,6 +94,15 @@
 #include "pseudo_legal_move_generator.h"
 #include "position.h"
 #include "polyglot_opening_book_entry.h"
+#include "game_header_bag.h"
+#include "pgn_index.h"
+
+// uint64_t literals.
+#ifdef _MSC_VER
+#define U64(u) (u##ui64)
+#else
+#define U64(u) (u##ULL)
+#endif
 
 namespace chess {
 

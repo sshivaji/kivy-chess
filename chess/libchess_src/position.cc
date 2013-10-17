@@ -647,8 +647,10 @@ bool Position::is_insufficient_material() const {
     } else if (piece_count == 2 + white_bishops + black_bishops) {
         // Each player with only king an any number of bishops where all
         // bishops are on the same color.
-        if ((light_square_bishops && !dark_square_bishops) || (dark_square_bishops && !light_square_bishops)) {
-            return true;
+        if (white_bishops && black_bishops) {
+            if ((light_square_bishops && !dark_square_bishops) || (dark_square_bishops && !light_square_bishops)) {
+                return true;
+            }
         }
     }
 
@@ -771,7 +773,7 @@ Move Position::get_move_from_san(const std::string& san) const {
 	    std::string matched_file(matches[2].first, matches[2].second);
 	    std::string matched_rank(matches[3].first, matches[3].second);
 	    int file = matched_file == "" ? -1 : (matched_file.at(0) - 'a');
-	    int rank = matched_rank == "" ? -1 : (matched_rank.at(0) - '1');
+	    int rank = matched_rank == "" ? -1 : (matched_file.at(0) - '1');
 
 	    // Get the promotion type.
 	    std::string matched_promotion(matches[5].first, matches[5].second);

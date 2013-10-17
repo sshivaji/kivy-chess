@@ -99,6 +99,8 @@ class PgnFile(object):
                     variation_stack[-1] = variation_stack[-1].add_variation(pos.get_move_from_san(str(token)))
                 except ValueError:
                     pass
+                except IndexError:
+                    pass
                 variation_stack[-1].start_comment = start_comment
                 start_comment = ""
 
@@ -110,6 +112,53 @@ class PgnFile(object):
         in_tags = False
 
         for line in open(path, 'r'):
+            # Decode and strip the line.
+            line = line.decode('latin-1').strip()
+
+            # Skip empty lines and comments.
+            if not line or line.startswith("%"):
+                continue
+
+            # Check for tag lines.
+            tag_match = tag_regex.match(line)
+            if tag_match:
+                tag_name = tag_match.group(1)
+                tag_value = tag_match.group(2).replace("\\\\", "\\").replace("\\[", "]").replace("\\\"", "\"")
+                if current_game:
+                    if in_tags:
+                        current_game.headers[tag_name] = tag_value
+                    else:
+                        cls.__parse_movetext(current_game, movetext)
+                        pgn_file.add_game(current_game)
+                        current_game = None
+                if not current_game:
+                    current_game = chess.Game()
+                    current_game.headers[tag_name] = tag_value
+                    movetext = ""
+                in_tags = True
+            # Parse movetext lines.
+            else:
+                if current_game:
+                    movetext += "\n" + line
+                    pass
+                else:
+                    raise chess.PgnError("Invalid PGN. Expected header before movetext: %s", repr(line))
+                in_tags = False
+
+        if current_game:
+            cls.__parse_movetext(current_game, movetext)
+            pgn_file.add_game(current_game)
+
+        return pgn_file
+
+    @classmethod
+    def open_text(cls, text):
+        pgn_file = PgnFile()
+        current_game = None
+        in_tags = False
+
+        for line in text:
+            print line
             # Decode and strip the line.
             line = line.decode('latin-1').strip()
 

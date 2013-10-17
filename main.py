@@ -51,7 +51,7 @@ from chess.libchess import Position
 from chess.libchess import Move
 from chess.game import Game
 from chess import PgnFile
-#from chess import PgnIndex
+from chess import PgnIndex
 from chess.game_node import GameNode
 from chess.libchess import Piece
 from chess.libchess import Square
@@ -517,9 +517,31 @@ class Chess_app(App):
 
         self.from_move = None
         self.to_move = None
-#        index = PgnIndex('kasparov-deep-blue-1997.pgn')
+
+#        PGN Index test
+#        index = PgnIndex("kasparov-deep-blue-1997.pgn")
+#
+#        #print len(index)
+#        first = index.get_pos(0)
+#        second = index.get_pos(1)
+#        #print second
+#        f = open("kasparov-deep-blue-1997.pgn")
+#        f.seek(first)
+#        line = 1
+#        lines = []
+#        while line:
+#            line = f.readline()
+#            pos = f.tell()
+#            #print pos
+#            if pos<=second:
+#                lines.append(line)
+#            else:
+#                break
+#
+#        games = PgnFile.open_text(lines)
+#        first_game = games[0]
+
         self.chessboard = Game()
-#        print self.chessboard
         self.chessboard_root = self.chessboard
         self.ponder_move = None
         self.eng_eval = None

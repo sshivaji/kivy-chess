@@ -18,7 +18,6 @@
 #include <boost/format.hpp>
 
 #include "libchess.h"
-#include "uint.h"
 
 namespace chess {
 
@@ -201,5 +200,21 @@ class_<PolyglotOpeningBookEntry>("PolyglotOpeningBookEntry", init<const Position
     .add_property("move", &PolyglotOpeningBookEntry::move)
     .add_property("weight", &PolyglotOpeningBookEntry::weight, &PolyglotOpeningBookEntry::set_weight)
     .add_property("learn", &PolyglotOpeningBookEntry::learn, &PolyglotOpeningBookEntry::set_learn);
+
+class_<GameHeaderBag>("GameHeaderBag", init<>())
+    .def("__len__", &GameHeaderBag::__len__)
+    .def("__getitem__", &GameHeaderBag::__getitem__)
+    .def("__setitem__", &GameHeaderBag::__setitem__)
+    .def("__delitem__", &GameHeaderBag::__delitem__)
+    .def("__contains__", &GameHeaderBag::__contains__);
+
+class_<PgnIndex>("PgnIndex", init<std::string>())
+    .add_property("file_name", &PgnIndex::file_name)
+    .add_property("file_size", &PgnIndex::file_size)
+    .add_property("last_write_time", &PgnIndex::last_write_time)
+    .def("__len__", &PgnIndex::__len__)
+    .def("get_game_headers", &PgnIndex::get_game_headers)
+    .def("get_pos", &PgnIndex::get_pos)
+    .def("is_valid", &PgnIndex::is_valid);
 
 } // BOOST_PYTHON_MODULE(libchess)

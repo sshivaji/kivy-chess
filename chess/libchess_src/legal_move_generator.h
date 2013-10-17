@@ -17,10 +17,11 @@
 #ifndef LIBCHESS_LEGAL_MOVE_GENERATOR_H
 #define LIBCHESS_LEGAL_MOVE_GENERATOR_H
 
-#include <boost/shared_ptr.hpp>
 
 #include "position.h"
 #include "pseudo_legal_move_generator.h"
+
+#include <boost/shared_ptr.hpp>
 
 namespace chess {
 
