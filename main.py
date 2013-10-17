@@ -136,6 +136,7 @@ img_piece_abv={"B":"WBishop", "R":"WRook", "N":"WKnight", "Q":"WQueen", "K":"WKi
 COLOR_MAPS = {
     'black': get_color_from_hex('#000000'),
     'white': (0, 0, 0, 1),
+    'wood': get_color_from_hex('#a68064'),
     #'cream': get_color_from_hex('#f9fcc6'),
     #'brown': get_color_from_hex('#969063'),
     'cream': get_color_from_hex('#f1ece7'),
@@ -492,6 +493,13 @@ class Chess_app(App):
             except Exception:
                     self.dgt_connected = False
                     self.dgtnix=None
+
+    def update_grid_border(self, instance, width, height):
+        with self.grid.canvas.before:
+            # grid.canvas.clear()
+            Color(0.5, 0.5, 0.5)
+            Rectangle(size=Window.size)
+
     def build(self):
         self.custom_fen = None
         self.start_pos_changed = False
@@ -545,12 +553,11 @@ class Chess_app(App):
 
         Clock.schedule_interval(self.dgt_probe, 1)
         parent = BoxLayout(size_hint=(1,1))
-        grid = self.create_chess_board(self.squares)
-        with grid.canvas.before:
-            # grid.canvas.clear()
-            Color(1, 1, 1, 1)
-            Rectangle(size=Window.size)
+        self.grid = self.create_chess_board(self.squares)
 
+        # Dummy params for listener
+        self.update_grid_border(0,0,0)
+        Window.bind(on_resize=self.update_grid_border)
 
         b = BoxLayout(size_hint=(0.15,0.15))
 
@@ -564,7 +571,7 @@ class Chess_app(App):
         settings_bt.bind(on_press=self.go_to_settings)
         b.add_widget(settings_bt)
 
-        parent.add_widget(grid)
+        parent.add_widget(self.grid)
 
 
         info_grid = GridLayout(cols = 1, rows = 5, spacing = 1, size_hint=(0.3, 1), orientation='vertical')
