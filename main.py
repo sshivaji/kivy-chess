@@ -51,6 +51,7 @@ from chess.libchess import Position
 from chess.libchess import Move
 from chess.game import Game
 from chess import PgnFile
+#from chess import PgnIndex
 from chess.game_node import GameNode
 from chess.libchess import Piece
 from chess.libchess import Square
@@ -516,8 +517,9 @@ class Chess_app(App):
 
         self.from_move = None
         self.to_move = None
-#        games = PgnFile.open('kasparov-deep-blue-1997.pgn')
+#        index = PgnIndex('kasparov-deep-blue-1997.pgn')
         self.chessboard = Game()
+#        print self.chessboard
         self.chessboard_root = self.chessboard
         self.ponder_move = None
         self.eng_eval = None
@@ -796,7 +798,7 @@ class Chess_app(App):
             self.book_display = True
             self.update_book_panel()
         else:
-            self.chessboard = self.chessboard.add_variation(Move.from_uci(str(mv).encode("utf-8")))
+            self.add_try_variation(str(mv).encode("utf-8"))
 
             # self.chessboard.addTextMove(mv)
             self.refresh_board()
@@ -875,7 +877,7 @@ class Chess_app(App):
                     break
                 p = Position(self.chessboard.position)
                 move = p.get_move_from_san(mv)
-                self.chessboard = self.chessboard.add_variation(move)
+                self.add_try_variation(move)
 
         self.refresh_board()
 
@@ -1178,7 +1180,10 @@ class Chess_app(App):
 
     def add_try_variation(self, move):
         try:
-            self.chessboard = self.chessboard.add_variation(Move.from_uci(move))
+            if type(move) is str:
+                self.chessboard = self.chessboard.add_variation(Move.from_uci(move))
+            else:
+                self.chessboard = self.chessboard.add_variation(move)
         except ValueError:
             for v in self.chessboard.variations:
                 if str(v.move) == move:
