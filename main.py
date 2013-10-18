@@ -597,10 +597,8 @@ class Chess_app(App):
 
         parent.add_widget(self.grid)
 
-
-        info_grid = GridLayout(cols = 1, rows = 5, spacing = 1, size_hint=(0.3, 1), orientation='vertical')
+        info_grid = GridLayout(cols = 1, rows = 5, spacing = 5, padding=(15,15), size_hint=(0.33, 1), orientation='vertical')
         info_grid.add_widget(b)
-
 
         self.game_score = ScrollableLabel('[color=000000][b]%s[/b][/color]' % GAME_HEADER, ref_callback=self.go_to_move)
 
