@@ -886,13 +886,13 @@ class Chess_app(App):
         elif value == ENGINE_PLAY_HINT:
 #            print "engine_hint.."
             pos = Position(self.chessboard.position.fen)
-            # print self.ponder_move
-            if self.ponder_move:
+            if self.ponder_move and self.ponder_move!='(none)':
+#                print self.ponder_move
                 move_info = pos.make_move(Move.from_uci(self.ponder_move))
                 san = move_info.san
-                self.engine_score.children[0].text = YOURTURN_MENU.format(san, self.eng_eval, None, None)
+                self.engine_score.children[0].text = YOURTURN_MENU.format(san, self.eng_eval, self.format_time_str(self.time_white), self.format_time_str(self.time_black))
             else:
-                self.engine_score.children[0].text = YOURTURN_MENU.format("Not available", self.eng_eval, None, None)
+                self.engine_score.children[0].text = YOURTURN_MENU.format("Not available", self.eng_eval, self.format_time_str(self.time_white), self.format_time_str(self.time_black))
         else:
             for i, mv in enumerate(self.engine_score.raw):
                 if i >= 1:
@@ -1069,6 +1069,8 @@ class Chess_app(App):
                         if self.engine_computer_move:
                             best_move, self.ponder_move = self.parse_bestmove(line)
 #                            print "best_move:{0}".format(best_move)
+#                            print "ponder_move:{0}".format(self.ponder_move)
+
                             score = self.get_score(line)
                             if score:
                                 self.eng_eval = score
