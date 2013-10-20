@@ -176,6 +176,10 @@ class GameNode(object):
         else:
             return self.__previous_node.index(self) != 0
 
+    def get_next_main_move(self):
+        if len(self.__variations)>0:
+            return self.__variations[0]
+
     def is_main_line(self):
         """:return: If the node is in the main line of the game."""
         if self.__previous_node is None:
