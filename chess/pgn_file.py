@@ -96,7 +96,12 @@ class PgnFile(object):
                 in_variation = True
                 pos = variation_stack[-1].position
                 try:
+#                    print token
+#                    print pos.get_move_from_san(str(token))
                     variation_stack[-1] = variation_stack[-1].add_variation(pos.get_move_from_san(str(token)))
+#                    variation_stack[-1] = variation_stack[-1].add_variation(chess.libchess.Move.from_uci(str(token)))
+#                    print type(variation_stack[-1].nags)
+#                    pass
                 except ValueError:
                     pass
                 except IndexError:
@@ -110,11 +115,11 @@ class PgnFile(object):
         pgn_file = PgnFile()
         current_game = None
         in_tags = False
-
+        game_num = 0
         for line in open(path, 'r'):
             # Decode and strip the line.
             line = line.decode('latin-1').strip()
-
+#            line = line.strip()
             # Skip empty lines and comments.
             if not line or line.startswith("%"):
                 continue
@@ -128,7 +133,10 @@ class PgnFile(object):
                     if in_tags:
                         current_game.headers[tag_name] = tag_value
                     else:
+                        game_num+=1
                         cls.__parse_movetext(current_game, movetext)
+                        if game_num % 10 == 0:
+                            print "Processing game:{0}".format(game_num)
                         pgn_file.add_game(current_game)
                         current_game = None
                 if not current_game:

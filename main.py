@@ -51,7 +51,7 @@ from chess.libchess import Position
 from chess.libchess import Move
 from chess.game import Game
 from chess import PgnFile
-from chess import PgnIndex
+#from chess import PgnIndex
 from chess.game_node import GameNode
 from chess.libchess import Piece
 from chess.libchess import Square
@@ -520,10 +520,10 @@ class Chess_app(App):
 
 #        PGN Index test
 #        index = PgnIndex("kasparov-deep-blue-1997.pgn")
-#
+##
 #        #print len(index)
-#        first = index.get_pos(0)
-#        second = index.get_pos(1)
+#        first = index.get_pos(5)
+##        second = index.get_pos(6)
 #        #print second
 #        f = open("kasparov-deep-blue-1997.pgn")
 #        f.seek(first)
@@ -531,16 +531,16 @@ class Chess_app(App):
 #        lines = []
 #        while line:
 #            line = f.readline()
-#            pos = f.tell()
+##            pos = f.tell()
 #            #print pos
-#            if pos<=second:
-#                lines.append(line)
-#            else:
-#                break
+##            if pos<=second:
+#            lines.append(line)
+##            else:
+##                break
 #
-#        games = PgnFile.open_text(lines)
-#        first_game = games[0]
-
+#        games = PgnFile.open("kasparov-last-deep-blue-1997.pgn")
+##        first_game = games[5]
+#
         self.chessboard = Game()
         self.chessboard_root = self.chessboard
         self.ponder_move = None
@@ -1261,10 +1261,13 @@ class Chess_app(App):
             #            print "found user_book\n"
             moves = None
             move_text = ""
+
             if self.chessboard.position.fen in self.user_book:
+
 #                print "found position"
 #                print self.user_book[self.chessboard.position.fen]
                 moves = self.user_book[self.chessboard.position.fen]
+
                 moves = moves["moves"]
                 if moves:
                     for m in moves:

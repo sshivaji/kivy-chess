@@ -147,8 +147,8 @@ class GameNode(object):
             raise TypeError(
                 "Expected start comment to be string, got: %s." % comment)
 
-        if value != "" and not self.can_have_start_comment():
-            raise ValueError("Game node can not have a start comment.")
+#        if value != "" and not self.can_have_start_comment():
+#            raise ValueError("Game node can not have a start comment.")
 
         self.__start_comment = value
 

@@ -186,9 +186,10 @@ class GameHeaderBag(collections.MutableMapping):
             day = int(matches.group(3)) if matches.group(3) != "??" else "1"
             datetime.date(int(year), int(month), int(day))
         elif key == "Round":
-            if not round_regex.match(value):
-                raise ValueError(
-                    "Invalid value for Round header: %s." % repr(value))
+            pass
+#            if not round_regex.match(value):
+#                raise ValueError(
+#                    "Invalid value for Round header: %s." % repr(value))
         elif key == "Result":
             if not value in ["1-0", "0-1", "1/2-1/2", "*"]:
                 raise ValueError(

@@ -18,12 +18,14 @@
 
 import chess
 import unittest
+from chess.leveldict import LevelJsonDict
 
 class PgnIndexTestCase(unittest.TestCase):
     """Tests indexing PGN files."""
 
     def test_uncommented(self):
         """Tests indexing the uncommented Kasparov vs. Deep Blue PGN."""
+#    gm_book = LevelJsonDict('gm_test.db')
 #        index = chess.PgnIndex("kasparov-deep-blue-1997.pgn")
 #        self.assertTrue(index.is_valid())
 #
@@ -49,13 +51,35 @@ class PgnIndexTestCase(unittest.TestCase):
 #        print first_game
 
     games = chess.PgnFile.open('test/2600_2013_34.pgn')
-    g = games[0]
-    print g.headers.headers['Result']
+#    g = games[5]
+##    print g.headers.headers['Result']
+#    for g in games[5:]:
+##        print "\n"
+#        while g:
+#            if g.previous_node:
+#                position_hash = g.previous_node.position.fen
+#                if position_hash not in gm_book:
+#                    gm_book[position_hash] = {"moves":[], "annotation":"",
+#                                                      "eval":"", "games":[], "misc":""}
+#                entry = gm_book[position_hash]
+#
+#                if g.move:
+#                    print str(g.move)
+#                    moves = entry["moves"]
+#                    str_move = str(g.move)
+#
+#                    if moves:
+#                        if str_move not in moves:
+#                            moves.append(str(g.move))
+#                            entry["moves"]=moves
+#                            gm_book[position_hash] = entry
+#                    else:
+#                        entry["moves"]=[str_move]
+#                        gm_book[position_hash] = entry
+#
+#                    #                print g.move
+#            g = g.get_next_main_move()
 
-    while g:
-        if g.move:
-            print g.move
-        g = g.get_next_main_move()
 #
 #    print g.move
 #    g = g .get_next_main_move()
