@@ -711,6 +711,7 @@ class Chess_app(App):
                 bag = GameHeaderBag(game=g, fen=fen)
                 g.set_headers(bag)
                 self.chessboard = g
+                self.chessboard_root = self.chessboard
 
                 self.start_pos_changed = True
                 self.custom_fen = fen
@@ -1218,17 +1219,38 @@ class Chess_app(App):
         self.update_time(color=color)
         self.time_add_increment(color=color)
 
-    def process_move(self, move = None):
+    def is_promotion(self, move):
+        from_rank = move[1]
+        to_rank = move[3]
+        from_sq = move[:2]
+
+        if from_rank == '7' and to_rank == '8' and self.chessboard.position[Square(from_sq)] == Piece("P"):
+            return True
+
+        if from_rank == '2' and to_rank == '1' and self.chessboard.position[Square(from_sq)] == Piece("p"):
+            return True
+        return False
+
+    def add_promotion_info(self, move):
+        # Promotion info already present?
+        if len(move) > 4:
+            return move
+        else:
+            # Auto queen for now
+            return move + "q"
+
+    def process_move(self, move=None):
 #        if self.chessboard.addTextMove(self.last_touch_down_move+self.last_touch_up_move):
         try:
             if not move:
                 move = self.last_touch_down_move+self.last_touch_up_move
+            if self.is_promotion(move):
+                move = self.add_promotion_info(move)
             self.add_try_variation(move)
             if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
                 self.update_player_time()
                 self.engine_computer_move = True
 
-            #                self.reset_clock_update()
             self.refresh_board()
         except Exception, e:
             print e
@@ -1375,6 +1397,8 @@ class Chess_app(App):
         # flatten lists into one list of 64 squares
 #        squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
         squares = self.chessboard.position
+        # print self.chessboard.position.fen
+        # print self.chessboard.position.get_ep_square()
 
         for i, p in enumerate(SQUARES):
             self.fill_chess_board(self.squares[i], squares[p])
