@@ -63,7 +63,13 @@ class GameNode(object):
 
         if previous_node:
             p = self.previous_node.position
-            move_info = p.make_move(move)
+            # print "move:"
+            # print move
+            try:
+                move_info = p.make_move(move)
+            except ValueError:
+                print move
+                raise
             self.__san = move_info.san
             self.half_move_num = previous_node.half_move_num + 1
         else:
@@ -286,16 +292,16 @@ class GameNode(object):
         del self.__variations[i]
         self.__variations.insert(0, new_mainline)
 
-    def __prepare_variation(self, variation):
+    def __prepare_variation(self, variation, force=False):
         if type(variation) is chess.Move:
             variation = GameNode(self, variation)
-        if variation.move in self:
+        if not force and variation.move in self:
             raise ValueError("Variation already in set: %s." % variation.move)
         if variation.previous_node != self:
             raise ValueError("Variation already has a parent.")
         return variation
 
-    def add_variation(self, variation):
+    def add_variation(self, variation, force=False):
         """Appends a variation to the list of variations.
 
         :param variation:
@@ -304,7 +310,7 @@ class GameNode(object):
         :return:
             The game node that has been added.
         """
-        variation = self.__prepare_variation(variation)
+        variation = self.__prepare_variation(variation, force=force)
         self.__variations.append(variation)
         return variation
 

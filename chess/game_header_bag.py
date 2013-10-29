@@ -225,7 +225,7 @@ class GameHeaderBag(collections.MutableMapping):
                 raise ValueError(
                     "Invalid value for Mode header: %s." % repr(value))
         elif key == "FEN":
-            value = chess.Position(value).fen
+            value = chess.Position(value.encode("utf-8")).fen
 
             if value == chess.START_FEN:
                 if not "FEN" in self:

@@ -94,16 +94,34 @@ class PgnFile(object):
                 variation_stack.pop()
             else:
                 in_variation = True
-                pos = variation_stack[-1].position
                 try:
-#                    print token
-#                    print pos.get_move_from_san(str(token))
+                    pos = variation_stack[-1].position
+                except IndexError:
+                    print "Odd error"
+                    print "pos:"
+                    print pos
+                    print "token:"
+                    print token
+                    return
+                try:
                     variation_stack[-1] = variation_stack[-1].add_variation(pos.get_move_from_san(str(token)))
-#                    variation_stack[-1] = variation_stack[-1].add_variation(chess.libchess.Move.from_uci(str(token)))
-#                    print type(variation_stack[-1].nags)
-#                    pass
-                except ValueError:
-                    pass
+                except ValueError, e:
+                    if str(e).startswith('Variation already in set:'):
+                        variation_stack[-1] = variation_stack[-1].add_variation(pos.get_move_from_san(str(token)), force=True)
+                    elif str(e).startswith('Invalid argument: move') or str(e).startswith('san'):
+                        print "Illegal move encountered in game"
+                        print "position:"
+                        print pos
+                        print "token:"
+                        print token
+                        return
+                    else:
+                        print pos
+                        print token
+                        raise
+
+
+#                     pass
                 except IndexError:
                     pass
                 variation_stack[-1].start_comment = start_comment
@@ -133,7 +151,9 @@ class PgnFile(object):
                     if in_tags:
                         current_game.headers[tag_name] = tag_value
                     else:
-                        game_num+=1
+                        game_num += 1
+                        # if game_num <2220:
+                        #     continue
                         cls.__parse_movetext(current_game, movetext)
                         if game_num % 10 == 0:
                             print "Processing game:{0}".format(game_num)
@@ -156,6 +176,7 @@ class PgnFile(object):
         if current_game:
             cls.__parse_movetext(current_game, movetext)
             pgn_file.add_game(current_game)
+
 
         return pgn_file
 
