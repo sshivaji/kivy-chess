@@ -5,6 +5,8 @@ import sys
 # Config.write()
 
 from kivy_util import ScrollableLabel
+from kivy_util import ScrollableGrid
+
 from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
@@ -552,7 +554,7 @@ class Chess_app(App):
         self.squares = []
         self.setup_board_squares = []
         self.use_engine = False
-        self.book_display = False
+        self.book_display = True
         self.user_book_display = False
         self.last_touch_down_move = None
         self.last_touch_up_move = None
@@ -609,8 +611,16 @@ class Chess_app(App):
 
         # book_grid = GridLayout(cols = 2, rows = 1, spacing = 1, size_hint=(0.3, 1))
 
-        self.book_panel = ScrollableLabel(BOOK_HEADER.format(BOOK_ON), ref_callback=self.add_book_moves)
+        self.book_panel = ScrollableGrid([['Move', 'center', 'center', 'string', 0.3, 'visible'],
+                                         ['Weight', 'center', 'left', 'option', 0.3, 'visible'],
+                                         ],
+                                         '',
+                                         '',
+                                         top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'],
+                                         ref_callback=self.add_user_book_moves)
+
         self.user_book_panel = ScrollableLabel(BOOK_HEADER.format(USER_BOOK_ON), ref_callback=self.add_user_book_moves)
+        # self.user_book_panel = ScrollableGrid([['ID', 'center', 'center', 'string', 0.1, 'hidden']], [['01', 'Item 01', '12', '1.8']], '','', ref_callback=self.add_user_book_moves)
 
         info_grid.add_widget(self.book_panel)
         info_grid.add_widget(self.user_book_panel)
@@ -1359,8 +1369,9 @@ class Chess_app(App):
         if self.book_display:
             p = Position(self.chessboard.position.fen)
             # print p
-            self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
+            # self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
             book_entries = 0
+            self.book_panel.grid.remove_all_data_rows()
             for e in self.book.get_entries_for_position(p):
                 try:
                     # print e.move.san
@@ -1368,7 +1379,8 @@ class Chess_app(App):
                     pos = Position(self.chessboard.position.fen)
                     move_info = pos.make_move(Move.from_uci(e.move.uci))
                     san = move_info.san
-                    self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (e.move.uci, san, e.weight)
+                    # self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (e.move.uci, san, e.weight)
+                    self.book_panel.grid.add_row([san, str(e.weight)])
                     book_entries += 1
                     if book_entries >= 5:
                         break
@@ -1376,7 +1388,7 @@ class Chess_app(App):
                     print e
                     print "Cannot parse move"
 
-            self.book_panel.children[0].text += '[/color]'
+            # self.book_panel.children[0].text += '[/color]'
         else:
             self.book_panel.children[0].text = BOOK_HEADER.format(BOOK_ON)
 
