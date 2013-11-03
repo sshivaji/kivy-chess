@@ -38,14 +38,9 @@ Builder.load_string('''
 
 class TopTableHeader(ToggleButton):
     cell_pos = [None, None]
-    def on_press(self):
-        self.process_header_cell(top_level_header, top_header=True)
-
-        print self.state
 
 class TableHeader(ToggleButton):
     cell_pos = [None, None]
-
 
 class TableFooter(ToggleButton):
     cell_pos = [None, None]
@@ -69,40 +64,48 @@ class TableCell(ToggleButton):
 
 
 class DataGrid(GridLayout):
-    def process_header_cell(self, cell, top_header = False, top_header_id = "Top_Header"):
+    def process_header_cell(self, cell, top_header = False, top_header_id = "Top_Header", callback = None):
         if top_header:
-            cell_str = '[color=000000] [b]' + cell[0] + '[/b][/color]'
+            cell_str = '[color=000000][b][ref='+cell[0] +']'+ cell[0] + '[/ref][/b][/color]'
             tmp = TopTableHeader(text=cell_str, markup=True, id=top_header_id, size_hint_x=None, size_hint_y=None, height=20)
+
         else:
             cell_str = "[b]" + str(cell[0]) + "[/b]"
             tmp = TableHeader(text=cell_str, markup=True, id="Header", size_hint_x=None, size_hint_y=None, height=30)
 
         tmp.halign = cell[1]
         tmp.valign = 'middle'
-        tmp.bind(size=(tmp.setter('text_size')))
+        if top_header:
+            tmp.bind(size=(tmp.setter('text_size')), on_press=callback, on_ref_press=callback)
+        else:
+            tmp.bind(size=(tmp.setter('text_size')))
+
         self.add_widget(tmp)
 
-    def __init__(self, header, body, footer, editable, top_level_header=None, **kwargs):
+    def process_header(self, callback, header, top_level_header):
+        if top_level_header:
+            self.rows += 1
+            self.process_header_cell(top_level_header, top_header=True, callback=callback)
+
+            for i in range(0, self.cols - 1):
+                self.process_header_cell(['', 'center'], top_header=True, top_header_id="Blank_" + str(i))
+        for cell in header:
+            self.process_header_cell(cell)
+
+    def __init__(self, header, body, footer, editable, top_level_header=None, callback=None, **kwargs):
         super(DataGrid, self).__init__(**kwargs)
         self.size_hint_y=None
         self.bind(minimum_height=self.setter('height'))
 
         self.cols = len(header)
-        self.rows = len(body) + 1
+        self.rows = max(len(body) + 1,10)
+
         self.spacing = [1, 1]
         self.size_hint_x = 1
 
-        if top_level_header:
-            self.rows +=1
-            self.process_header_cell(top_level_header, top_header=True)
+        self.process_header(callback, header, top_level_header)
 
-            for i in range(0, self.cols - 1):
-                self.process_header_cell(['','center'], top_header=True, top_header_id = "Blank_"+str(i))
-
-        for cell in header:
-            self.process_header_cell(cell)
-
-        if body != None:
+        if body:
             count_01 = 0
             for row in body:
                 count_02 = 0
@@ -120,14 +123,15 @@ class DataGrid(GridLayout):
             for cell in footer:
                 pass
 
-    def add_row(self, row_data, **kwargs):
+    def add_row(self, row_data, callback = None, **kwargs):
         n = 0
         # print "add_row"
         # print row_data
         for cell_data in row_data:
+
             cell_text = '[color=000000]' + cell_data + '[/color]'
             tmp = TableCell(text=cell_text, id="Body", size_hint_x=None, size_hint_y=None, height=30, width=10)
-            tmp.bind(size=(tmp.setter('text_size')))
+            tmp.bind(size=(tmp.setter('text_size')), on_press=callback, on_ref_press=callback)
             tmp.cell_pos = [self.rows - 1, n]
             tmp.halign = "center"
             tmp.valign = 'middle'
@@ -138,9 +142,8 @@ class DataGrid(GridLayout):
 
     def remove_all_data_rows(self, **kwargs):
         # print "Removing all data rows"
-        for cell in self.children:
-            if type(cell) is not TableHeader and type(cell) is not TopTableHeader:
-                self.remove_widget(cell)
+        self.clear_widgets(children=None)
+
 
     def remove_selected_row(self, **kwargs):
         selected = 0

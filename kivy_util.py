@@ -33,14 +33,17 @@ class ScrollableLabel(ScrollView):
         self.label.text_size = (size[0]-50, None)
 
 class ScrollableGrid(ScrollView):
-    def __init__(self, table_header, footer, editable, top_level_header=None, ref_callback=None, *args, **kwargs):
+    def __init__(self, table_header, footer, editable, top_level_header=None, callback=None, *args, **kwargs):
         super(ScrollableGrid, self).__init__()
 
         with self.canvas:
             Color(0.7, .02, 0.91, mode="hsv")
             self.background = Rectangle(size_hint=(1,1))
 
-        self.grid = DataGrid(table_header, [], '', '', top_level_header=top_level_header)
+        self.table_header = table_header
+        self.top_level_header = top_level_header
+        self.callback = callback
+        self.grid = DataGrid(table_header, [], '', '', top_level_header=top_level_header, callback=callback)
 
         self.do_scroll_y = True
         self.do_scroll_x = False
@@ -58,7 +61,9 @@ class ScrollableGrid(ScrollView):
         self.background.size = size
         self.grid.text_size = (size[0]-50, None)
 
-
-
-
-        # self.children[0].add_widget(scroll)
+    def reset_grid(self):
+        self.remove_widget(self.grid)
+#        self.grid.clear_widgets(children=None)
+#        self.grid.process_header(self.callback, self.table_header, self.top_level_header)
+        self.grid = DataGrid(self.table_header, [], '', '', top_level_header=self.top_level_header, callback = self.callback)
+        self.add_widget(self.grid)

@@ -31,11 +31,13 @@ from kivy.uix.image import Image
 from kivy.uix.label import Label
 from kivy.uix.scatter import Scatter
 from kivy.utils import get_color_from_hex
+from kivy.utils import escape_markup
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.popup import Popup
 from kivy.uix.switch import Switch
 from kivy.uix.slider import Slider
 from kivy.graphics import Rectangle
+from kivy.core.text.markup import MarkupLabel
 
 #from kivy.core.clipboard import Clipboard
 
@@ -64,7 +66,7 @@ from dgt.dgtnix import *
 import os
 import datetime
 
-
+REF_ = '[ref='
 
 BOOK_POSITION_UPDATE = "BOOK_POSITION_UPDATE"
 
@@ -503,6 +505,14 @@ class Chess_app(App):
             Color(0.5, 0.5, 0.5)
             Rectangle(size=Window.size)
 
+    def update_book_display(self, mv, ref_move=None):
+        mv = self.get_grid_click_input(mv, ref_move)
+        if mv == BOOK_ON:
+            if self.book_display:
+                self.book_panel.reset_grid()
+            self.book_display = not self.book_display
+            self.update_book_panel()
+
     def build(self):
         self.custom_fen = None
         self.start_pos_changed = False
@@ -616,14 +626,13 @@ class Chess_app(App):
                                          ],
                                          '',
                                          '',
-                                         top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'],
-                                         ref_callback=self.add_user_book_moves)
+                                         top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display)
 
         self.user_book_panel = ScrollableLabel(BOOK_HEADER.format(USER_BOOK_ON), ref_callback=self.add_user_book_moves)
         # self.user_book_panel = ScrollableGrid([['ID', 'center', 'center', 'string', 0.1, 'hidden']], [['01', 'Item 01', '12', '1.8']], '','', ref_callback=self.add_user_book_moves)
 
         info_grid.add_widget(self.book_panel)
-        info_grid.add_widget(self.user_book_panel)
+#        info_grid.add_widget(self.user_book_panel)
 
         # info_grid.add_widget(book_grid)
 
@@ -820,19 +829,34 @@ class Chess_app(App):
             game = game.previous_node
 
 
-    def add_book_moves(self, instance, mv):
-#        print mv
-        if mv == BOOK_OFF:
-            self.book_display = False
-            self.update_book_panel()
-        elif mv == BOOK_ON:
-            self.book_display = True
-            self.update_book_panel()
-        else:
-            self.add_try_variation(str(mv).encode("utf-8"))
+    def get_ref_tags(self, t):
+        m = MarkupLabel(text=t.text)
+        ref_tags = []
+        for s in m.markup:
+            if s.startswith(REF_) and s.endswith(']'):
+                ref_tags.append(s.split(REF_)[1].strip(']'))
 
-            # self.chessboard.addTextMove(mv)
-            self.refresh_board()
+        return ref_tags
+
+
+    def get_grid_click_input(self, mv, ref_move):
+        if ref_move:
+            mv = ref_move
+        else:
+            tags = self.get_ref_tags(mv)
+            if tags:
+                mv = tags[0]
+            else:
+                mv = mv.text
+        return mv
+
+    def add_book_moves(self, mv, ref_move=None):
+        mv = self.get_grid_click_input(mv, ref_move)
+
+        self.add_try_variation(str(mv).encode("utf-8"))
+
+        # self.chessboard.addTextMove(mv)
+        self.refresh_board()
 
     def stop_engine(self):
         self.use_engine = False
@@ -1371,7 +1395,8 @@ class Chess_app(App):
             # print p
             # self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
             book_entries = 0
-            self.book_panel.grid.remove_all_data_rows()
+#            self.book_panel.grid.remove_all_data_rows()
+            self.book_panel.reset_grid()
             for e in self.book.get_entries_for_position(p):
                 try:
                     # print e.move.san
@@ -1380,17 +1405,19 @@ class Chess_app(App):
                     move_info = pos.make_move(Move.from_uci(e.move.uci))
                     san = move_info.san
                     # self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (e.move.uci, san, e.weight)
-                    self.book_panel.grid.add_row([san, str(e.weight)])
+                    self.book_panel.grid.add_row(["[ref=%s]%s[/ref]" % (e.move.uci, san), str(e.weight)], callback=self.add_book_moves)
                     book_entries += 1
                     if book_entries >= 5:
                         break
-                except Exception, e:
-                    print e
-                    print "Cannot parse move"
+                except Exception, ex:
+                    pass
+                # Dangerous to pass here, hack for now
+#                    print ex
+#                    print "Cannot parse move"
 
             # self.book_panel.children[0].text += '[/color]'
-        else:
-            self.book_panel.children[0].text = BOOK_HEADER.format(BOOK_ON)
+
+#        self.book_panel.children[0].text = BOOK_HEADER.format(BOOK_ON)
 
     def fill_chess_board(self, sq, p):
 #        print "p:%s"%p
