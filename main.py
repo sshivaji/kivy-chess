@@ -1391,17 +1391,60 @@ class Chess_app(App):
 
     def update_book_panel(self):
         if self.book_display:
+            fen = self.chessboard.position.fen
+            user_book_moves = None
+            if self.user_book_display and self.user_book is not None:
+                self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
+                #            print "found user_book\n"
+                move_text = ""
+
+                if fen in self.user_book:
+    #                print "found position"
+    #                print self.user_book[self.chessboard.position.fen]
+                    user_book_moves = self.user_book[fen]
+
+                    user_book_moves = user_book_moves["moves"]
+                    if user_book_moves:
+                        for m in user_book_moves:
+                            print m
+    #                        self.user_book_panel.children[0].text += "[b]Set:[/b]\n"
+                            pos = Position(self.chessboard.position.fen)
+                            move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
+                            san = move_info.san
+                            move_text += "[ref={0}]{1}[/ref]\n".format(m, san)
+
+                    if ev is not None:
+                        j = self.user_book[self.chessboard.position.fen]
+                        j["eval"] = ev
+                        self.user_book[self.chessboard.position.fen] = j
+                else:
+    #                print "position not found"
+                    if ev is not None:
+                        self.user_book[self.chessboard.position.fen] = {"moves":[], "annotation":"",
+                                                                      "eval":ev, "games":[], "misc":""}
+
             p = Position(self.chessboard.position.fen)
             # print p
             # self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
             book_entries = 0
 #            self.book_panel.grid.remove_all_data_rows()
             self.book_panel.reset_grid()
-            for e in self.book.get_entries_for_position(p):
+            polyglot_entries = list(self.book.get_entries_for_position(p))
+            if user_book_moves:
+                for m in user_book_moves:
+                    print m
+            for p in polyglot_entries:
+                # print p.raw_move
+                p.in_user_book=True
+                # print p.in_user_book
+            # 'key', 'learn', 'move', 'raw_move', 'weight'
+            for e in polyglot_entries:
+                # print e.move
                 try:
+                    # print e.in_user_book
                     # print e.move.san
                     # print type(e.move.uci)
-                    pos = Position(self.chessboard.position.fen)
+                    pos = Position(fen)
                     move_info = pos.make_move(Move.from_uci(e.move.uci))
                     san = move_info.san
                     # self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (e.move.uci, san, e.weight)
