@@ -565,7 +565,7 @@ class Chess_app(App):
         self.setup_board_squares = []
         self.use_engine = False
         self.book_display = True
-        self.user_book_display = False
+        self.user_book_display = True
         self.last_touch_down_move = None
         self.last_touch_up_move = None
         self.last_touch_down_setup = None
@@ -852,7 +852,6 @@ class Chess_app(App):
 
     def add_book_moves(self, mv, ref_move=None):
         mv = self.get_grid_click_input(mv, ref_move)
-
         self.add_try_variation(str(mv).encode("utf-8"))
 
         # self.chessboard.addTextMove(mv)
@@ -1389,66 +1388,92 @@ class Chess_app(App):
         # }
 
 
-    def update_book_panel(self):
+    def update_book_panel(self, ev=None):
         if self.book_display:
             fen = self.chessboard.position.fen
             user_book_moves = None
-            if self.user_book_display and self.user_book is not None:
+            if self.user_book is not None:
                 self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
                 #            print "found user_book\n"
                 move_text = ""
 
                 if fen in self.user_book:
-    #                print "found position"
+#                    print "found position"
     #                print self.user_book[self.chessboard.position.fen]
                     user_book_moves = self.user_book[fen]
 
                     user_book_moves = user_book_moves["moves"]
                     if user_book_moves:
                         for m in user_book_moves:
-                            print m
+#                            print m
     #                        self.user_book_panel.children[0].text += "[b]Set:[/b]\n"
-                            pos = Position(self.chessboard.position.fen)
+                            pos = Position(fen)
                             move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
                             san = move_info.san
                             move_text += "[ref={0}]{1}[/ref]\n".format(m, san)
 
                     if ev is not None:
-                        j = self.user_book[self.chessboard.position.fen]
+                        j = self.user_book[fen]
                         j["eval"] = ev
-                        self.user_book[self.chessboard.position.fen] = j
+                        self.user_book[fen] = j
                 else:
-    #                print "position not found"
-                    if ev is not None:
-                        self.user_book[self.chessboard.position.fen] = {"moves":[], "annotation":"",
-                                                                      "eval":ev, "games":[], "misc":""}
+                    # Not found
+                        self.user_book[fen] = {"moves":[], "annotation":"",
+                                                                      "eval":eval_hash[NONE], "games":[], "misc":""}
 
-            p = Position(self.chessboard.position.fen)
+            p = Position(fen)
             # print p
             # self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
             book_entries = 0
 #            self.book_panel.grid.remove_all_data_rows()
             self.book_panel.reset_grid()
             polyglot_entries = list(self.book.get_entries_for_position(p))
-            if user_book_moves:
-                for m in user_book_moves:
-                    print m
+#            if user_book_moves:
+#                for m in user_book_moves:
+#                    print m
             for p in polyglot_entries:
                 # print p.raw_move
-                p.in_user_book=True
+                p.in_user_book = False
+#                print str(p.move)
+#                print user_book_moves
+                if str(p.move) in user_book_moves:
+                    p.in_user_book = True
+
+            polyglot_entries = sorted(polyglot_entries, key=lambda p: p.in_user_book, reverse = True)
+
+#            for p in polyglot_entries:
+#                print p.move
+#                print p.in_user_book
+
                 # print p.in_user_book
+
+
+            try:
+                current_eval = self.user_book[fen]["eval"]
+                current_eval = int_eval_hash[current_eval]
+
+                weight = eval_symbol[current_eval]
+#                print weight
+                self.book_panel.grid.add_row(["__", "[b]{0}[/b]".format(weight)], callback=self.add_book_moves)
+
+            except KeyError:
+                current_eval = None
+                self.book_panel.grid.add_row(["__", "{0}".format(eval_symbol[NONE])], callback=self.add_book_moves)
+                # Level db write issue?
+
             # 'key', 'learn', 'move', 'raw_move', 'weight'
             for e in polyglot_entries:
                 # print e.move
                 try:
-                    # print e.in_user_book
-                    # print e.move.san
-                    # print type(e.move.uci)
                     pos = Position(fen)
                     move_info = pos.make_move(Move.from_uci(e.move.uci))
                     san = move_info.san
-                    # self.book_panel.children[0].text += "[ref=%s]%s[/ref]    %d\n\n" % (e.move.uci, san, e.weight)
-                    self.book_panel.grid.add_row(["[ref=%s]%s[/ref]" % (e.move.uci, san), str(e.weight)], callback=self.add_book_moves)
+
+                    if e.in_user_book:
+                        weight = str(e.weight)
+                        self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
+                    else:
+                        self.book_panel.grid.add_row(["[ref={0}]{1}[/ref]".format(e.move.uci, san), str(e.weight)], callback=self.add_book_moves)
                     book_entries += 1
                     if book_entries >= 5:
                         break
@@ -1513,7 +1538,7 @@ class Chess_app(App):
                         winc=self.time_inc_white, binc=self.time_inc_black)
 
         self.update_book_panel()
-        self.update_user_book_panel()
+#        self.update_user_book_panel()
 
 if __name__ == '__main__':
     Chess_app().run()
