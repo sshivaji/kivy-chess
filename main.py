@@ -66,27 +66,11 @@ from dgt.dgtnix import *
 import os
 import datetime
 
+ADD_TO_USER_BOOK = "add_to_user_book"
+
 REF_ = '[ref='
 
 BOOK_POSITION_UPDATE = "BOOK_POSITION_UPDATE"
-
-PLUSMINUS = "plusminus"
-
-PLUSEQUAL = "plusequal"
-
-EQUAL = "equal"
-
-EQUALPLUS = "equalplus"
-
-MINUSPLUS = "minusplus"
-
-NONE = "none"
-
-eval_hash = {MINUSPLUS:-2, EQUALPLUS: -1, EQUAL:0, PLUSEQUAL:1, PLUSMINUS:2, NONE:5}
-
-eval_symbol = {MINUSPLUS:"-+", EQUALPLUS: "=+", EQUAL: "=", PLUSEQUAL: "+=", PLUSMINUS: "+-", NONE: "None"}
-
-int_eval_hash = {v:k for k, v in eval_hash.iteritems()}
 
 Clock.max_iteration = 20
 
@@ -153,9 +137,14 @@ LIGHT_SQUARE = COLOR_MAPS['cream']
 
 INITIAL_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
+class PositionEval(object):
+    def __init__(self, informant_eval, integer_eval):
+        self.informant_eval = informant_eval
+        self.integer_eval = integer_eval
+    def __str__( self):
+        return "{0}, {1}".format(self.informant_eval, self.integer_eval)
 
-#engine_config = ConfigParser()
-#engine_config.read('resources/engine.ini')
+pos_evals = [PositionEval("-+",-2), PositionEval("=+",-1), PositionEval("=", 0), PositionEval("+=", 1), PositionEval("+-", 2), PositionEval("none", 5)]
 
 class SettingsScreen(Screen):
     pass
@@ -783,8 +772,36 @@ class Chess_app(App):
 #        self.chessboard.gotoMove(half_move_num)
 #        self.refresh_board()
 
-    def is_position_eval(self, mv):
-        return mv in eval_symbol.keys()
+    def is_position_inf_eval(self, mv):
+        for p in pos_evals:
+            if p.informant_eval == mv:
+                return True
+        return False
+
+    def convert_inf_eval_to_int(self, inf):
+         for i, p in enumerate(pos_evals):
+            if p.informant_eval == inf:
+               return p.integer_eval
+
+    def convert_int_eval_to_inf(self, int_eval):
+         for i, p in enumerate(pos_evals):
+            if p.integer_eval == int_eval:
+               return p.informant_eval
+
+    def toggle_position_eval(self, inf_eval=None, int_eval=None):
+        if inf_eval and int_eval:
+            raise ValueError("Only one of inf_eval or int_eval is expected as a keyword arg")
+        for i, p in enumerate(pos_evals):
+            if p.informant_eval == inf_eval:
+                if i == len(pos_evals)-1:
+                    return pos_evals[0].informant_eval
+                else:
+                    return pos_evals[i+1].informant_eval
+            if p.integer_eval == int_eval:
+                if i == len(pos_evals)-1:
+                    return pos_evals[0].integer_eval
+                else:
+                    return pos_evals[i+1].integer_eval
 
     def add_user_book_moves(self, instance, mv):
 #        print str(mv)
@@ -813,10 +830,10 @@ class Chess_app(App):
             prev = game.previous_node
             move = game.move
             move = str(move)
-            print "move:{0}".format(move)
+            # print "move:{0}".format(move)
             if prev.position.fen not in self.user_book:
                 v = {"moves":[move], "annotation":"",
-                 "eval": None, "games":[], "misc":""}
+                 "eval": 5, "games":[], "misc":""}
                 self.user_book[prev.position.fen] = v
             else:
                 j = self.user_book[prev.position.fen]
@@ -825,7 +842,7 @@ class Chess_app(App):
                     moves = j["moves"]
                     moves.append(move)
                     j["moves"]=moves
-                    self.user_book[prev.position.fen]=j
+                    self.user_book[prev.position.fen] = j
             game = game.previous_node
 
 
@@ -852,10 +869,23 @@ class Chess_app(App):
 
     def add_book_moves(self, mv, ref_move=None):
         mv = self.get_grid_click_input(mv, ref_move)
-        self.add_try_variation(str(mv).encode("utf-8"))
+        # print "mv:"+str(mv)
+        # if mv ==
+        if str(mv) == ADD_TO_USER_BOOK:
+            self.update_user_book_positions()
+            self.update_book_panel()
 
-        # self.chessboard.addTextMove(mv)
-        self.refresh_board()
+        elif self.is_position_inf_eval(mv):
+            # print "is_pos_eval"
+            # print "is_pos_eval"
+            ev = self.toggle_position_eval(inf_eval=mv)
+            # print ev
+            # print int_eval_symbol[ev]
+            self.update_book_panel(ev=ev)
+        else:
+            self.add_try_variation(str(mv).encode("utf-8"))
+            # self.chessboard.addTextMove(mv)
+            self.refresh_board()
 
     def stop_engine(self):
         self.use_engine = False
@@ -1389,6 +1419,7 @@ class Chess_app(App):
 
 
     def update_book_panel(self, ev=None):
+        # print "ev:"+str(ev)
         if self.book_display:
             fen = self.chessboard.position.fen
             user_book_moves = None
@@ -1414,12 +1445,12 @@ class Chess_app(App):
 
                     if ev is not None:
                         j = self.user_book[fen]
-                        j["eval"] = ev
+                        j["eval"] = self.convert_inf_eval_to_int(ev)
                         self.user_book[fen] = j
                 else:
                     # Not found
                         self.user_book[fen] = {"moves":[], "annotation":"",
-                                                                      "eval":eval_hash[NONE], "games":[], "misc":""}
+                                                                      "eval":5, "games":[], "misc":""}
 
             p = Position(fen)
             # print p
@@ -1436,30 +1467,10 @@ class Chess_app(App):
                 p.in_user_book = False
 #                print str(p.move)
 #                print user_book_moves
-                if str(p.move) in user_book_moves:
+                if user_book_moves and str(p.move) in user_book_moves:
                     p.in_user_book = True
 
             polyglot_entries = sorted(polyglot_entries, key=lambda p: p.in_user_book, reverse = True)
-
-#            for p in polyglot_entries:
-#                print p.move
-#                print p.in_user_book
-
-                # print p.in_user_book
-
-
-            try:
-                current_eval = self.user_book[fen]["eval"]
-                current_eval = int_eval_hash[current_eval]
-
-                weight = eval_symbol[current_eval]
-#                print weight
-                self.book_panel.grid.add_row(["__", "[b]{0}[/b]".format(weight)], callback=self.add_book_moves)
-
-            except KeyError:
-                current_eval = None
-                self.book_panel.grid.add_row(["__", "{0}".format(eval_symbol[NONE])], callback=self.add_book_moves)
-                # Level db write issue?
 
             # 'key', 'learn', 'move', 'raw_move', 'weight'
             for e in polyglot_entries:
@@ -1479,13 +1490,18 @@ class Chess_app(App):
                         break
                 except Exception, ex:
                     pass
-                # Dangerous to pass here, hack for now
-#                    print ex
-#                    print "Cannot parse move"
 
-            # self.book_panel.children[0].text += '[/color]'
+            current_eval = self.user_book[fen]["eval"]
+            # print "current_eval:"+str(current_eval)
+            weight = self.convert_int_eval_to_inf(current_eval)
+            # print weight
 
-#        self.book_panel.children[0].text = BOOK_HEADER.format(BOOK_ON)
+            self.book_panel.grid.add_row(["[ref=add_to_user_book]Add to Repertoire?[/ref]", "[ref={0}][b]{0}[/b][/ref]".format(weight)], callback=self.add_book_moves)
+
+                # current_eval = NONE
+                # self.book_panel.grid.add_row(["__", "[ref={0}]{0}[/ref]".format(eval_symbol[NONE])], callback=self.add_book_moves)
+                # Level db write issue?
+
 
     def fill_chess_board(self, sq, p):
 #        print "p:%s"%p
