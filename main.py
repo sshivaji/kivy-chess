@@ -831,18 +831,27 @@ class Chess_app(App):
             move = game.move
             move = str(move)
             # print "move:{0}".format(move)
-            if prev.position.fen not in self.user_book:
+            prev_pos_hash = str(prev.position.__hash__())
+            if prev_pos_hash not in self.user_book:
                 v = {"moves":[move], "annotation":"",
                  "eval": 5, "games":[], "misc":""}
-                self.user_book[prev.position.fen] = v
+                # print "not in book"
+                self.user_book[prev_pos_hash] = v
             else:
-                j = self.user_book[prev.position.fen]
 
+                j = self.user_book[prev_pos_hash]
+                # print "prev_pos_hash:"
+                # print prev_pos_hash
+                # print "book_moves:"
+                # print j
                 if move not in j["moves"]:
+                    # print "move not in book"
                     moves = j["moves"]
                     moves.append(move)
-                    j["moves"]=moves
-                    self.user_book[prev.position.fen] = j
+                    j["moves"] = moves
+                    self.user_book[prev_pos_hash] = j
+                # else:
+                    # print "move already in book"
             game = game.previous_node
 
 
@@ -1420,36 +1429,40 @@ class Chess_app(App):
 
     def update_book_panel(self, ev=None):
         # print "ev:"+str(ev)
+        fen = self.chessboard.position.fen
+
         if self.book_display:
-            fen = self.chessboard.position.fen
+            pos_hash = str(self.chessboard.position.__hash__())
+            # print pos_hash
             user_book_moves = None
             if self.user_book is not None:
-                self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
+                # self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
                 #            print "found user_book\n"
                 move_text = ""
 
-                if fen in self.user_book:
-#                    print "found position"
+                if pos_hash in self.user_book:
+                    # print "found position"
     #                print self.user_book[self.chessboard.position.fen]
-                    user_book_moves = self.user_book[fen]
-
+                    user_book_moves = self.user_book[pos_hash]
+                    # print user_book_moves
                     user_book_moves = user_book_moves["moves"]
+                    # print user_book_moves
                     if user_book_moves:
                         for m in user_book_moves:
-#                            print m
-    #                        self.user_book_panel.children[0].text += "[b]Set:[/b]\n"
+                            # print m
                             pos = Position(fen)
                             move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
                             san = move_info.san
                             move_text += "[ref={0}]{1}[/ref]\n".format(m, san)
 
                     if ev is not None:
-                        j = self.user_book[fen]
+                        j = self.user_book[pos_hash]
                         j["eval"] = self.convert_inf_eval_to_int(ev)
-                        self.user_book[fen] = j
+                        self.user_book[pos_hash] = j
                 else:
                     # Not found
-                        self.user_book[fen] = {"moves":[], "annotation":"",
+                    #     print "pos not found"
+                        self.user_book[pos_hash] = {"moves":[], "annotation":"",
                                                                       "eval":5, "games":[], "misc":""}
 
             p = Position(fen)
@@ -1491,7 +1504,7 @@ class Chess_app(App):
                 except Exception, ex:
                     pass
 
-            current_eval = self.user_book[fen]["eval"]
+            current_eval = self.user_book[pos_hash]["eval"]
             # print "current_eval:"+str(current_eval)
             weight = self.convert_int_eval_to_inf(current_eval)
             # print weight
