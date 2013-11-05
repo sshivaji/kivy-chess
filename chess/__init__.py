@@ -34,13 +34,9 @@ from libchess import Piece
 from libchess import Move
 from libchess import Position
 from libchess import PolyglotOpeningBookEntry
-try:
-    from libchess import PgnIndex
-except ImportError:
-    pass
-# Stable.
+from libchess import PgnIndex
+#from libchess import GameHeaderBag
 from chess.game_header_bag import GameHeaderBag
-
 # Design phase.
 from chess.polyglot_opening_book import PolyglotOpeningBook
 from chess.game_node import GameNode

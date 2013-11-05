@@ -26,31 +26,33 @@ class PgnIndexTestCase(unittest.TestCase):
     def test_uncommented(self):
         """Tests indexing the uncommented Kasparov vs. Deep Blue PGN."""
 #    gm_book = LevelJsonDict('gm_test.db')
-#        index = chess.PgnIndex("kasparov-deep-blue-1997.pgn")
-#        self.assertTrue(index.is_valid())
+        index = chess.PgnIndex("test/kasparov-deep-blue-1997.pgn")
+        self.assertTrue(index.is_valid())
 #
-#        #print len(index)
-#        first = index.get_pos(0)
-#        second = index.get_pos(1)
+        print len(index)
+        first = index.get_pos(0)
+        second = index.get_pos(1)
+        print first
+        print second
 #        #print second
-#        f = open("kasparov-deep-blue-1997.pgn")
-#        f.seek(first)
-#        line = 1
-#        lines = []
-#        while line:
-#            line = f.readline()
-#            pos = f.tell()
-#            #print pos
-#            if pos<=second:
-#                lines.append(line)
-#            else:
-#                break
-#
-#        games = chess.PgnFile.open_text(lines)
+        f = open("test/kasparov-deep-blue-1997.pgn")
+        f.seek(first)
+        line = 1
+        lines = []
+        while line:
+            line = f.readline()
+            pos = f.tell()
+            #print pos
+            if pos<=second:
+                lines.append(line)
+            else:
+                break
+
+        games = chess.PgnFile.open_text(lines)
 #        first_game = games[0]
 #        print first_game
 
-    games = chess.PgnFile.open('test/2600_2013_34.pgn')
+#    games = chess.PgnFile.open('test/2600_2013_34.pgn')
 #    g = games[5]
 ##    print g.headers.headers['Result']
 #    for g in games[5:]:
