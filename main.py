@@ -66,6 +66,8 @@ from dgt.dgtnix import *
 import os
 import datetime
 
+DELETE_FROM_USER_BOOK = "delete_from_user_book"
+
 ADD_TO_USER_BOOK = "add_to_user_book"
 
 REF_ = '[ref='
@@ -92,9 +94,13 @@ ENGINE_HEADER = '[b][color=000000][ref='+ENGINE_ANALYSIS\
 
 BOOK_ON = "Book"
 USER_BOOK_ON = "User Book"
+DATABASE_ON = "Database"
 BOOK_OFF = "Hide"
 
 BOOK_HEADER = '[b][color=000000][ref=Book]{0}[/ref][/color][/b]'
+
+DATABASE_HEADER = '[b][color=000000][ref=Database]{0}[/ref][/color][/b]'
+
 
 
 SQUARES = ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a6",
@@ -394,7 +400,7 @@ class Chess_app(App):
 
     def create_chess_board(self, squares, type="main"):
         if type == "main":
-            grid = GridLayout(cols=8, rows=8, spacing=1, padding=(20,20), size_hint=(1, 1))
+            grid = GridLayout(cols=8, rows=8, spacing=1, padding=(10,10), size_hint=(1, 1))
         else:
             grid = GridLayout(cols=8, rows=12, spacing=1, size_hint=(1, 1))
 
@@ -570,13 +576,17 @@ class Chess_app(App):
         # user book
         try:
             from chess.leveldict import LevelJsonDict
-            self.user_book = LevelJsonDict('book/userbook.db')
+            # self.user_book = LevelJsonDict('book/userbook.db')
+            self.user_book = LevelJsonDict('gm_test.db')
+
 #            print "Created userbook"
         except ImportError:
             self.user_book = None
 #            print "cannot import leveldb userbook"
 
         Clock.schedule_interval(self.dgt_probe, 1)
+        grandparent = BoxLayout(size_hint=(1,1), orientation = "vertical")
+
         parent = BoxLayout(size_hint=(1,1))
         self.grid = self.create_chess_board(self.squares)
 
@@ -598,7 +608,7 @@ class Chess_app(App):
 
         parent.add_widget(self.grid)
 
-        info_grid = GridLayout(cols = 1, rows = 5, spacing = 5, padding=(15,15), size_hint=(0.33, 1), orientation='vertical')
+        info_grid = GridLayout(cols=1, rows=5, spacing=5, padding=(8, 8), size_hint=(0.5, 1), orientation='vertical')
         info_grid.add_widget(b)
 
         self.game_score = ScrollableLabel('[color=000000][b]%s[/b][/color]' % GAME_HEADER, ref_callback=self.go_to_move)
@@ -611,21 +621,24 @@ class Chess_app(App):
         # book_grid = GridLayout(cols = 2, rows = 1, spacing = 1, size_hint=(0.3, 1))
 
         self.book_panel = ScrollableGrid([['Move', 'center', 'center', 'string', 0.3, 'visible'],
-                                         ['Weight', 'center', 'left', 'option', 0.3, 'visible'],
-                                         ],
+                                         ['Weight', 'center', 'left', 'option', 0.3, 'visible']],
                                          '',
                                          '',
                                          top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display)
 
+        info_grid.add_widget(self.book_panel)
+
         self.user_book_panel = ScrollableLabel(BOOK_HEADER.format(USER_BOOK_ON), ref_callback=self.add_user_book_moves)
         # self.user_book_panel = ScrollableGrid([['ID', 'center', 'center', 'string', 0.1, 'hidden']], [['01', 'Item 01', '12', '1.8']], '','', ref_callback=self.add_user_book_moves)
+        self.database_panel = ScrollableLabel(DATABASE_HEADER.format(DATABASE_ON), ref_callback=self.add_user_book_moves)
 
-        info_grid.add_widget(self.book_panel)
+        info_grid.add_widget(self.database_panel)
 #        info_grid.add_widget(self.user_book_panel)
 
         # info_grid.add_widget(book_grid)
 
         parent.add_widget(info_grid)
+        # parent.add_widget(self.book_panel)
         self.refresh_board()
 
         platform = kivy.utils.platform()
@@ -824,7 +837,7 @@ class Chess_app(App):
             # self.chessboard.addTextMove(mv)
             self.refresh_board()
 
-    def update_user_book_positions(self):
+    def update_user_book_positions(self, delete = False):
         game = self.chessboard
         while game.previous_node:
             prev = game.previous_node
@@ -850,9 +863,19 @@ class Chess_app(App):
                     moves.append(move)
                     j["moves"] = moves
                     self.user_book[prev_pos_hash] = j
+                else:
+                    if delete:
+                        moves = j["moves"]
+                        moves.remove(move)
+                        j["moves"] = moves
+                        self.user_book[prev_pos_hash] = j
+
                 # else:
                     # print "move already in book"
-            game = game.previous_node
+            if not delete:
+                game = game.previous_node
+            else:
+                return
 
 
     def get_ref_tags(self, t):
@@ -880,10 +903,12 @@ class Chess_app(App):
         mv = self.get_grid_click_input(mv, ref_move)
         # print "mv:"+str(mv)
         # if mv ==
-        if str(mv) == ADD_TO_USER_BOOK:
+        if str(mv) == DELETE_FROM_USER_BOOK:
+            self.update_user_book_positions(delete=True)
+            self.update_book_panel()
+        elif str(mv) == ADD_TO_USER_BOOK:
             self.update_user_book_positions()
             self.update_book_panel()
-
         elif self.is_position_inf_eval(mv):
             # print "is_pos_eval"
             # print "is_pos_eval"
@@ -1509,7 +1534,9 @@ class Chess_app(App):
             weight = self.convert_int_eval_to_inf(current_eval)
             # print weight
 
-            self.book_panel.grid.add_row(["[ref=add_to_user_book]Add to Repertoire?[/ref]", "[ref={0}][b]{0}[/b][/ref]".format(weight)], callback=self.add_book_moves)
+            self.book_panel.grid.add_row(["[ref=add_to_user_book]Add to Rep[/ref]",
+                                          ("[ref=%s]Delete[/ref]" % DELETE_FROM_USER_BOOK)], callback=self.add_book_moves)
+            self.book_panel.grid.add_row(["Eval", "[ref={0}]{0}[/ref]".format(weight)], callback=self.add_book_moves)
 
                 # current_eval = NONE
                 # self.book_panel.grid.add_row(["__", "[ref={0}]{0}[/ref]".format(eval_symbol[NONE])], callback=self.add_book_moves)

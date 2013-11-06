@@ -187,7 +187,7 @@ class PgnFile(object):
         in_tags = False
 
         for line in text:
-            print line
+            # print line
             # Decode and strip the line.
             line = line.decode('latin-1').strip()
 

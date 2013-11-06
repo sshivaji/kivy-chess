@@ -25,15 +25,15 @@ class PgnIndexTestCase(unittest.TestCase):
 
     def test_uncommented(self):
         """Tests indexing the uncommented Kasparov vs. Deep Blue PGN."""
-#    gm_book = LevelJsonDict('gm_test.db')
+        gm_book = LevelJsonDict('gm_test.db')
         index = chess.PgnIndex("test/kasparov-deep-blue-1997.pgn")
         self.assertTrue(index.is_valid())
 #
-        print len(index)
+        # print len(index)
         first = index.get_pos(0)
         second = index.get_pos(1)
-        print first
-        print second
+        # print first
+        # print second
 #        #print second
         f = open("test/kasparov-deep-blue-1997.pgn")
         f.seek(first)
@@ -49,38 +49,40 @@ class PgnIndexTestCase(unittest.TestCase):
                 break
 
         games = chess.PgnFile.open_text(lines)
+        # print games[0]
+        # print lines
 #        first_game = games[0]
 #        print first_game
 
 #    games = chess.PgnFile.open('test/2600_2013_34.pgn')
 #    g = games[5]
 ##    print g.headers.headers['Result']
-#    for g in games[5:]:
-##        print "\n"
-#        while g:
-#            if g.previous_node:
-#                position_hash = g.previous_node.position.fen
-#                if position_hash not in gm_book:
-#                    gm_book[position_hash] = {"moves":[], "annotation":"",
-#                                                      "eval":"", "games":[], "misc":""}
-#                entry = gm_book[position_hash]
-#
-#                if g.move:
-#                    print str(g.move)
-#                    moves = entry["moves"]
-#                    str_move = str(g.move)
-#
-#                    if moves:
-#                        if str_move not in moves:
-#                            moves.append(str(g.move))
-#                            entry["moves"]=moves
-#                            gm_book[position_hash] = entry
-#                    else:
-#                        entry["moves"]=[str_move]
-#                        gm_book[position_hash] = entry
-#
-#                    #                print g.move
-#            g = g.get_next_main_move()
+        for g in games:
+#        print "\n"
+           while g:
+               if g.previous_node:
+                   position_hash = str(g.previous_node.position.__hash__())
+                   if position_hash not in gm_book:
+                       gm_book[position_hash] = {"moves":[], "annotation":"",
+                                                         "eval":"", "games":[], "misc":""}
+                   entry = gm_book[position_hash]
+
+                   if g.move:
+                       # print str(g.move)
+                       moves = entry["moves"]
+                       str_move = str(g.move)
+
+                       if moves:
+                           if str_move not in moves:
+                               moves.append(str(g.move))
+                               entry["moves"]=moves
+                               gm_book[position_hash] = entry
+                       else:
+                           entry["moves"]=[str_move]
+                           gm_book[position_hash] = entry
+
+                       #                print g.move
+               g = g.get_next_main_move()
 
 #
 #    print g.move
