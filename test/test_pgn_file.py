@@ -26,40 +26,58 @@ class PgnIndexTestCase(unittest.TestCase):
     def test_uncommented(self):
         """Tests indexing the uncommented Kasparov vs. Deep Blue PGN."""
         gm_book = LevelJsonDict('gm_test.db')
-        index = chess.PgnIndex("test/kasparov-deep-blue-1997.pgn")
-        self.assertTrue(index.is_valid())
+#         index = chess.PgnIndex("test/kasparov-deep-blue-1997.pgn")
+#         self.assertTrue(index.is_valid())
+# #
+#         # print len(index)
+#         first = index.get_pos(0)
+#         second = index.get_pos(1)
+#         # print first
+#         # print second
+# #        #print second
+#         f = open("test/kasparov-deep-blue-1997.pgn")
+#         f.seek(first)
+#         line = 1
+#         lines = []
+#         while line:
+#             line = f.readline()
+#             pos = f.tell()
+#             #print pos
+#             if pos<=second:
+#                 lines.append(line)
+#             else:
+#                 break
 #
-        # print len(index)
-        first = index.get_pos(0)
-        second = index.get_pos(1)
-        # print first
-        # print second
-#        #print second
-        f = open("test/kasparov-deep-blue-1997.pgn")
-        f.seek(first)
-        line = 1
-        lines = []
-        while line:
-            line = f.readline()
-            pos = f.tell()
-            #print pos
-            if pos<=second:
-                lines.append(line)
-            else:
-                break
-
-        games = chess.PgnFile.open_text(lines)
+#         games = chess.PgnFile.open_text(lines)
         # print games[0]
         # print lines
 #        first_game = games[0]
 #        print first_game
 
-#    games = chess.PgnFile.open('test/2600_2013_34.pgn')
+
 #    g = games[5]
-##    print g.headers.headers['Result']
-        for g in games:
+        #"Event", "Site", "Date", "Round", "White", "Black", "Result",
+        # "Annotator", "PlyCount", "TimeControl", "Time", "Termination", "Mode",
+        # "FEN", "SetUp"
+
+        # for g in games:
+        #    print g.headers.headers.get('Event')
+        #    print g.headers.headers.get('Site')
+        #    print g.headers.headers.get('Date')
+        #    print g.headers.headers.get('Round')
+        #    print g.headers.headers.get('White')
+        #    print g.headers.headers.get('Black')
+        #    print g.headers.headers.get('Result')
+        #
+        #    print g.headers.headers.get('Annotator')
+
+
+
+
+        games = chess.PgnFile.open('test/kasparov-deep-blue-1997.pgn')
 #        print "\n"
-           while g:
+        for g in games:
+            while g:
                if g.previous_node:
                    position_hash = str(g.previous_node.position.__hash__())
                    if position_hash not in gm_book:
@@ -68,7 +86,7 @@ class PgnIndexTestCase(unittest.TestCase):
                    entry = gm_book[position_hash]
 
                    if g.move:
-                       # print str(g.move)
+                       print str(g.move)
                        moves = entry["moves"]
                        str_move = str(g.move)
 

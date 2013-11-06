@@ -1457,6 +1457,7 @@ class Chess_app(App):
         fen = self.chessboard.position.fen
 
         if self.book_display:
+            user_book_moves_set = set()
             pos_hash = str(self.chessboard.position.__hash__())
             # print pos_hash
             user_book_moves = None
@@ -1479,6 +1480,7 @@ class Chess_app(App):
                             move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
                             san = move_info.san
                             move_text += "[ref={0}]{1}[/ref]\n".format(m, san)
+                            user_book_moves_set.add(m)
 
                     if ev is not None:
                         j = self.user_book[pos_hash]
@@ -1507,10 +1509,21 @@ class Chess_app(App):
 #                print user_book_moves
                 if user_book_moves and str(p.move) in user_book_moves:
                     p.in_user_book = True
+                    user_book_moves_set.remove(str(p.move))
 
             polyglot_entries = sorted(polyglot_entries, key=lambda p: p.in_user_book, reverse = True)
 
-            # 'key', 'learn', 'move', 'raw_move', 'weight'
+            # print user_book_moves_set
+            for m in user_book_moves_set:
+                try:
+                    pos = Position(fen)
+                    move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
+                    san = move_info.san
+                    self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(m, san), ''], callback=self.add_book_moves)
+                except Exception, ex:
+                    pass
+
+             # 'key', 'learn', 'move', 'raw_move', 'weight'
             for e in polyglot_entries:
                 # print e.move
                 try:
