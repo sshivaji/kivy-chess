@@ -150,7 +150,7 @@ class PositionEval(object):
     def __str__( self):
         return "{0}, {1}".format(self.informant_eval, self.integer_eval)
 
-pos_evals = [PositionEval("-+",-2), PositionEval("=+",-1), PositionEval("=", 0), PositionEval("+=", 1), PositionEval("+-", 2), PositionEval("none", 5)]
+pos_evals = [PositionEval("-+", -2), PositionEval("=+", -1), PositionEval("=", 0), PositionEval("+=", 1), PositionEval("+-", 2), PositionEval("none", 5)]
 
 class SettingsScreen(Screen):
     pass
@@ -161,7 +161,6 @@ class ChessPiece(Scatter):
     allowed_to_move = BooleanProperty(False)
 
     hide = BooleanProperty(False)
-
 
     def __init__(self, image_source, **kwargs):
         super(ChessPiece, self).__init__(**kwargs)
@@ -627,11 +626,26 @@ class Chess_app(App):
                                          top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display)
 
         info_grid.add_widget(self.book_panel)
+        self.database_panel = ScrollableGrid([['W', 'center', 'center', 'string', 0.1, 'hidden'],
+                                         ['Elo', 'center', 'center', 'string', 0.1, 'visible'],
 
-        self.user_book_panel = ScrollableLabel(BOOK_HEADER.format(USER_BOOK_ON), ref_callback=self.add_user_book_moves)
-        # self.user_book_panel = ScrollableGrid([['ID', 'center', 'center', 'string', 0.1, 'hidden']], [['01', 'Item 01', '12', '1.8']], '','', ref_callback=self.add_user_book_moves)
-        self.database_panel = ScrollableLabel(DATABASE_HEADER.format(DATABASE_ON), ref_callback=self.add_user_book_moves)
+                                         ['B', 'center', 'left', 'option', 0.1, 'visible'],
+                                         ['Elo', 'center', 'center', 'string', 0.1, 'visible'],
 
+                                         # ['?-?', 'center', 'left', 'option', 0.1, 'visible'],
+                                         # ['Event', 'center', 'left', 'option', 0.1, 'visible'],
+                                         # ['Site', 'center', 'left', 'option', 0.1, 'visible'],
+                                         #
+                                         # ['Date', 'center', 'left', 'option', 0.1, 'visible'],
+                                         # ['Eco', 'center', 'left', 'option', 0.1, 'visible'],
+                                         # ['Round', 'center', 'left', 'option', 0.1, 'visible'],
+                                         # ['Ply', 'center', 'left', 'option', 0.1, 'visible']
+                                             ],
+                                         '',
+                                         '',
+                                         top_level_header=['DB', 'center', 'center', 'string', 0.1, 'hidden'], callback=self.database_action)
+# ['Event', 'Site', 'Date', 'White', 'Black', 'Result', 'PlyCount', 'ECO', 'Round', 'EventDate', 'WhiteElo', 'BlackElo', 'PlyCount'
+            # ScrollableLabel(DATABASE_HEADER.format(DATABASE_ON), ref_callback=self.database_action)
         info_grid.add_widget(self.database_panel)
 #        info_grid.add_widget(self.user_book_panel)
 
@@ -774,17 +788,6 @@ class Chess_app(App):
         self.chessboard = GameNode.positions[fen]
         self.refresh_board()
 
-#        move_num, color = value.split(":")
-#
-#        half_move_num = int(move_num)*2 - 1
-##        print "half_move_num:%d"%half_move_num
-#
-#        if color == 'b':
-#            half_move_num+=1
-#
-#        self.chessboard.gotoMove(half_move_num)
-#        self.refresh_board()
-
     def is_position_inf_eval(self, mv):
         for p in pos_evals:
             if p.informant_eval == mv:
@@ -815,27 +818,6 @@ class Chess_app(App):
                     return pos_evals[0].integer_eval
                 else:
                     return pos_evals[i+1].integer_eval
-
-    def add_user_book_moves(self, instance, mv):
-#        print str(mv)
-        if mv == BOOK_OFF:
-            self.user_book_display = False
-            self.update_user_book_panel()
-        elif mv == BOOK_ON:
-            self.user_book_display = True
-            self.update_user_book_panel()
-        elif self.is_position_eval(mv):
-            self.update_user_book_panel(ev=eval_hash[mv])
-        elif mv == BOOK_POSITION_UPDATE:
-            self.update_user_book_positions()
-            self.update_user_book_panel()
-
-        #            self.update_user_book_panel(action=BOOK_POSITION_UPDATE)
-        else:
-            self.add_try_variation(str(mv).encode("utf-8"))
-
-            # self.chessboard.addTextMove(mv)
-            self.refresh_board()
 
     def update_user_book_positions(self, delete = False):
         game = self.chessboard
@@ -1373,84 +1355,12 @@ class Chess_app(App):
                     score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
         return score
 
-    def update_user_book_panel(self, ev=None):
-#        print "input ev:{0}".format(ev)
-        if self.user_book_display and self.user_book is not None:
-            self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
-            #            print "found user_book\n"
-            moves = None
-            move_text = ""
 
-            if self.chessboard.position.fen in self.user_book:
+    def database_action(self):
+        pass
 
-#                print "found position"
-#                print self.user_book[self.chessboard.position.fen]
-                moves = self.user_book[self.chessboard.position.fen]
-
-                moves = moves["moves"]
-                if moves:
-                    for m in moves:
-#                        self.user_book_panel.children[0].text += "[b]Set:[/b]\n"
-                        pos = Position(self.chessboard.position.fen)
-                        move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
-                        san = move_info.san
-                        move_text += "[ref={0}]{1}[/ref]\n".format(m, san)
-
-                if ev is not None:
-                    j = self.user_book[self.chessboard.position.fen]
-                    j["eval"] = ev
-                    self.user_book[self.chessboard.position.fen] = j
-            else:
-#                print "position not found"
-                if ev is not None:
-                    self.user_book[self.chessboard.position.fen] = {"moves":[], "annotation":"",
-                                                                  "eval":ev, "games":[], "misc":""}
-
-            try:
-                current_eval = self.user_book[self.chessboard.position.fen]["eval"]
-                current_eval = int_eval_hash[current_eval]
-                if current_eval is not None:
-                    self.user_book_panel.children[0].text += "[i][size=14]"
-                    self.user_book_panel.children[0].text += "[ref={1}]{0:>4}[/ref]".format(eval_symbol[current_eval], current_eval)
-                    self.user_book_panel.children[0].text += "[/i][/size]\n\n"
-
-#                print "current_eval:{0}".format(current_eval)
-            except KeyError:
-                current_eval = None
-
-            self.user_book_panel.children[0].text += move_text+"\n"
-
-            # self.user_book_panel.children[0].text += "[b]Set:[/b]\n"
-
-
-            for k,v in eval_symbol.iteritems():
-#                print k
-                if current_eval is not None and current_eval==k:
-                    continue
-                    # self.user_book_panel.children[0].text += "[b][size=24]"
-                self.user_book_panel.children[0].text += "[ref={1}]{0}, [/ref]".format(v, k)
-                # if current_eval is not None and current_eval==k:
-                #     self.user_book_panel.children[0].text += "[/b][/size]"
-
-
-            self.user_book_panel.children[0].text += "\n[ref={0}][b]Update[/b][/ref]\n".format(BOOK_POSITION_UPDATE)
-            self.book_panel.children[0].text += '[/color]'
-
-
-        else:
-            self.user_book_panel.children[0].text = BOOK_HEADER.format(USER_BOOK_ON)
-        # Leveldb opening book schema:
-        # {'fen':
-        #   {
-        #   "moves":["e4", "d4"],
-        #   "annotation":text,
-        #   "eval": number, (higher means better for white) (+-, +=, =, =+, -+)
-        #   "games": game_ids of games played from this position,
-        #   "misc": Extra stuff?
-        #    ""
-        #   }
-        # }
-
+    def update_database_panel(self):
+        pass
 
     def update_book_panel(self, ev=None):
         # print "ev:"+str(ev)
@@ -1554,6 +1464,17 @@ class Chess_app(App):
                 # current_eval = NONE
                 # self.book_panel.grid.add_row(["__", "[ref={0}]{0}[/ref]".format(eval_symbol[NONE])], callback=self.add_book_moves)
                 # Level db write issue?
+            #         # Leveldb opening book schema:
+#         # {'fen':
+#         #   {
+#         #   "moves":["e4", "d4"],
+#         #   "annotation":text,
+#         #   "eval": number, (higher means better for white) (+-, +=, =, =+, -+)
+#         #   "games": game_ids of games played from this position,
+#         #   "misc": Extra stuff?
+#         #    ""
+#         #   }
+#         # }
 
 
     def fill_chess_board(self, sq, p):
