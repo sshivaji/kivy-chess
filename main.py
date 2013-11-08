@@ -584,9 +584,9 @@ class Chess_app(App):
 #            print "cannot import leveldb userbook"
 
         Clock.schedule_interval(self.dgt_probe, 1)
-        grandparent = BoxLayout(size_hint=(1,1), orientation = "vertical")
 
-        parent = BoxLayout(size_hint=(1,1))
+        grandparent = GridLayout(size_hint=(1,1), cols=1, orientation = 'vertical')
+        parent = GridLayout(size_hint=(1,1), cols=2)
         self.grid = self.create_chess_board(self.squares)
 
         # Dummy params for listener
@@ -607,7 +607,7 @@ class Chess_app(App):
 
         parent.add_widget(self.grid)
 
-        info_grid = GridLayout(cols=1, rows=5, spacing=5, padding=(8, 8), size_hint=(0.5, 1), orientation='vertical')
+        info_grid = GridLayout(cols=1, rows=4, spacing=5, padding=(8, 8), size_hint=(0.5, 1), orientation='vertical')
         info_grid.add_widget(b)
 
         self.game_score = ScrollableLabel('[color=000000][b]%s[/b][/color]' % GAME_HEADER, ref_callback=self.go_to_move)
@@ -626,33 +626,36 @@ class Chess_app(App):
                                          top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display)
 
         info_grid.add_widget(self.book_panel)
-        self.database_panel = ScrollableGrid([['W', 'center', 'center', 'string', 0.1, 'hidden'],
+        self.database_panel = ScrollableGrid([['White', 'center', 'center', 'string', 0.1, 'hidden'],
                                          ['Elo', 'center', 'center', 'string', 0.1, 'visible'],
 
-                                         ['B', 'center', 'left', 'option', 0.1, 'visible'],
+                                         ['Black', 'center', 'left', 'option', 0.1, 'visible'],
                                          ['Elo', 'center', 'center', 'string', 0.1, 'visible'],
 
-                                         # ['?-?', 'center', 'left', 'option', 0.1, 'visible'],
-                                         # ['Event', 'center', 'left', 'option', 0.1, 'visible'],
-                                         # ['Site', 'center', 'left', 'option', 0.1, 'visible'],
-                                         #
-                                         # ['Date', 'center', 'left', 'option', 0.1, 'visible'],
-                                         # ['Eco', 'center', 'left', 'option', 0.1, 'visible'],
-                                         # ['Round', 'center', 'left', 'option', 0.1, 'visible'],
-                                         # ['Ply', 'center', 'left', 'option', 0.1, 'visible']
+                                         ['Result', 'center', 'left', 'option', 0.1, 'visible'],
+                                         ['Event', 'center', 'left', 'option', 0.1, 'visible'],
+                                         ['Site', 'center', 'left', 'option', 0.1, 'visible'],
+
+                                         ['Date', 'center', 'left', 'option', 0.1, 'visible'],
+                                         ['Eco', 'center', 'left', 'option', 0.1, 'visible'],
+                                         ['Round', 'center', 'left', 'option', 0.1, 'visible'],
+                                         ['Ply', 'center', 'left', 'option', 0.1, 'visible']
                                              ],
                                          '',
                                          '',
-                                         top_level_header=['DB', 'center', 'center', 'string', 0.1, 'hidden'], callback=self.database_action)
+                                         top_level_header=['Database', 'center', 'center', 'string', 0.1, 'hidden'], callback=self.database_action)
 # ['Event', 'Site', 'Date', 'White', 'Black', 'Result', 'PlyCount', 'ECO', 'Round', 'EventDate', 'WhiteElo', 'BlackElo', 'PlyCount'
             # ScrollableLabel(DATABASE_HEADER.format(DATABASE_ON), ref_callback=self.database_action)
-        info_grid.add_widget(self.database_panel)
+#        info_grid.add_widget(self.database_panel)
 #        info_grid.add_widget(self.user_book_panel)
 
         # info_grid.add_widget(book_grid)
 
         parent.add_widget(info_grid)
-        # parent.add_widget(self.book_panel)
+        grandparent.add_widget(parent)
+        database_grid = BoxLayout(size_hint=(1,0.4))
+        database_grid.add_widget(self.database_panel)
+        grandparent.add_widget(database_grid)
         self.refresh_board()
 
         platform = kivy.utils.platform()
@@ -666,7 +669,7 @@ class Chess_app(App):
             self.start_engine_thread()
         sm = ScreenManager(transition=SlideTransition())
         board_screen = Screen(name='main')
-        board_screen.add_widget(parent)
+        board_screen.add_widget(grandparent)
         sm.add_widget(board_screen)
 
         settings_screen = SettingsScreen(name='settings')
@@ -1377,10 +1380,15 @@ class Chess_app(App):
                 move_text = ""
 
                 if pos_hash in self.user_book:
-                    # print "found position"
+#                    print "found position"
     #                print self.user_book[self.chessboard.position.fen]
                     user_book_moves = self.user_book[pos_hash]
-                    # print user_book_moves
+#                    print user_book_moves
+#                    if user_book_moves.has_key("games"):
+#                        for g in user_book_moves["games"]:
+#                            print user_book_moves["game_index_{0}".format(g)]
+
+
                     user_book_moves = user_book_moves["moves"]
                     # print user_book_moves
                     if user_book_moves:
