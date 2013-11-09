@@ -66,6 +66,10 @@ from dgt.dgtnix import *
 import os
 import datetime
 
+INDEX_TOTAL_GAME_COUNT = "total_game_count"
+
+INDEX_FILE_POS = "file_pos"
+
 DELETE_FROM_USER_BOOK = "delete_from_user_book"
 
 ADD_TO_USER_BOOK = "add_to_user_book"
@@ -899,6 +903,44 @@ class Chess_app(App):
                 mv = mv.text
         return mv
 
+    def add_database_games(self, game, ref_game=None):
+        gamenum_str = self.get_grid_click_input(game, ref_game)
+        game_num = int(gamenum_str)
+        # print "game_num:"
+        # print game_num
+        self.load_game_from_index(game_num)
+        # print game_num
+        # print self.user_book["game_index_{0}".format(game_num)][INDEX_FILE_POS]
+        # print self.user_book[INDEX_TOTAL_GAME_COUNT]
+
+    def load_game_from_index(self, game_num):
+
+        first = self.user_book["game_index_{0}".format(game_num)][INDEX_FILE_POS]
+
+        if game_num+1 < self.user_book[INDEX_TOTAL_GAME_COUNT]:
+            second = self.user_book["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
+        else:
+            second = None
+       #print second
+        f = open(self.user_book["pgn_filename"])
+        f.seek(first)
+        line = 1
+        lines = []
+        while line:
+            line = f.readline()
+            pos = f.tell()
+           #print pos
+            lines.append(line)
+            if second and pos >= second:
+                break
+        # print lines
+        games = PgnFile.open_text(lines)
+        self.chessboard = games[0]
+        self.chessboard_root = self.chessboard
+        self.refresh_board()
+
+        # self.game_score = games[0]
+
     def add_book_moves(self, mv, ref_move=None):
         mv = self.get_grid_click_input(mv, ref_move)
         # print "mv:"+str(mv)
@@ -1390,22 +1432,23 @@ class Chess_app(App):
     def update_database_panel(self, game_ids):
         if self.user_book is not None and self.database_display:
             self.database_panel.reset_grid()
-
+            # print "game_ids:"
             for g in game_ids:
                 # White, elo, Black, elo, Result, Event, Site, Date, Eco, Round, Ply
 #                self.database_panel.add_row([])
-                self.database_panel.grid.add_row([self.get_game_header(g, "White"),
-                                                  self.get_game_header(g, "WhiteElo"),
-                                                  self.get_game_header(g, "Black"),
-                                                  self.get_game_header(g, "BlackElo"),
-                                                  self.get_game_header(g, "Result"),
-                                                  self.get_game_header(g, "Event", first_line=True),
+#                 print g
+                self.database_panel.grid.add_row(["[ref={0}]{1}[/ref]".format(g, self.get_game_header(g, "White")),
+                                                  "[ref={0}]{1}[/ref]".format(g, self.get_game_header(g, "WhiteElo")),
+                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Black")),
+                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "BlackElo")),
+                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Result")),
+                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Event", first_line=True)),
                                                   # self.get_game_header(g, "Site"),
-                                                  self.get_game_header(g, "Date"),
-                                                  self.get_game_header(g, "ECO"),
+                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Date")),
+                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "ECO")),
                                                   # self.get_game_header(g, "Round"),
-                                                  self.get_game_header(g, "PlyCount")
-                                                 ], callback=self.add_book_moves)
+                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "PlyCount"))
+                                                 ], callback=self.add_database_games)
 
                 # print self.user_book["game_index_{0}".format(g)]
 
@@ -1429,8 +1472,9 @@ class Chess_app(App):
                     user_book_moves = self.user_book[pos_hash]
 #                    print user_book_moves
                     if user_book_moves.has_key("games"):
+                        # print "games:"
+                        # print user_book_moves["games"]
                         self.update_database_panel(user_book_moves["games"])
-
 
                     user_book_moves = user_book_moves["moves"]
                     # print user_book_moves

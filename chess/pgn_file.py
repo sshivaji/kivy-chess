@@ -129,8 +129,51 @@ class PgnFile(object):
 
 
     @classmethod
-    def open(cls, path):
+    def write_to_leveldb(cls, game_num, leveldb_book, leveldb_start_index, pgn_file):
+        print "Writing games to leveldb.."
+        for i in range(leveldb_start_index, game_num):
+            g = pgn_file[i]
+            while g:
+                if g.previous_node:
+                    position_hash = str(g.previous_node.position.__hash__())
+                    if position_hash not in leveldb_book:
+                        leveldb_book[position_hash] = {"moves": [], "annotation": "",
+                                                       "eval": "", "games": [i], "misc": ""}
+
+                    entry = leveldb_book[position_hash]
+
+                    if g.move:
+                    #                    print str(g.move)
+                        moves = entry["moves"]
+                        str_move = str(g.move)
+
+                        if moves:
+                            if str_move not in moves:
+                                moves.append(str(g.move))
+                                entry["moves"] = moves
+                                leveldb_book[position_hash] = entry
+                        else:
+                            entry["moves"] = [str_move]
+                            leveldb_book[position_hash] = entry
+
+                    entry = leveldb_book[position_hash]
+
+                    games = entry["games"]
+                    if i not in entry["games"]:
+                        games.append(i)
+                        entry["games"] = games
+                        leveldb_book[position_hash] = entry
+
+                g = g.get_next_main_move()
+        del pgn_file
+        leveldb_start_index = game_num
         pgn_file = PgnFile()
+        return pgn_file
+
+    @classmethod
+    def open(cls, path, leveldb_book=None):
+        pgn_file = PgnFile()
+        leveldb_start_index = 0
         current_game = None
         in_tags = False
         game_num = 0
@@ -157,6 +200,9 @@ class PgnFile(object):
                         cls.__parse_movetext(current_game, movetext)
                         if game_num % 10 == 0:
                             print "Processing game:{0}".format(game_num)
+                        if leveldb_book and game_num % 1000 == 0:
+                            pgn_file = cls.write_to_leveldb(game_num, leveldb_book, leveldb_start_index, pgn_file)
+                        # else:
                         pgn_file.add_game(current_game)
                         current_game = None
                 if not current_game:
@@ -177,6 +223,8 @@ class PgnFile(object):
             cls.__parse_movetext(current_game, movetext)
             pgn_file.add_game(current_game)
 
+        if leveldb_book:
+            pgn_file = cls.write_to_leveldb(game_num, leveldb_book, leveldb_start_index, pgn_file)
 
         return pgn_file
 
