@@ -503,6 +503,15 @@ class Chess_app(App):
             Color(0.5, 0.5, 0.5)
             Rectangle(size=Window.size)
 
+    def update_database_display(self, game, ref_game=None):
+        game = self.get_grid_click_input(game, ref_game)
+        if game == DATABASE_ON:
+            if self.database_display:
+                self.database_panel.reset_grid()
+            self.database_display = not self.database_display
+#            self.update_database_panel()
+            self.update_book_panel()
+
     def update_book_display(self, mv, ref_move=None):
         mv = self.get_grid_click_input(mv, ref_move)
         if mv == BOOK_ON:
@@ -563,6 +572,7 @@ class Chess_app(App):
         self.setup_board_squares = []
         self.use_engine = False
         self.book_display = True
+        self.database_display = True
         self.user_book_display = True
         self.last_touch_down_move = None
         self.last_touch_up_move = None
@@ -647,7 +657,7 @@ class Chess_app(App):
                                              ],
                                          '',
                                          '',
-                                         top_level_header=['Database', 'center', 'center', 'string', 0.1, 'hidden'], callback=self.database_action)
+                                         top_level_header=['Database', 'center', 'center', 'string', 0.1, 'hidden'], callback=self.update_database_display)
 # ['Event', 'Site', 'Date', 'White', 'Black', 'Result', 'PlyCount', 'ECO', 'Round', 'EventDate', 'WhiteElo', 'BlackElo', 'PlyCount'
             # ScrollableLabel(DATABASE_HEADER.format(DATABASE_ON), ref_callback=self.database_action)
 #        info_grid.add_widget(self.database_panel)
@@ -1365,14 +1375,22 @@ class Chess_app(App):
 
 
     def database_action(self):
+        print "action"
         pass
 
-    def get_game_header(self, g, header):
+    def get_game_header(self, g, header, first_line = False):
         if self.user_book["game_index_{0}".format(g)].has_key(header):
+            if first_line:
+                text = self.user_book["game_index_{0}".format(g)][header]
+                if "," in text:
+                    return text.split(",")[0]
+                return text
             return self.user_book["game_index_{0}".format(g)][header]
 
     def update_database_panel(self, game_ids):
-        if self.user_book is not None:
+        if self.user_book is not None and self.database_display:
+            self.database_panel.reset_grid()
+
             for g in game_ids:
                 # White, elo, Black, elo, Result, Event, Site, Date, Eco, Round, Ply
 #                self.database_panel.add_row([])
@@ -1381,7 +1399,7 @@ class Chess_app(App):
                                                   self.get_game_header(g, "Black"),
                                                   self.get_game_header(g, "BlackElo"),
                                                   self.get_game_header(g, "Result"),
-                                                  self.get_game_header(g, "Event"),
+                                                  self.get_game_header(g, "Event", first_line=True),
                                                   # self.get_game_header(g, "Site"),
                                                   self.get_game_header(g, "Date"),
                                                   self.get_game_header(g, "ECO"),

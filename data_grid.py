@@ -128,10 +128,17 @@ class DataGrid(GridLayout):
         # print "add_row"
         # print row_data
         for cell_data in row_data:
+            cell_height = 30
+#            cell_width = 10
+            if type(cell_data) is tuple:
+                cell_data, cell_height = cell_data
+
+#            print cell_height
 
             cell_text = '[color=000000]' + cell_data + '[/color]'
-            tmp = TableCell(text=cell_text, id="Body", size_hint_y = None, size_hint_x = None, height=30)
+            tmp = TableCell(text=cell_text, id="Body", size_hint_y = None, size_hint_x = None, height=cell_height, padding=(5,5), spacing = 1)
             tmp.bind(size=(tmp.setter('text_size')), on_press=callback, on_ref_press=callback)
+
             tmp.cell_pos = [self.rows - 1, n]
             tmp.halign = "center"
             tmp.valign = 'middle'
