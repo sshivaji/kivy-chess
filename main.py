@@ -167,6 +167,8 @@ class ChessPiece(Scatter):
 
         self.image = Image(source=image_source)
         self.image.allow_stretch = True
+        self.image.keep_ratio = True
+
         self.add_widget(self.image)
         self.auto_bring_to_front = True
 
@@ -217,9 +219,11 @@ class ChessSquare(Button):
     def add_piece(self, piece):
         self.remove_widget(self.piece)
         self.piece = piece
+        # print self.size
         if self.piece:
             self.piece.hide = not self.show_piece
             self.add_widget(piece)
+            # print self.size
             piece.set_size(self.size)
             piece.set_pos(self.pos)
 
@@ -233,7 +237,7 @@ class ChessSquare(Button):
 
 
     def on_size(self, instance, size):
-        # print '%s Size: %s' % (get_square_abbr(self.coord), size)
+        # print 'Size: %s' % ( size)
         if self.piece:
             self.piece.set_size(size)
 
@@ -399,14 +403,14 @@ class Chess_app(App):
 
     def create_chess_board(self, squares, type="main"):
         if type == "main":
-            grid = GridLayout(cols=8, rows=8, spacing=1, padding=(10,10), size_hint=(1, 1))
+            grid = GridLayout(cols=8, rows=8, spacing=1, padding=(10,10))
         else:
             grid = GridLayout(cols=8, rows=12, spacing=1, size_hint=(1, 1))
 
 
 
         for i, name in enumerate(SQUARES):
-            bt = ChessSquare(allow_stretch=True)
+            bt = ChessSquare(keep_ratio=True, size_hint_x=1, size_hint_y=1)
             bt.sq = i
             bt.name = name
             if i in light_squares:
@@ -430,7 +434,7 @@ class Chess_app(App):
 
         if type!="main":
             for index, i in enumerate([".", ".", ".", ".", ".", ".", ".", ".", ".", "R", "N", "B", "Q", "K", "P",  ".", ".", "r", "n", "b", "q", "k", "p", "."]):
-                bt = ChessSquare(allow_stretch=True)
+                bt = ChessSquare()
                 bt.sq = i
                 bt.name = i
                 # bt.sq_color = "l"
@@ -586,7 +590,7 @@ class Chess_app(App):
         Clock.schedule_interval(self.dgt_probe, 1)
 
         grandparent = GridLayout(size_hint=(1,1), cols=1, orientation = 'vertical')
-        parent = GridLayout(size_hint=(1,1), cols=2)
+        parent = BoxLayout()
         self.grid = self.create_chess_board(self.squares)
 
         # Dummy params for listener
@@ -607,7 +611,7 @@ class Chess_app(App):
 
         parent.add_widget(self.grid)
 
-        info_grid = GridLayout(cols=1, rows=4, spacing=5, padding=(8, 8), size_hint=(0.5, 1), orientation='vertical')
+        info_grid = GridLayout(cols=1, rows=4, spacing=5, padding=(8, 8), orientation='vertical')
         info_grid.add_widget(b)
 
         self.game_score = ScrollableLabel('[color=000000][b]%s[/b][/color]' % GAME_HEADER, ref_callback=self.go_to_move)
@@ -634,11 +638,11 @@ class Chess_app(App):
 
                                          ['Result', 'center', 'left', 'option', 0.1, 'visible'],
                                          ['Event', 'center', 'left', 'option', 0.1, 'visible'],
-                                         ['Site', 'center', 'left', 'option', 0.1, 'visible'],
+                                         # ['Site', 'center', 'left', 'option', 0.1, 'visible'],
 
                                          ['Date', 'center', 'left', 'option', 0.1, 'visible'],
                                          ['Eco', 'center', 'left', 'option', 0.1, 'visible'],
-                                         ['Round', 'center', 'left', 'option', 0.1, 'visible'],
+                                         # ['Round', 'center', 'left', 'option', 0.1, 'visible'],
                                          ['Ply', 'center', 'left', 'option', 0.1, 'visible']
                                              ],
                                          '',
@@ -651,11 +655,12 @@ class Chess_app(App):
 
         # info_grid.add_widget(book_grid)
 
+        # parent.add_widget(Label(size_hint=(0.5,1)))
         parent.add_widget(info_grid)
         grandparent.add_widget(parent)
         database_grid = BoxLayout(size_hint=(1,0.4))
         database_grid.add_widget(self.database_panel)
-        grandparent.add_widget(self.database_panel)
+        grandparent.add_widget(database_grid)
         self.refresh_board()
 
         platform = kivy.utils.platform()
@@ -1362,14 +1367,29 @@ class Chess_app(App):
     def database_action(self):
         pass
 
+    def get_game_header(self, g, header):
+        if self.user_book["game_index_{0}".format(g)].has_key(header):
+            return self.user_book["game_index_{0}".format(g)][header]
+
     def update_database_panel(self, game_ids):
         if self.user_book is not None:
             for g in game_ids:
                 # White, elo, Black, elo, Result, Event, Site, Date, Eco, Round, Ply
 #                self.database_panel.add_row([])
-                self.database_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format('', ''), ''], callback=self.add_book_moves)
+                self.database_panel.grid.add_row([self.get_game_header(g, "White"),
+                                                  self.get_game_header(g, "WhiteElo"),
+                                                  self.get_game_header(g, "Black"),
+                                                  self.get_game_header(g, "BlackElo"),
+                                                  self.get_game_header(g, "Result"),
+                                                  self.get_game_header(g, "Event"),
+                                                  # self.get_game_header(g, "Site"),
+                                                  self.get_game_header(g, "Date"),
+                                                  self.get_game_header(g, "ECO"),
+                                                  # self.get_game_header(g, "Round"),
+                                                  self.get_game_header(g, "PlyCount")
+                                                 ], callback=self.add_book_moves)
 
-                print self.user_book["game_index_{0}".format(g)]
+                # print self.user_book["game_index_{0}".format(g)]
 
     def update_book_panel(self, ev=None):
         # print "ev:"+str(ev)
