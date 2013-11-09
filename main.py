@@ -655,7 +655,7 @@ class Chess_app(App):
         grandparent.add_widget(parent)
         database_grid = BoxLayout(size_hint=(1,0.4))
         database_grid.add_widget(self.database_panel)
-        grandparent.add_widget(database_grid)
+        grandparent.add_widget(self.database_panel)
         self.refresh_board()
 
         platform = kivy.utils.platform()
@@ -1362,8 +1362,14 @@ class Chess_app(App):
     def database_action(self):
         pass
 
-    def update_database_panel(self):
-        pass
+    def update_database_panel(self, game_ids):
+        if self.user_book is not None:
+            for g in game_ids:
+                # White, elo, Black, elo, Result, Event, Site, Date, Eco, Round, Ply
+#                self.database_panel.add_row([])
+                self.database_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format('', ''), ''], callback=self.add_book_moves)
+
+                print self.user_book["game_index_{0}".format(g)]
 
     def update_book_panel(self, ev=None):
         # print "ev:"+str(ev)
@@ -1384,9 +1390,8 @@ class Chess_app(App):
     #                print self.user_book[self.chessboard.position.fen]
                     user_book_moves = self.user_book[pos_hash]
 #                    print user_book_moves
-#                    if user_book_moves.has_key("games"):
-#                        for g in user_book_moves["games"]:
-#                            print user_book_moves["game_index_{0}".format(g)]
+                    if user_book_moves.has_key("games"):
+                        self.update_database_panel(user_book_moves["games"])
 
 
                     user_book_moves = user_book_moves["moves"]
@@ -1536,6 +1541,7 @@ class Chess_app(App):
                         winc=self.time_inc_white, binc=self.time_inc_black)
 
         self.update_book_panel()
+#        self.update_database_panel()
 #        self.update_user_book_panel()
 
 if __name__ == '__main__':
