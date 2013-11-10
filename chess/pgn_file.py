@@ -64,8 +64,8 @@ class PgnFile(object):
     def __contains__(self, game):
         return game in self._games
 
-    @staticmethod
-    def __parse_movetext(game, movetext):
+    @classmethod
+    def __parse_movetext(cls, game, movetext, game_num = None, leveldb = None):
         variation_stack = [game]
         in_variation = False
         start_comment = ""
@@ -104,7 +104,10 @@ class PgnFile(object):
                     print token
                     return
                 try:
-                    variation_stack[-1] = variation_stack[-1].add_variation(pos.get_move_from_san(str(token)))
+                    mv = pos.get_move_from_san(str(token))
+                    variation_stack[-1] = variation_stack[-1].add_variation(mv)
+                    if game_num:
+                        cls.write_to_ldb(variation_stack[-1], mv, game_num, leveldb)
                 except ValueError, e:
                     if str(e).startswith('Variation already in set:'):
                         variation_stack[-1] = variation_stack[-1].add_variation(pos.get_move_from_san(str(token)), force=True)
@@ -129,49 +132,42 @@ class PgnFile(object):
 
 
     @classmethod
-    def write_to_leveldb(cls, game_num, leveldb_book, leveldb_start_index, pgn_file):
-        print "Writing games to leveldb.."
-        for i in range(leveldb_start_index, game_num):
-            g = pgn_file[i]
-            while g:
-                if g.previous_node:
-                    position_hash = str(g.previous_node.position.__hash__())
-                    if position_hash not in leveldb_book:
-                        leveldb_book[position_hash] = {"moves": [], "annotation": "",
-                                                       "eval": "", "games": [i], "misc": ""}
+    def write_to_ldb(cls, g, mv, i, leveldb_book):
+        if g.previous_node:
+            position_hash = str(g.previous_node.position.__hash__())
+            if position_hash not in leveldb_book:
+                leveldb_book[position_hash] = {"moves": [], "annotation": "",
+                                               "eval": "", "games": [i], "misc": ""}
 
-                    entry = leveldb_book[position_hash]
+            entry = leveldb_book[position_hash]
 
-                    if g.move:
-                    #                    print str(g.move)
-                        moves = entry["moves"]
-                        str_move = str(g.move)
+            if mv:
+            #                    print str(g.move)
+                moves = entry["moves"]
+                str_move = str(g.move)
 
-                        if moves:
-                            if str_move not in moves:
-                                moves.append(str(g.move))
-                                entry["moves"] = moves
-                                leveldb_book[position_hash] = entry
-                        else:
-                            entry["moves"] = [str_move]
-                            leveldb_book[position_hash] = entry
-
-                    entry = leveldb_book[position_hash]
-
-                    games = entry["games"]
-                    if i not in entry["games"]:
-                        games.append(i)
-                        entry["games"] = games
+                if moves:
+                    if str_move not in moves:
+                        moves.append(str(mv))
+                        entry["moves"] = moves
                         leveldb_book[position_hash] = entry
+                else:
+                    entry["moves"] = [str_move]
+                    leveldb_book[position_hash] = entry
 
-                g = g.get_next_main_move()
-        del pgn_file
-        leveldb_start_index = game_num
-        pgn_file = PgnFile()
-        return pgn_file
+            entry = leveldb_book[position_hash]
+
+            games = entry["games"]
+            if i not in entry["games"]:
+                games.append(i)
+                entry["games"] = games
+                leveldb_book[position_hash] = entry
 
     @classmethod
     def open(cls, path, leveldb_book=None):
+        level_db_book_present = True
+        if leveldb_book is not None:
+            level_db_book_present = True
         pgn_file = PgnFile()
         leveldb_start_index = 0
         current_game = None
@@ -194,17 +190,19 @@ class PgnFile(object):
                     if in_tags:
                         current_game.headers[tag_name] = tag_value
                     else:
-                        game_num += 1
                         # if game_num <2220:
                         #     continue
-                        cls.__parse_movetext(current_game, movetext)
+                        cls.__parse_movetext(current_game, movetext, game_num=game_num, leveldb=leveldb_book)
                         if game_num % 10 == 0:
                             print "Processing game:{0}".format(game_num)
-                        if leveldb_book and game_num % 1000 == 0:
-                            pgn_file = cls.write_to_leveldb(game_num, leveldb_book, leveldb_start_index, pgn_file)
+                        # if game_num % 1000 == 0 and level_db_book_present:
+                        #     pgn_file = cls.write_to_leveldb(game_num, leveldb_book, leveldb_start_index, pgn_file)
                         # else:
-                        pgn_file.add_game(current_game)
+                        if not level_db_book_present:
+                            pgn_file.add_game(current_game)
                         current_game = None
+                        game_num += 1
+
                 if not current_game:
                     current_game = chess.Game()
                     current_game.headers[tag_name] = tag_value
@@ -220,11 +218,12 @@ class PgnFile(object):
                 in_tags = False
 
         if current_game:
-            cls.__parse_movetext(current_game, movetext)
-            pgn_file.add_game(current_game)
+            cls.__parse_movetext(current_game, movetext, game_num=game_num, leveldb=leveldb_book)
+            if not level_db_book_present:
+                pgn_file.add_game(current_game)
 
-        if leveldb_book:
-            pgn_file = cls.write_to_leveldb(game_num, leveldb_book, leveldb_start_index, pgn_file)
+        # if level_db_book_present:
+        #     pgn_file = cls.write_to_leveldb(game_num, leveldb_book, leveldb_start_index, pgn_file)
 
         return pgn_file
 

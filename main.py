@@ -593,8 +593,8 @@ class Chess_app(App):
         # user book
         try:
             from chess.leveldict import LevelJsonDict
-            # self.user_book = LevelJsonDict('book/userbook.db')
-            self.user_book = LevelJsonDict('gm_test.db')
+            self.user_book = LevelJsonDict('book/userbook.db')
+            # self.user_book = LevelJsonDict('gm_test.db')
 
 #            print "Created userbook"
         except ImportError:
