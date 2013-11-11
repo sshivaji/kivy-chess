@@ -43,9 +43,9 @@ class PgnIndexTestCase(unittest.TestCase):
     def test_uncommented(self):
         """Tests indexing the uncommented Kasparov vs. Deep Blue PGN."""
         # gm_book = LevelJsonDict('gm_test.db')
-        gm_book = LevelJsonDict('gm_test.db')
-        # pgn_file = "test/kasparov-deep-blue-1997.pgn"
-        pgn_file = "test/2600_2013_34.pgn"
+        gm_book = LevelJsonDict('book/test_pgn_index.db')
+        pgn_file = "test/kasparov-deep-blue-1997.pgn"
+        # pgn_file = "test/2600_2013_34.pgn"
 
         index = chess.PgnIndex(pgn_file)
         gm_book["total_game_count"] = index.__len__()
@@ -56,7 +56,7 @@ class PgnIndexTestCase(unittest.TestCase):
             # print index.get_pos(1)
             self.write_header(g, gm_book, i, [{"file_pos":index.get_pos(i)},'Event', 'Site', 'Date', 'White', 'Black', 'Result', 'PlyCount', 'ECO', 'Round', 'EventDate', 'WhiteElo', 'BlackElo', 'PlyCount', 'Source', 'EventType'])
 
-        games = chess.PgnFile.open(pgn_file, leveldb_book=gm_book)
+        # games = chess.PgnFile.open(pgn_file, leveldb_book=gm_book)
         # for game_index, g in enumerate(games):
         #     while g:
         #         if g.previous_node:
