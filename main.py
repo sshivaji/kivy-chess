@@ -65,6 +65,7 @@ from chess.game_header_bag import GameHeaderBag
 from dgt.dgtnix import *
 import os
 import datetime
+import leveldb
 
 INDEX_TOTAL_GAME_COUNT = "total_game_count"
 
@@ -593,13 +594,19 @@ class Chess_app(App):
         # user book
         try:
             from chess.leveldict import LevelJsonDict
+            # import leveldb
+            # from chess.leveldict import LevelDict
             self.user_book = LevelJsonDict('book/userbook.db')
-            # self.user_book = LevelJsonDict('gm_test.db')
+            self.db_index_book = leveldb.LevelDB('book/test_polyglot_index.db')
+            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
+
 
 #            print "Created userbook"
         except ImportError:
             self.user_book = None
-#            print "cannot import leveldb userbook"
+            self.db_index_book = None
+            self.pgn_index = None
+            print "cannot import leveldb userbook"
 
         Clock.schedule_interval(self.dgt_probe, 1)
 
@@ -915,14 +922,14 @@ class Chess_app(App):
 
     def load_game_from_index(self, game_num):
 
-        first = self.user_book["game_index_{0}".format(game_num)][INDEX_FILE_POS]
+        first = self.pgn_index["game_index_{0}".format(game_num)][INDEX_FILE_POS]
 
-        if game_num+1 < self.user_book[INDEX_TOTAL_GAME_COUNT]:
-            second = self.user_book["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
+        if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
+            second = self.pgn_index["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
         else:
             second = None
        #print second
-        f = open(self.user_book["pgn_filename"])
+        f = open(self.pgn_index["pgn_filename"])
         f.seek(first)
         line = 1
         lines = []
@@ -1421,19 +1428,37 @@ class Chess_app(App):
         pass
 
     def get_game_header(self, g, header, first_line = False):
-        if self.user_book["game_index_{0}".format(g)].has_key(header):
+        if self.pgn_index["game_index_{0}".format(g)].has_key(header):
             if first_line:
-                text = self.user_book["game_index_{0}".format(g)][header]
+                text = self.pgn_index["game_index_{0}".format(g)][header]
                 if "," in text:
                     return text.split(",")[0]
                 return text
-            return self.user_book["game_index_{0}".format(g)][header]
+            return self.pgn_index["game_index_{0}".format(g)][header]
 
-    def update_database_panel(self, game_ids):
-        if self.user_book is not None and self.database_display:
+    def update_database_panel(self, pos_hash):
+        if self.db_index_book is not None and self.database_display:
             self.database_panel.reset_grid()
             # print "game_ids:"
-            for g in game_ids:
+            # print self.db_index_book.GetStats()
+            try:
+
+                game_ids = self.db_index_book.Get(pos_hash).split(',')[:-1]
+                # print type(game_ids)
+                # for g in game_ids:
+                #     print g
+
+            except KeyError, e:
+                print "key not found!"
+                game_ids = []
+
+            # except leveldb.LevelDBError, e:
+            #     game_ids = []
+            print game_ids
+
+
+            for g in game_ids[:10]:
+                pass
                 # White, elo, Black, elo, Result, Event, Site, Date, Eco, Round, Ply
 #                self.database_panel.add_row([])
 #                 print g
@@ -1459,6 +1484,11 @@ class Chess_app(App):
         if self.book_display:
             user_book_moves_set = set()
             pos_hash = str(self.chessboard.position.__hash__())
+            if self.db_index_book is not None:
+                        # print "games:"
+                        # print user_book_moves["games"]
+                self.update_database_panel(pos_hash)
+
             # print pos_hash
             user_book_moves = None
             if self.user_book is not None:
@@ -1471,10 +1501,6 @@ class Chess_app(App):
     #                print self.user_book[self.chessboard.position.fen]
                     user_book_moves = self.user_book[pos_hash]
 #                    print user_book_moves
-                    if user_book_moves.has_key("games"):
-                        # print "games:"
-                        # print user_book_moves["games"]
-                        self.update_database_panel(user_book_moves["games"])
 
                     user_book_moves = user_book_moves["moves"]
                     # print user_book_moves

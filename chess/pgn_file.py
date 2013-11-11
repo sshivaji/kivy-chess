@@ -88,7 +88,12 @@ class PgnFile(object):
                     raise PgnError("NAGs must go behind moves.")
                 variation_stack[-1].nags.append(int(token[1:]))
             elif token == "(":
-                variation_stack.append(variation_stack[-1].previous_node)
+                try:
+                    variation_stack.append(variation_stack[-1].previous_node)
+                except IndexError, e:
+                    print "Variation Index error"
+                    print e
+                    return
                 in_variation = False
             elif token == ")":
                 variation_stack.pop()
