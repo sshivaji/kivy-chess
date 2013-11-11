@@ -136,7 +136,11 @@ class DataGrid(GridLayout):
 #            print cell_height
 
             cell_text = '[color=000000]' + cell_data + '[/color]'
-            tmp = TableCell(text=cell_text, id="Body", size_hint_y = None, size_hint_x = None, height=cell_height, padding=(5,5), spacing = 1)
+            if cell_height:
+                tmp = TableCell(text=cell_text, id="Body", size_hint_y = None, size_hint_x = None, height=cell_height, padding=(5,5), spacing = 1)
+            else:
+                tmp = TableCell(text=cell_text, id="Body", size_hint_y = None, size_hint_x = None, padding=(5,5), spacing = 1)
+
             tmp.bind(size=(tmp.setter('text_size')), on_press=callback, on_ref_press=callback)
 
             tmp.cell_pos = [self.rows - 1, n]

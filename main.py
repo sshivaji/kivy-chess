@@ -1454,7 +1454,7 @@ class Chess_app(App):
 
             # except leveldb.LevelDBError, e:
             #     game_ids = []
-            print game_ids
+            print len(game_ids)
 
             for g in game_ids[:30]:
                 # pass
