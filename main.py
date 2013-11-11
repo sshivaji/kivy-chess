@@ -1456,15 +1456,14 @@ class Chess_app(App):
             #     game_ids = []
             print game_ids
 
-
-            for g in game_ids[:10]:
-                pass
+            for g in game_ids[:30]:
+                # pass
                 # White, elo, Black, elo, Result, Event, Site, Date, Eco, Round, Ply
 #                self.database_panel.add_row([])
 #                 print g
-                self.database_panel.grid.add_row(["[ref={0}]{1}[/ref]".format(g, self.get_game_header(g, "White")),
+                self.database_panel.grid.add_row([("[ref={0}]{1}[/ref]".format(g, self.get_game_header(g, "White")), None),
                                                   "[ref={0}]{1}[/ref]".format(g, self.get_game_header(g, "WhiteElo")),
-                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Black")),
+                                                  ("[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Black")), None),
                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "BlackElo")),
                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Result")),
                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Event", first_line=True)),

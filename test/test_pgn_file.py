@@ -44,8 +44,8 @@ class PgnIndexTestCase(unittest.TestCase):
         """Tests indexing the uncommented Kasparov vs. Deep Blue PGN."""
         # gm_book = LevelJsonDict('gm_test.db')
         gm_book = LevelJsonDict('book/test_pgn_index.db')
-        pgn_file = "test/kasparov-deep-blue-1997.pgn"
-        # pgn_file = "test/2600_2013_34.pgn"
+        # pgn_file = "test/kasparov-deep-blue-1997.pgn"
+        pgn_file = "test/2600_2013_34.pgn"
 
         index = chess.PgnIndex(pgn_file)
         gm_book["total_game_count"] = index.__len__()
