@@ -60,6 +60,7 @@ class GameNode(object):
         self.__move = move
 
         self.__san = None
+        self.header_score = None
 
         if previous_node:
             p = self.previous_node.position
@@ -361,5 +362,39 @@ class GameNode(object):
                 score+= "{0} ".format(")",)
         return score
 
+    def fill_header_entry(self, attr):
+        if self.headers.headers.has_key(attr):
+            return self.headers.headers[attr]
+
+    def write_header(self, header_score, attr, definition=True):
+        if self.fill_header_entry(attr):
+            if definition:
+                header_score += attr+": "
+            header_score += self.fill_header_entry(attr)
+            header_score += '\n'
+        return header_score
+
+    def get_headers(self):
+        if not self.header_score:
+            header_score = ''
+
+            header_score = self.write_header(header_score, 'White', definition=False)
+            header_score = self.write_header(header_score, 'WhiteElo', definition=False)
+            header_score = self.write_header(header_score, 'Black', definition=False)
+            header_score = self.write_header(header_score, 'BlackElo', definition=False)
+
+            header_score = self.write_header(header_score, 'Result', definition=False)
+            header_score = self.write_header(header_score, 'Round')
+            header_score = self.write_header(header_score, 'Event')
+            header_score = self.write_header(header_score, 'Site')
+            header_score = self.write_header(header_score, 'Date')
+            header_score = self.write_header(header_score, 'ECO')
+            print "generating headers.."
+            self.header_score = header_score
+
+        return self.header_score
+
+
     def game_score(self, format="ref"):
-        return self.walk_tree(self.__variations, move=0, format=format)
+        # print self.headers.headers
+        return self.get_headers() + self.walk_tree(self.__variations, move=0, format=format)

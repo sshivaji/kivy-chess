@@ -38,7 +38,10 @@ from kivy.uix.switch import Switch
 from kivy.uix.slider import Slider
 from kivy.graphics import Rectangle
 from kivy.core.text.markup import MarkupLabel
+from kivy.adapters.dictadapter import DictAdapter
+from kivy.adapters.listadapter import ListAdapter
 
+from kivy.uix.listview import ListItemButton, ListItemLabel, CompositeListItem, ListView
 #from kivy.core.clipboard import Clipboard
 
 #from ChessBoard import ChessBoard
@@ -255,6 +258,11 @@ class ChessSquare(Button):
             # def on_touch_down(self, touch):
             #     if super(ChessSquare, self).on_touch_down(touch):
             #         app.process_move(self)
+
+class DataItem(object):
+    def __init__(self, text='', is_selected=False):
+        self.text = text
+        self.is_selected = is_selected
 
 
 class Chess_app(App):
@@ -525,6 +533,15 @@ class Chess_app(App):
             self.book_display = not self.book_display
             self.update_book_panel()
 
+    def db_selection_changed(self, *args):
+        # print '    args when selection changes gets you the adapter', args
+        if len(args[0].selection) == 1:
+            self.load_game_from_index(int(args[0].selection[0].text))
+
+            # print args[0].selection[0].text
+        # self.selected_item = args[0].selection[0].text
+
+
     def build(self):
         self.custom_fen = None
         self.start_pos_changed = False
@@ -651,6 +668,20 @@ class Chess_app(App):
                                          top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display)
 
         info_grid.add_widget(self.book_panel)
+
+        self.db_list_adapter = ListAdapter(
+                           data=["Item #{0}".format(i) for i in xrange(2)],
+                           # args_converter=args_converter,
+                           selection_mode='single',
+                           # propagate_selection_to_data=True,
+                           allow_empty_selection=True,
+                           cls=ListItemButton)
+
+        self.database_list_view = ListView(adapter=self.db_list_adapter)
+        self.database_list_view.adapter.bind(on_selection_change=self.db_selection_changed)
+
+        # self.add_widget(list_view)
+
         self.database_panel = ScrollableGrid([['White', 'center', 'center', 'string', 0.1, 'hidden'],
                                          ['Elo', 'center', 'center', 'string', 0.1, 'visible'],
 
@@ -680,7 +711,7 @@ class Chess_app(App):
         parent.add_widget(info_grid)
         grandparent.add_widget(parent)
         database_grid = BoxLayout(size_hint=(1,0.4))
-        database_grid.add_widget(self.database_panel)
+        database_grid.add_widget(self.database_list_view)
         grandparent.add_widget(database_grid)
         self.refresh_board()
 
@@ -929,6 +960,14 @@ class Chess_app(App):
         else:
             second = None
        #print second
+        # print self.pgn_index["game_index_{0}".format(game_num)]['White']
+        # print self.pgn_index["game_index_{0}".format(game_num)]['Black']
+        # print self.pgn_index["game_index_{0}".format(game_num)]['Result']
+        # print self.pgn_index["game_index_{0}".format(game_num)]['Date']
+
+
+
+
         f = open(self.pgn_index["pgn_filename"])
         f.seek(first)
         line = 1
@@ -942,7 +981,9 @@ class Chess_app(App):
                 break
         # print lines
         games = PgnFile.open_text(lines)
+        # print games[0].'White'
         self.chessboard = games[0]
+        # print self.chessboard.headers.headers
         self.chessboard_root = self.chessboard
         self.refresh_board()
 
@@ -1438,7 +1479,7 @@ class Chess_app(App):
 
     def update_database_panel(self, pos_hash):
         if self.db_index_book is not None and self.database_display:
-            self.database_panel.reset_grid()
+            # self.database_panel.reset_grid()
             # print "game_ids:"
             # print self.db_index_book.GetStats()
             try:
@@ -1455,24 +1496,26 @@ class Chess_app(App):
             # except leveldb.LevelDBError, e:
             #     game_ids = []
             print len(game_ids)
+            # game_data =
+            self.db_list_adapter.data = [str(i) for i in game_ids]
 
-            for g in game_ids[:30]:
-                # pass
-                # White, elo, Black, elo, Result, Event, Site, Date, Eco, Round, Ply
-#                self.database_panel.add_row([])
-#                 print g
-                self.database_panel.grid.add_row([("[ref={0}]{1}[/ref]".format(g, self.get_game_header(g, "White")), None),
-                                                  "[ref={0}]{1}[/ref]".format(g, self.get_game_header(g, "WhiteElo")),
-                                                  ("[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Black")), None),
-                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "BlackElo")),
-                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Result")),
-                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Event", first_line=True)),
-                                                  # self.get_game_header(g, "Site"),
-                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Date")),
-                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "ECO")),
-                                                  # self.get_game_header(g, "Round"),
-                                                  "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "PlyCount"))
-                                                 ], callback=self.add_database_games)
+#             for g in game_ids[:30]:
+#                 # pass
+#                 # White, elo, Black, elo, Result, Event, Site, Date, Eco, Round, Ply
+# #                self.database_panel.add_row([])
+# #                 print g
+#                 self.database_panel.grid.add_row([("[ref={0}]{1}[/ref]".format(g, self.get_game_header(g, "White")), None),
+#                                                   "[ref={0}]{1}[/ref]".format(g, self.get_game_header(g, "WhiteElo")),
+#                                                   ("[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Black")), None),
+#                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "BlackElo")),
+#                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Result")),
+#                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Event", first_line=True)),
+#                                                   # self.get_game_header(g, "Site"),
+#                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Date")),
+#                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "ECO")),
+#                                                   # self.get_game_header(g, "Round"),
+#                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "PlyCount"))
+#                                                  ], callback=self.add_database_games)
 
                 # print self.user_book["game_index_{0}".format(g)]
 
