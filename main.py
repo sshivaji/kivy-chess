@@ -536,7 +536,10 @@ class Chess_app(App):
     def db_selection_changed(self, *args):
         # print '    args when selection changes gets you the adapter', args
         if len(args[0].selection) == 1:
-            self.load_game_from_index(int(args[0].selection[0].text))
+            game_index = args[0].selection[0].id
+            current_fen = self.chessboard.position.fen
+            self.load_game_from_index(int(game_index))
+            self.go_to_move(None, current_fen)
 
             # print args[0].selection[0].text
         # self.selected_item = args[0].selection[0].text
@@ -668,16 +671,54 @@ class Chess_app(App):
                                          top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display)
 
         info_grid.add_widget(self.book_panel)
+        integers_dict = \
+        {str(i): {'text': str(i), 'is_selected': False} for i in range(100)}
+        # print integers_dict
 
-        self.db_list_adapter = ListAdapter(
-                           data=["Item #{0}".format(i) for i in xrange(2)],
-                           # args_converter=args_converter,
+        args_converter = \
+             lambda row_index, rec: \
+                 {'text': rec,
+                  'size_hint_y': None,
+                  'height': 25,
+                  'cls_dicts': [{'cls': ListItemButton,
+                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "White")}},
+                                {'cls': ListItemButton,
+                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "Black")}},
+                                {'cls': ListItemButton,
+                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "Result")}},
+                                {'cls': ListItemButton,
+                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "Date")}},
+                                {'cls': ListItemButton,
+                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "Event")}},
+                                {'cls': ListItemButton,
+                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "ECO")}}
+                            ]}
+                                # {'cls': ListItemLabel,
+                                #  'kwargs': {'text': "Middle-{0}".format(rec),
+                                #             'is_representing_cls': True}},
+                                # {'cls': ListItemButton,
+                                #  'kwargs': {'text': self.pgn_index["game_index_{0}".format(rec)]['Black']}}]}
+
+        # print args_converter('1', integers_dict)
+
+        # item_strings = ["{0}".format(index) for index in xrange(100)]
+
+        # self.db_adapter = DictAdapter(sorted_keys=item_strings,
+        #                             data=integers_dict,
+        #                             args_converter=args_converter,
+        #                             selection_mode='single',
+        #                             allow_empty_selection=False,
+        #                             cls=CompositeListItem)
+
+        self.db_adapter = ListAdapter(
+                           data=integers_dict,
+                           args_converter=args_converter,
                            selection_mode='single',
                            # propagate_selection_to_data=True,
                            allow_empty_selection=True,
-                           cls=ListItemButton)
+                           cls=CompositeListItem)
 
-        self.database_list_view = ListView(adapter=self.db_list_adapter)
+        self.database_list_view = ListView(adapter=self.db_adapter)
         self.database_list_view.adapter.bind(on_selection_change=self.db_selection_changed)
 
         # self.add_widget(list_view)
@@ -841,12 +882,11 @@ class Chess_app(App):
         self.root.current='settings'
 
     def go_to_move(self, label, fen):
-#        print 'Going back to move.. ', value
-#        print instance
-#        print value
-
-        self.chessboard = GameNode.positions[fen]
-        self.refresh_board()
+        # print 'Going to move.. '
+        # print GameNode.positions[fen]
+        if GameNode.positions.has_key(fen):
+            self.chessboard = GameNode.positions[fen]
+            self.refresh_board()
 
     def is_position_inf_eval(self, mv):
         for p in pos_evals:
@@ -946,13 +986,17 @@ class Chess_app(App):
         game_num = int(gamenum_str)
         # print "game_num:"
         # print game_num
+        # current_fen = str(self.chessboard.position.fen)
+        # print current_fen
         self.load_game_from_index(game_num)
+        # self.go_to_move(None, current_fen)
         # print game_num
         # print self.user_book["game_index_{0}".format(game_num)][INDEX_FILE_POS]
         # print self.user_book[INDEX_TOTAL_GAME_COUNT]
 
     def load_game_from_index(self, game_num):
-
+        print "game_num:"
+        print game_num
         first = self.pgn_index["game_index_{0}".format(game_num)][INDEX_FILE_POS]
 
         if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
@@ -1469,36 +1513,57 @@ class Chess_app(App):
         pass
 
     def get_game_header(self, g, header, first_line = False):
-        if self.pgn_index["game_index_{0}".format(g)].has_key(header):
-            if first_line:
-                text = self.pgn_index["game_index_{0}".format(g)][header]
-                if "," in text:
-                    return text.split(",")[0]
-                return text
-            return self.pgn_index["game_index_{0}".format(g)][header]
+        try:
+            if self.pgn_index["game_index_{0}".format(g)].has_key(header):
+                if first_line:
+                    text = self.pgn_index["game_index_{0}".format(g)][header]
+                    if "," in text:
+                        return text.split(",")[0]
+                    return text
+                return self.pgn_index["game_index_{0}".format(g)][header]
+        except KeyError:
+            return "Unknown"
 
     def update_database_panel(self, pos_hash):
         if self.db_index_book is not None and self.database_display:
             # self.database_panel.reset_grid()
             # print "game_ids:"
             # print self.db_index_book.GetStats()
+            # print "pos_hash:"
+            # print pos_hash
             try:
-
                 game_ids = self.db_index_book.Get(pos_hash).split(',')[:-1]
+                print len(game_ids)
+                # print game_ids[:]
                 # print type(game_ids)
-                # for g in game_ids:
-                #     print g
+                # for g in game_ids[:5]:
+                #     print self.get_game_header(g, "White")
+                #     print self.get_game_header(g, "Black")
+                #     print self.get_game_header(g, "ELO")
+                #     print self.get_game_header(g, "Result")
+                #     print self.get_game_header(g, "ECO")
 
             except KeyError, e:
                 print "key not found!"
                 game_ids = []
 
+            # print "\n\n"
+
             # except leveldb.LevelDBError, e:
             #     game_ids = []
-            print len(game_ids)
-            # game_data =
-            self.db_list_adapter.data = [str(i) for i in game_ids]
 
+            self.db_adapter.data = {str(i): {'text': str(i), 'is_selected': False} for i in game_ids}
+            # print self.get_game_header(game_ids[1], "White")
+            # print self.get_game_header(game_ids[1], "Black")
+            # print self.get_game_header(game_ids[1], "ELO")
+            # print self.get_game_header(game_ids[1], "Result")
+            # print self.get_game_header(game_ids[1], "ECO")
+
+
+            # print self.db_adapter.data
+            # self.db_adapter.item_strings = ["{0}".format(index) for index in game_ids]
+            # self.database_list_view.populate()
+            # self.db_
 #             for g in game_ids[:30]:
 #                 # pass
 #                 # White, elo, Black, elo, Result, Event, Site, Date, Eco, Round, Ply
