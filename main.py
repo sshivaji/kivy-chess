@@ -72,7 +72,7 @@ import leveldb
 
 INDEX_TOTAL_GAME_COUNT = "total_game_count"
 
-INDEX_FILE_POS = "file_pos"
+INDEX_FILE_POS = "last_pos"
 
 DELETE_FROM_USER_BOOK = "delete_from_user_book"
 
@@ -618,14 +618,14 @@ class Chess_app(App):
             # from chess.leveldict import LevelDict
             self.user_book = LevelJsonDict('book/userbook.db')
             self.db_index_book = leveldb.LevelDB('book/test_polyglot_index.db')
-            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
+#            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
 
 
 #            print "Created userbook"
         except ImportError:
             self.user_book = None
             self.db_index_book = None
-            self.pgn_index = None
+#            self.pgn_index = None
             print "cannot import leveldb userbook"
 
         Clock.schedule_interval(self.dgt_probe, 1)
@@ -682,8 +682,12 @@ class Chess_app(App):
                   'height': 25,
                   'cls_dicts': [{'cls': ListItemButton,
                                  'kwargs': {'id': rec, 'text': self.get_game_header(rec, "White")}},
+#                                {'cls': ListItemButton,
+#                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "WhiteElo")}},
                                 {'cls': ListItemButton,
                                  'kwargs': {'id': rec, 'text': self.get_game_header(rec, "Black")}},
+#                                {'cls': ListItemButton,
+#                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "BlackElo")}},
                                 {'cls': ListItemButton,
                                  'kwargs': {'id': rec, 'text': self.get_game_header(rec, "Result")}},
                                 {'cls': ListItemButton,
@@ -691,8 +695,9 @@ class Chess_app(App):
                                 {'cls': ListItemButton,
                                  'kwargs': {'id': rec, 'text': self.get_game_header(rec, "Event")}},
                                 {'cls': ListItemButton,
-                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "ECO")}}
-                            ]}
+                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "ECO")}},
+                            ]
+                 }
                                 # {'cls': ListItemLabel,
                                 #  'kwargs': {'text': "Middle-{0}".format(rec),
                                 #             'is_representing_cls': True}},
@@ -995,14 +1000,17 @@ class Chess_app(App):
         # print self.user_book[INDEX_TOTAL_GAME_COUNT]
 
     def load_game_from_index(self, game_num):
-        print "game_num:"
-        print game_num
-        first = self.pgn_index["game_index_{0}".format(game_num)][INDEX_FILE_POS]
+#        print "game_num:"
+#        print game_num
+        first = self.db_index_book.Get("game_{0}_{1}".format(game_num,INDEX_FILE_POS))
 
-        if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
-            second = self.pgn_index["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
-        else:
-            second = None
+#        if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
+#            second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
+
+#        second = self.pgn_index["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
+        second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
+#        else:
+#            second = None
        #print second
         # print self.pgn_index["game_index_{0}".format(game_num)]['White']
         # print self.pgn_index["game_index_{0}".format(game_num)]['Black']
@@ -1012,7 +1020,10 @@ class Chess_app(App):
 
 
 
-        f = open(self.pgn_index["pgn_filename"])
+#        f = open(self.pgn_index["pgn_filename"])
+        f = open("test/2600_2013_34.pgn")
+        first = int(first)
+        second = int(second)
         f.seek(first)
         line = 1
         lines = []
@@ -1023,7 +1034,7 @@ class Chess_app(App):
             lines.append(line)
             if second and pos >= second:
                 break
-        # print lines
+        print lines
         games = PgnFile.open_text(lines)
         # print games[0].'White'
         self.chessboard = games[0]
@@ -1514,13 +1525,18 @@ class Chess_app(App):
 
     def get_game_header(self, g, header, first_line = False):
         try:
-            if self.pgn_index["game_index_{0}".format(g)].has_key(header):
-                if first_line:
-                    text = self.pgn_index["game_index_{0}".format(g)][header]
-                    if "," in text:
-                        return text.split(",")[0]
-                    return text
-                return self.pgn_index["game_index_{0}".format(g)][header]
+#            if self.db_index_book.Get("game_{0}_{1}".format(g,header)):
+#            print "header:"
+#            print header
+            text = self.db_index_book.Get("game_{0}_{1}".format(g,header))
+#            print "result:"
+#            print text
+            if first_line:
+#                text = self.pgn_index["game_index_{0}".format(g)][header]
+                if "," in text:
+                    return text.split(",")[0]
+            return text
+#            return self.pgn_index["game_index_{0}".format(g)][header]
         except KeyError:
             return "Unknown"
 
