@@ -679,7 +679,7 @@ class Chess_app(App):
              lambda row_index, rec: \
                  {'text': rec,
                   'size_hint_y': None,
-                  'height': 25,
+                  'height': 30,
                   'cls_dicts': [{'cls': ListItemButton,
                                  'kwargs': {'id': rec, 'text': self.get_game_header(rec, "White")}},
                                 {'cls': ListItemButton,
@@ -698,22 +698,6 @@ class Chess_app(App):
                                  'kwargs': {'id': rec, 'text': self.get_game_header(rec, "ECO")}},
                             ]
                  }
-                                # {'cls': ListItemLabel,
-                                #  'kwargs': {'text': "Middle-{0}".format(rec),
-                                #             'is_representing_cls': True}},
-                                # {'cls': ListItemButton,
-                                #  'kwargs': {'text': self.pgn_index["game_index_{0}".format(rec)]['Black']}}]}
-
-        # print args_converter('1', integers_dict)
-
-        # item_strings = ["{0}".format(index) for index in xrange(100)]
-
-        # self.db_adapter = DictAdapter(sorted_keys=item_strings,
-        #                             data=integers_dict,
-        #                             args_converter=args_converter,
-        #                             selection_mode='single',
-        #                             allow_empty_selection=False,
-        #                             cls=CompositeListItem)
 
         self.db_adapter = ListAdapter(
                            data=integers_dict,
@@ -1023,18 +1007,23 @@ class Chess_app(App):
 #        f = open(self.pgn_index["pgn_filename"])
         f = open("test/2600_2013_34.pgn")
         first = int(first)
+        # print "first: {0}".format(first)
+
         second = int(second)
+        # print "second: {0}".format(second)
+
         f.seek(first)
         line = 1
         lines = []
         while line:
             line = f.readline()
             pos = f.tell()
-           #print pos
-            lines.append(line)
             if second and pos >= second:
                 break
-        print lines
+            # print pos
+            lines.append(line)
+
+        # print lines
         games = PgnFile.open_text(lines)
         # print games[0].'White'
         self.chessboard = games[0]
@@ -1524,6 +1513,7 @@ class Chess_app(App):
         pass
 
     def get_game_header(self, g, header, first_line = False):
+
         try:
 #            if self.db_index_book.Get("game_{0}_{1}".format(g,header)):
 #            print "header:"
@@ -1568,7 +1558,11 @@ class Chess_app(App):
             # except leveldb.LevelDBError, e:
             #     game_ids = []
 
+
             self.db_adapter.data = {str(i): {'text': str(i), 'is_selected': False} for i in game_ids}
+            # self.db_adapter.data['0'] = {'text': 'Database', 'is_selected': False}
+            # self.db_adapter.data.append()
+
             # print self.get_game_header(game_ids[1], "White")
             # print self.get_game_header(game_ids[1], "Black")
             # print self.get_game_header(game_ids[1], "ELO")

@@ -50,7 +50,8 @@ class PgnIndexTestCase(unittest.TestCase):
         index = chess.PgnIndex(pgn_file)
         gm_book["total_game_count"] = index.__len__()
         gm_book["pgn_filename"] = pgn_file
-
+        print "length:"
+        print index.__len__()
         for i in range(0, index.__len__()):
             g = index.get_game_headers(i)
             # print index.get_pos(1)
