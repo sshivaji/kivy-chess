@@ -522,6 +522,9 @@ class Chess_app(App):
             if self.database_display:
                 self.database_panel.reset_grid()
             self.database_display = not self.database_display
+            if not self.database_display:
+                self.db_stat_label.text = "No Games"
+                self.db_adapter.data = {}
 #            self.update_database_panel()
             self.update_book_panel()
 
@@ -740,7 +743,39 @@ class Chess_app(App):
         # parent.add_widget(Label(size_hint=(0.5,1)))
         parent.add_widget(info_grid)
         grandparent.add_widget(parent)
-        database_grid = BoxLayout(size_hint=(1,0.4))
+        database_grid = BoxLayout(size_hint=(1,0.4), orientation='vertical')
+
+        database_controls = BoxLayout(size_hint=(1,0.15))
+        db_label = ToggleButton(text="Database",  state="down", on_press=self.update_database_display)
+
+        self.db_stat_label = Label(text="No Games")
+
+
+        database_controls.add_widget(db_label)
+        database_controls.add_widget(self.db_stat_label)
+
+        database_header = BoxLayout(size_hint=(1,0.15))
+        database_white_bt = ToggleButton(text="White")
+        database_whiteelo_bt = ToggleButton(text="Elo")
+        database_black_bt = ToggleButton(text="Black")
+        database_blackelo_bt = ToggleButton(text="Elo")
+        database_result_bt = ToggleButton(text="Result")
+        database_date_bt = ToggleButton(text="Date")
+        database_event_bt = ToggleButton(text="Event")
+        database_eco_bt = ToggleButton(text="ECO")
+
+        database_header.add_widget(database_white_bt)
+        database_header.add_widget(database_whiteelo_bt)
+        database_header.add_widget(database_black_bt)
+        database_header.add_widget(database_blackelo_bt)
+        database_header.add_widget(database_result_bt)
+        database_header.add_widget(database_date_bt)
+        database_header.add_widget(database_event_bt)
+        database_header.add_widget(database_eco_bt)
+
+
+        database_grid.add_widget(database_controls)
+        database_grid.add_widget(database_header)
         database_grid.add_widget(self.database_list_view)
         grandparent.add_widget(database_grid)
         self.refresh_board()
@@ -1539,7 +1574,7 @@ class Chess_app(App):
             # print pos_hash
             try:
                 game_ids = self.db_index_book.Get(pos_hash).split(',')[:-1]
-                print len(game_ids)
+                # print len(game_ids)
                 # print game_ids[:]
                 # print type(game_ids)
                 # for g in game_ids[:5]:
@@ -1558,8 +1593,9 @@ class Chess_app(App):
             # except leveldb.LevelDBError, e:
             #     game_ids = []
 
-
+            self.db_stat_label.text = "{0} games".format(len(game_ids))
             self.db_adapter.data = {str(i): {'text': str(i), 'is_selected': False} for i in game_ids}
+
             # self.db_adapter.data['0'] = {'text': 'Database', 'is_selected': False}
             # self.db_adapter.data.append()
 
