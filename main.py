@@ -153,6 +153,28 @@ LIGHT_SQUARE = COLOR_MAPS['cream']
 
 INITIAL_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 
+class DBGame(object):
+    def __init__(self, id, **kwargs):
+        self.id = id
+
+#    def __init__(self, id, white, whiteelo, black, blackelo, result, date, eco, event, **kwargs):
+#        self.id = id
+#        self.white = white
+#        try:
+#            self.whiteelo = int(whiteelo)
+#        except ValueError:
+#            self.whiteelo = whiteelo
+#        self.black = black
+#        try:
+#            self.blackelo = int(blackelo)
+#        except ValueError:
+#            self.blackelo = blackelo
+#        self.result = result
+#        self.date = date
+#        self.eco = eco
+#        self.event = event
+
+
 class DBHeaderButton(ToggleButton):
     def __init__(self, field, **kwargs):
         # self.bind(height = self._resize)
@@ -719,21 +741,21 @@ class Chess_app(App):
                   'size_hint_y': None,
                   'height': 30,
                   'cls_dicts': [{'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "White")}},
+                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "White")}},
                                 {'cls': ListItemButton,
-                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "WhiteElo")}},
+                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "WhiteElo")}},
                                 {'cls': ListItemButton,
-                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "Black")}},
+                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "Black")}},
                                 {'cls': ListItemButton,
-                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "BlackElo")}},
+                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "BlackElo")}},
                                 {'cls': ListItemButton,
-                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "Result")}},
+                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "Result")}},
                                 {'cls': ListItemButton,
-                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "Date")}},
+                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "Date")}},
                                 {'cls': ListItemButton,
-                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "Event")}},
+                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "Event")}},
                                 {'cls': ListItemButton,
-                                 'kwargs': {'id': rec, 'text': self.get_game_header(rec, "ECO")}},
+                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "ECO")}},
                             ]
                  }
 
@@ -1632,42 +1654,19 @@ class Chess_app(App):
             # except leveldb.LevelDBError, e:
             #     game_ids = []
 
+            db_game_list = []
+            for i in game_ids:
+                db_game_list.append(DBGame(i))
+#                db_game_list.append(DBGame(i, self.get_game_header(i, "White"), self.get_game_header(i, "WhiteElo"),
+#                    self.get_game_header(i, "Black"), self.get_game_header(i, "BlackElo"),
+#                    self.get_game_header(i, "Result"), self.get_game_header(i, "Date"),
+#                    self.get_game_header(i, "ECO"), self.get_game_header(i, "Event")))
+#
+#            db_game_list = sorted(db_game_list, key=lambda g: g.whiteelo)
+
             self.db_stat_label.text = "{0} games".format(len(game_ids))
-            self.db_adapter.data = {str(i): {'text': str(i), 'is_selected': False} for i in game_ids}
-
-            # self.db_adapter.data['0'] = {'text': 'Database', 'is_selected': False}
-            # self.db_adapter.data.append()
-
-            # print self.get_game_header(game_ids[1], "White")
-            # print self.get_game_header(game_ids[1], "Black")
-            # print self.get_game_header(game_ids[1], "ELO")
-            # print self.get_game_header(game_ids[1], "Result")
-            # print self.get_game_header(game_ids[1], "ECO")
-
-
-            # print self.db_adapter.data
-            # self.db_adapter.item_strings = ["{0}".format(index) for index in game_ids]
-            # self.database_list_view.populate()
-            # self.db_
-#             for g in game_ids[:30]:
-#                 # pass
-#                 # White, elo, Black, elo, Result, Event, Site, Date, Eco, Round, Ply
-# #                self.database_panel.add_row([])
-# #                 print g
-#                 self.database_panel.grid.add_row([("[ref={0}]{1}[/ref]".format(g, self.get_game_header(g, "White")), None),
-#                                                   "[ref={0}]{1}[/ref]".format(g, self.get_game_header(g, "WhiteElo")),
-#                                                   ("[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Black")), None),
-#                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "BlackElo")),
-#                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Result")),
-#                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Event", first_line=True)),
-#                                                   # self.get_game_header(g, "Site"),
-#                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "Date")),
-#                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "ECO")),
-#                                                   # self.get_game_header(g, "Round"),
-#                                                   "[ref={0}]{1}[/ref]".format(g,self.get_game_header(g, "PlyCount"))
-#                                                  ], callback=self.add_database_games)
-
-                # print self.user_book["game_index_{0}".format(g)]
+#            self.db_adapter.data = {str(i): {'text': str(g.id), 'is_selected': False} for i, g in enumerate(db_game_list)}
+            self.db_adapter.data = db_game_list
 
     def update_book_panel(self, ev=None):
         # print "ev:"+str(ev)
