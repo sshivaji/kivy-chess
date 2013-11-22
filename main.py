@@ -109,6 +109,8 @@ BOOK_HEADER = '[b][color=000000][ref=Book]{0}[/ref][/color][/b]'
 
 DATABASE_HEADER = '[b][color=000000][ref=Database]{0}[/ref][/color][/b]'
 
+DB_SORT_ASC = unichr(8710)
+DB_SORT_DESC = unichr(1143)
 
 
 SQUARES = ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a6",
@@ -150,6 +152,26 @@ DARK_SQUARE = COLOR_MAPS['brown']
 LIGHT_SQUARE = COLOR_MAPS['cream']
 
 INITIAL_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+class DBHeaderButton(ToggleButton):
+    def __init__(self, field, **kwargs):
+        # self.bind(height = self._resize)
+        super(DBHeaderButton, self).__init__(**kwargs)
+        self.field = field
+
+class CustomListItemButton(ListItemButton):
+    def __init__(self, **kwargs):
+        # self.bind(height = self._resize)
+        super(CustomListItemButton, self).__init__(**kwargs)
+
+    # def _resize(self,instance, height):
+    #     # start with simple case of calculating scalefactor from height
+    #     # print height
+    #     # print self.size[1]
+    #     # scalefactor = self.size[1]*1.0/height
+    #     # print scalefactor
+    #     self.font_size = '{0}dp'.format(self.height *0.4)
+    #     # self.font_size = height * 0.35
 
 class PositionEval(object):
     def __init__(self, informant_eval, integer_eval):
@@ -547,6 +569,19 @@ class Chess_app(App):
             # print args[0].selection[0].text
         # self.selected_item = args[0].selection[0].text
 
+    def update_db_sort_criteria(self, label):
+        # print label.field
+        if label.text.endswith(DB_SORT_ASC):
+            label.text = label.text[:-2]+ ' ' +DB_SORT_DESC
+        elif label.text.endswith(DB_SORT_DESC):
+            label.text = label.text[:-2]
+        else:
+            label.text += ' ' +DB_SORT_ASC
+
+
+        # label.text+=" ^"
+        # print label.text
+        # print label.state
 
     def build(self):
         self.custom_fen = None
@@ -683,7 +718,7 @@ class Chess_app(App):
                  {'text': rec,
                   'size_hint_y': None,
                   'height': 30,
-                  'cls_dicts': [{'cls': ListItemButton,
+                  'cls_dicts': [{'cls': CustomListItemButton,
                                  'kwargs': {'id': rec, 'text': self.get_game_header(rec, "White")}},
                                 {'cls': ListItemButton,
                                  'kwargs': {'id': rec, 'text': self.get_game_header(rec, "WhiteElo")}},
@@ -709,6 +744,10 @@ class Chess_app(App):
                            # propagate_selection_to_data=True,
                            allow_empty_selection=True,
                            cls=CompositeListItem)
+
+        self.db_prim_sort_criteria = None
+        self.db_sec_sort_criteria = None
+        self.db_third_sort_criteria = None
 
         self.database_list_view = ListView(adapter=self.db_adapter)
         self.database_list_view.adapter.bind(on_selection_change=self.db_selection_changed)
@@ -743,9 +782,9 @@ class Chess_app(App):
         # parent.add_widget(Label(size_hint=(0.5,1)))
         parent.add_widget(info_grid)
         grandparent.add_widget(parent)
-        database_grid = BoxLayout(size_hint=(1,0.4), orientation='vertical')
+        database_grid = BoxLayout(size_hint=(1, 0.4), orientation='vertical')
 
-        database_controls = BoxLayout(size_hint=(1,0.15))
+        database_controls = BoxLayout(size_hint=(1, 0.15))
         db_label = ToggleButton(text="Database",  state="down", on_press=self.update_database_display)
 
         self.db_stat_label = Label(text="No Games")
@@ -755,14 +794,14 @@ class Chess_app(App):
         database_controls.add_widget(self.db_stat_label)
 
         database_header = BoxLayout(size_hint=(1,0.15))
-        database_white_bt = ToggleButton(text="White")
-        database_whiteelo_bt = ToggleButton(text="Elo")
-        database_black_bt = ToggleButton(text="Black")
-        database_blackelo_bt = ToggleButton(text="Elo")
-        database_result_bt = ToggleButton(text="Result")
-        database_date_bt = ToggleButton(text="Date")
-        database_event_bt = ToggleButton(text="Event")
-        database_eco_bt = ToggleButton(text="ECO")
+        database_white_bt = DBHeaderButton("White", text="White")
+        database_whiteelo_bt = DBHeaderButton("WhiteElo", text="Elo")
+        database_black_bt = DBHeaderButton("Black", text="Black")
+        database_blackelo_bt = DBHeaderButton("BlackElo", text="Elo")
+        database_result_bt = DBHeaderButton("Result", text="Result")
+        database_date_bt = DBHeaderButton("Date", markup=True, text="Date", on_press=self.update_db_sort_criteria)
+        database_event_bt = DBHeaderButton("Event", text="Event")
+        database_eco_bt = DBHeaderButton("ECO", text="ECO")
 
         database_header.add_widget(database_white_bt)
         database_header.add_widget(database_whiteelo_bt)

@@ -238,11 +238,15 @@ class PgnFile(object):
         current_game = None
         in_tags = False
 
-        for line in text:
+        for i, line in enumerate(text):
             # print line
             # Decode and strip the line.
             line = line.decode('latin-1').strip()
+            # print line
 
+            if i == 0 and not line.startswith('[') and line.endswith(']'):
+                line = "[" + line
+            # print line
             # Skip empty lines and comments.
             if not line or line.startswith("%"):
                 continue

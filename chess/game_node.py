@@ -366,22 +366,28 @@ class GameNode(object):
         if self.headers.headers.has_key(attr):
             return self.headers.headers[attr]
 
-    def write_header(self, header_score, attr, definition=True):
+    def write_header(self, header_score, attr, definition=True, newline=True, force_new_line=False):
         if self.fill_header_entry(attr):
             if definition:
                 header_score += attr+": "
             header_score += self.fill_header_entry(attr)
-            header_score += '\n'
+            if newline:
+                header_score += '\n'
+            else:
+                header_score += '   '
+        else:
+            if force_new_line:
+                header_score += '\n'
         return header_score
 
     def get_headers(self):
         if not self.header_score:
             header_score = ''
 
-            header_score = self.write_header(header_score, 'White', definition=False)
-            header_score = self.write_header(header_score, 'WhiteElo', definition=False)
-            header_score = self.write_header(header_score, 'Black', definition=False)
-            header_score = self.write_header(header_score, 'BlackElo', definition=False)
+            header_score = self.write_header(header_score, 'White', definition=False, newline=False)
+            header_score = self.write_header(header_score, 'WhiteElo', definition=False, force_new_line=True)
+            header_score = self.write_header(header_score, 'Black', definition=False, newline=False)
+            header_score = self.write_header(header_score, 'BlackElo', definition=False, force_new_line=True)
 
             header_score = self.write_header(header_score, 'Result', definition=False)
             header_score = self.write_header(header_score, 'Round')
