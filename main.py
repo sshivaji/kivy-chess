@@ -50,6 +50,7 @@ from uci import UCIEngine
 from uci import UCIOption
 from threading import Thread
 import itertools as it
+from operator import itemgetter, attrgetter
 from time import sleep
 from chess import polyglot_opening_book
 from chess.libchess import Position
@@ -110,7 +111,7 @@ BOOK_HEADER = '[b][color=000000][ref=Book]{0}[/ref][/color][/b]'
 DATABASE_HEADER = '[b][color=000000][ref=Database]{0}[/ref][/color][/b]'
 
 DB_SORT_ASC = unichr(8710)
-DB_SORT_DESC = unichr(1143)
+DB_SORT_DESC = 'V'
 
 
 SQUARES = ["a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8", "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7", "a6",
@@ -174,8 +175,13 @@ class DBGame(object):
 #        self.eco = eco
 #        self.event = event
 
+class DBSortCriteria(object):
+    def __init__(self, key, rank, asc, **kwargs):
+        self.key = key
+        self.rank = rank
+        self.asc = asc
 
-class DBHeaderButton(ToggleButton):
+class DBHeaderButton(Button):
     def __init__(self, field, **kwargs):
         # self.bind(height = self._resize)
         super(DBHeaderButton, self).__init__(**kwargs)
@@ -185,6 +191,19 @@ class CustomListItemButton(ListItemButton):
     def __init__(self, **kwargs):
         # self.bind(height = self._resize)
         super(CustomListItemButton, self).__init__(**kwargs)
+        # with self.canvas.before:
+        #     # grid.canvas.clear()
+        #     Color(1, 1, 1)
+        #     self.background = Rectangle()
+            # Rectangle(size=Window.size)
+        self.markup = True
+        # self.selected_color = (0,0,0,0)
+        self.border = (0,0,0,0)
+        self.deselected_color = (1,1,1, 1)
+        self.background_color = (1,1,1, 1)
+        self.background_normal = 'img/background_normal.png'
+        # self.background_down = 'img/background_pressed.png'
+        # self.background_down = 'img/background_pressed.png'
 
     # def _resize(self,instance, height):
     #     # start with simple case of calculating scalefactor from height
@@ -585,9 +604,12 @@ class Chess_app(App):
         if len(args[0].selection) == 1:
             game_index = args[0].selection[0].id
             current_fen = self.chessboard.position.fen
+            # temporarily disable sort criteria
+            db_sort_criteria = self.db_sort_criteria
+            self.db_sort_criteria = []
             self.load_game_from_index(int(game_index))
             self.go_to_move(None, current_fen)
-
+            self.db_sort_criteria = db_sort_criteria
             # print args[0].selection[0].text
         # self.selected_item = args[0].selection[0].text
 
@@ -595,10 +617,14 @@ class Chess_app(App):
         # print label.field
         if label.text.endswith(DB_SORT_ASC):
             label.text = label.text[:-2]+ ' ' +DB_SORT_DESC
+            self.db_sort_criteria[0].asc = False
         elif label.text.endswith(DB_SORT_DESC):
+            self.db_sort_criteria = []
             label.text = label.text[:-2]
         else:
+            self.db_sort_criteria = [DBSortCriteria(label.field, 1, True)]
             label.text += ' ' +DB_SORT_ASC
+        self.update_book_panel()
 
 
         # label.text+=" ^"
@@ -621,6 +647,7 @@ class Chess_app(App):
 
         self.from_move = None
         self.to_move = None
+        self.db_sort_criteria = []
 
 #        PGN Index test
 #        index = PgnIndex("kasparov-deep-blue-1997.pgn")
@@ -739,23 +766,24 @@ class Chess_app(App):
              lambda row_index, rec: \
                  {'text': rec,
                   'size_hint_y': None,
+                  'size_hint_x': 0.5,
                   'height': 30,
                   'cls_dicts': [{'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "White")}},
-                                {'cls': ListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "WhiteElo")}},
-                                {'cls': ListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "Black")}},
-                                {'cls': ListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "BlackElo")}},
-                                {'cls': ListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "Result")}},
-                                {'cls': ListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "Date")}},
-                                {'cls': ListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "Event")}},
-                                {'cls': ListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': self.get_game_header(rec.id, "ECO")}},
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "White")+'[/color]'}},
+                                {'cls': CustomListItemButton,
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "WhiteElo") + '[/color]'}},
+                                {'cls': CustomListItemButton,
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Black")+'[/color]'}},
+                                {'cls': CustomListItemButton,
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "BlackElo")+'[/color]'}},
+                                {'cls': CustomListItemButton,
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Result")+'[/color]'}},
+                                {'cls': CustomListItemButton,
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Date")+'[/color]'}},
+                                {'cls': CustomListItemButton,
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Event")+'[/color]'}},
+                                {'cls': CustomListItemButton,
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "ECO")+'[/color]'}},
                             ]
                  }
 
@@ -767,9 +795,6 @@ class Chess_app(App):
                            allow_empty_selection=True,
                            cls=CompositeListItem)
 
-        self.db_prim_sort_criteria = None
-        self.db_sec_sort_criteria = None
-        self.db_third_sort_criteria = None
 
         self.database_list_view = ListView(adapter=self.db_adapter)
         self.database_list_view.adapter.bind(on_selection_change=self.db_selection_changed)
@@ -816,14 +841,14 @@ class Chess_app(App):
         database_controls.add_widget(self.db_stat_label)
 
         database_header = BoxLayout(size_hint=(1,0.15))
-        database_white_bt = DBHeaderButton("White", text="White")
-        database_whiteelo_bt = DBHeaderButton("WhiteElo", text="Elo")
-        database_black_bt = DBHeaderButton("Black", text="Black")
-        database_blackelo_bt = DBHeaderButton("BlackElo", text="Elo")
-        database_result_bt = DBHeaderButton("Result", text="Result")
-        database_date_bt = DBHeaderButton("Date", markup=True, text="Date", on_press=self.update_db_sort_criteria)
-        database_event_bt = DBHeaderButton("Event", text="Event")
-        database_eco_bt = DBHeaderButton("ECO", text="ECO")
+        database_white_bt = DBHeaderButton("white", markup=True, text="White", on_press=self.update_db_sort_criteria)
+        database_whiteelo_bt = DBHeaderButton("whiteelo", markup=True, text="Elo", on_press=self.update_db_sort_criteria)
+        database_black_bt = DBHeaderButton("black", markup=True, text="Black", on_press=self.update_db_sort_criteria)
+        database_blackelo_bt = DBHeaderButton("blackelo", markup=True, text="Elo", on_press=self.update_db_sort_criteria)
+        database_result_bt = DBHeaderButton("result", markup=True, text="Result", on_press=self.update_db_sort_criteria)
+        database_date_bt = DBHeaderButton("date", markup=True, text="Date", on_press=self.update_db_sort_criteria)
+        database_event_bt = DBHeaderButton("event", markup=True, text="Event", on_press=self.update_db_sort_criteria)
+        database_eco_bt = DBHeaderButton("eco", markup=True, text="ECO", on_press=self.update_db_sort_criteria)
 
         database_header.add_widget(database_white_bt)
         database_header.add_widget(database_whiteelo_bt)
@@ -1656,13 +1681,26 @@ class Chess_app(App):
 
             db_game_list = []
             for i in game_ids:
-                db_game_list.append(DBGame(i))
+                db_game = DBGame(i)
+                if self.db_sort_criteria:
+                    db_game.white = self.get_game_header(i, "White")
+                    db_game.whiteelo = self.get_game_header(i, "WhiteElo")
+                    db_game.black = self.get_game_header(i, "Black")
+                    db_game.blackelo = self.get_game_header(i, "BlackElo")
+                    db_game.result = self.get_game_header(i, "Result")
+                    db_game.date = self.get_game_header(i, "Date")
+                    db_game.eco = self.get_game_header(i, "ECO")
+                    db_game.event = self.get_game_header(i, "Event")
+                db_game_list.append(db_game)
 #                db_game_list.append(DBGame(i, self.get_game_header(i, "White"), self.get_game_header(i, "WhiteElo"),
 #                    self.get_game_header(i, "Black"), self.get_game_header(i, "BlackElo"),
 #                    self.get_game_header(i, "Result"), self.get_game_header(i, "Date"),
 #                    self.get_game_header(i, "ECO"), self.get_game_header(i, "Event")))
 #
 #            db_game_list = sorted(db_game_list, key=lambda g: g.whiteelo)
+
+            if self.db_sort_criteria:
+                db_game_list = sorted(db_game_list, reverse = not self.db_sort_criteria[0].asc, key=attrgetter(self.db_sort_criteria[0].key))
 
             self.db_stat_label.text = "{0} games".format(len(game_ids))
 #            self.db_adapter.data = {str(i): {'text': str(g.id), 'is_selected': False} for i, g in enumerate(db_game_list)}
