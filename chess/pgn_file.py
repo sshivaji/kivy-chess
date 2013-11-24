@@ -111,7 +111,7 @@ class PgnFile(object):
                 try:
                     mv = pos.get_move_from_san(str(token))
                     variation_stack[-1] = variation_stack[-1].add_variation(mv)
-                    if game_num:
+                    if game_num and leveldb is not None:
                         cls.write_to_ldb(variation_stack[-1], mv, game_num, leveldb)
                 except ValueError, e:
                     if str(e).startswith('Variation already in set:'):
@@ -170,7 +170,7 @@ class PgnFile(object):
 
     @classmethod
     def open(cls, path, leveldb_book=None):
-        level_db_book_present = True
+        level_db_book_present = False
         if leveldb_book is not None:
             level_db_book_present = True
         pgn_file = PgnFile()

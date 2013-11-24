@@ -153,6 +153,10 @@ DARK_SQUARE = COLOR_MAPS['brown']
 LIGHT_SQUARE = COLOR_MAPS['cream']
 
 INITIAL_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+DB_HEADER_MAP = {"White": 0, "WhiteElo": 1, "Black": 2,
+                 "BlackElo": 3, "Result": 4, "Date": 5, "Event": 6, "Site": 7,
+                 "ECO": 8, INDEX_FILE_POS:9, "FEN":10}
+
 
 class DBGame(object):
     def __init__(self, id, **kwargs):
@@ -191,6 +195,7 @@ class CustomListItemButton(ListItemButton):
     def __init__(self, **kwargs):
         # self.bind(height = self._resize)
         super(CustomListItemButton, self).__init__(**kwargs)
+        # self.height = 10
         # with self.canvas.before:
         #     # grid.canvas.clear()
         #     Color(1, 1, 1)
@@ -615,15 +620,17 @@ class Chess_app(App):
 
     def update_db_sort_criteria(self, label):
         # print label.field
-        if label.text.endswith(DB_SORT_ASC):
-            label.text = label.text[:-2]+ ' ' +DB_SORT_DESC
-            self.db_sort_criteria[0].asc = False
-        elif label.text.endswith(DB_SORT_DESC):
+        if label.text.endswith(DB_SORT_DESC):
+            label.text = label.text[:-2]+ ' ' +DB_SORT_ASC
+            self.db_sort_criteria[0].asc = True
+        elif label.text.endswith(DB_SORT_ASC):
             self.db_sort_criteria = []
             label.text = label.text[:-2]
         else:
             self.db_sort_criteria = [DBSortCriteria(label.field, 1, True)]
-            label.text += ' ' +DB_SORT_ASC
+            label.text += ' ' +DB_SORT_DESC
+            self.db_sort_criteria[0].asc = False
+
         self.update_book_panel()
 
 
@@ -669,7 +676,7 @@ class Chess_app(App):
 ##            else:
 ##                break
 #
-#        games = PgnFile.open("kasparov-last-deep-blue-1997.pgn")
+        # games = PgnFile.open("test/french_watson.pgn")
 ##        first_game = games[5]
 #
         self.chessboard = Game()
@@ -762,34 +769,70 @@ class Chess_app(App):
         {str(i): {'text': str(i), 'is_selected': False} for i in range(100)}
         # print integers_dict
 
-        args_converter = \
-             lambda row_index, rec: \
-                 {'text': rec,
+        def args_conv(row_index, rec):
+            record = self.get_game_header(rec.id, "ALL")
+            tokens = record.split("|")
+
+            white = tokens[0]
+            whiteelo = tokens[1]
+            black = tokens[2]
+            blackelo = tokens[3]
+            result = tokens[4]
+            date = tokens[5]
+            event = tokens[6]
+            eco = tokens[7]
+            return {'text': rec,
                   'size_hint_y': None,
                   'size_hint_x': 0.5,
                   'height': 30,
                   'cls_dicts': [{'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "White")+'[/color]'}},
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ white +'[/color]'}},
                                 {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "WhiteElo") + '[/color]'}},
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ whiteelo + '[/color]'}},
                                 {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Black")+'[/color]'}},
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ black +'[/color]'}},
                                 {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "BlackElo")+'[/color]'}},
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ blackelo +'[/color]'}},
                                 {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Result")+'[/color]'}},
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ result +'[/color]'}},
                                 {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Date")+'[/color]'}},
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ date +'[/color]'}},
                                 {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Event")+'[/color]'}},
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ event +'[/color]'}},
                                 {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "ECO")+'[/color]'}},
+                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ eco +'[/color]'}},
                             ]
                  }
 
+
+        # args_converter = \
+        #      lambda row_index, rec: \
+        #          {'text': rec,
+        #           'size_hint_y': None,
+        #           'size_hint_x': 0.5,
+        #           'height': 30,
+        #           'cls_dicts': [{'cls': CustomListItemButton,
+        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "White")+'[/color]'}},
+        #                         {'cls': CustomListItemButton,
+        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "WhiteElo") + '[/color]'}},
+        #                         {'cls': CustomListItemButton,
+        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Black")+'[/color]'}},
+        #                         {'cls': CustomListItemButton,
+        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "BlackElo")+'[/color]'}},
+        #                         {'cls': CustomListItemButton,
+        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Result")+'[/color]'}},
+        #                         {'cls': CustomListItemButton,
+        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Date")+'[/color]'}},
+        #                         {'cls': CustomListItemButton,
+        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Event")+'[/color]'}},
+        #                         {'cls': CustomListItemButton,
+        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "ECO")+'[/color]'}},
+        #                     ]
+        #          }
+
         self.db_adapter = ListAdapter(
                            data=integers_dict,
-                           args_converter=args_converter,
+                           args_converter=args_conv,
                            selection_mode='single',
                            # propagate_selection_to_data=True,
                            allow_empty_selection=True,
@@ -1107,13 +1150,13 @@ class Chess_app(App):
     def load_game_from_index(self, game_num):
 #        print "game_num:"
 #        print game_num
-        first = self.db_index_book.Get("game_{0}_{1}".format(game_num,INDEX_FILE_POS))
+        first = self.db_index_book.Get("game_{0}_data".format(game_num)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
 
 #        if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
 #            second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
 
 #        second = self.pgn_index["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
-        second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
+        second = self.db_index_book.Get("game_{0}_data".format(game_num+1)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
 #        else:
 #            second = None
        #print second
@@ -1636,12 +1679,22 @@ class Chess_app(App):
     def get_game_header(self, g, header, first_line = False):
 
         try:
-#            if self.db_index_book.Get("game_{0}_{1}".format(g,header)):
-#            print "header:"
-#            print header
-            text = self.db_index_book.Get("game_{0}_{1}".format(g,header))
-#            print "result:"
-#            print text
+            record = self.db_index_book.Get("game_{0}_data".format(g))
+            if header=="ALL":
+                return record
+            text = ""
+            text = record.split("|")[DB_HEADER_MAP[header]]
+            # try:
+            #     j = json.loads(record, "latin-1")
+            #     text = j[header]
+            # except UnicodeDecodeError:
+            #     print record
+            # except ValueError:
+            #     print record
+            #     j = json.loads(repair_json(record), "latin-1")
+            #     text = j[header]
+
+            # text = self.db_index_book.Get("game_{0}_{1}".format(g,header))
             if first_line:
 #                text = self.pgn_index["game_index_{0}".format(g)][header]
                 if "," in text:
@@ -1683,21 +1736,17 @@ class Chess_app(App):
             for i in game_ids:
                 db_game = DBGame(i)
                 if self.db_sort_criteria:
-                    db_game.white = self.get_game_header(i, "White")
-                    db_game.whiteelo = self.get_game_header(i, "WhiteElo")
-                    db_game.black = self.get_game_header(i, "Black")
-                    db_game.blackelo = self.get_game_header(i, "BlackElo")
-                    db_game.result = self.get_game_header(i, "Result")
-                    db_game.date = self.get_game_header(i, "Date")
-                    db_game.eco = self.get_game_header(i, "ECO")
-                    db_game.event = self.get_game_header(i, "Event")
+                    record = self.get_game_header(i, "ALL")
+                    tokens = record.split("|")
+                    db_game.white = tokens[0]
+                    db_game.whiteelo = tokens[1]
+                    db_game.black = tokens[2]
+                    db_game.blackelo = tokens[3]
+                    db_game.result = tokens[4]
+                    db_game.date = tokens[5]
+                    db_game.event = tokens[6]
+                    db_game.eco = tokens[7]
                 db_game_list.append(db_game)
-#                db_game_list.append(DBGame(i, self.get_game_header(i, "White"), self.get_game_header(i, "WhiteElo"),
-#                    self.get_game_header(i, "Black"), self.get_game_header(i, "BlackElo"),
-#                    self.get_game_header(i, "Result"), self.get_game_header(i, "Date"),
-#                    self.get_game_header(i, "ECO"), self.get_game_header(i, "Event")))
-#
-#            db_game_list = sorted(db_game_list, key=lambda g: g.whiteelo)
 
             if self.db_sort_criteria:
                 db_game_list = sorted(db_game_list, reverse = not self.db_sort_criteria[0].asc, key=attrgetter(self.db_sort_criteria[0].key))
