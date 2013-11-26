@@ -352,6 +352,8 @@ class GameNode(object):
                 score+= "{0} ".format(v.__san,)
             else:
                 score+= "{0} ".format(v.move)
+            if v.comment:
+                score += "[color=3333ff]{0}[/color]".format(v.comment)
 
             if format=="ref":
                 score+=" [/ref] "
@@ -395,7 +397,7 @@ class GameNode(object):
             header_score = self.write_header(header_score, 'Site')
             header_score = self.write_header(header_score, 'Date')
             header_score = self.write_header(header_score, 'ECO')
-            print "generating headers.."
+            # print "generating headers.."
             self.header_score = header_score
 
         return self.header_score

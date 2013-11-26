@@ -1305,7 +1305,7 @@ class Chess_app(App):
     def back(self, obj):
         if self.chessboard.previous_node:
             self.chessboard = self.chessboard.previous_node
-            self.refresh_board()
+            self.refresh_board(update=False)
 
     def _keyboard_closed(self):
 #        print 'My keyboard have been closed!'
@@ -1528,7 +1528,7 @@ class Chess_app(App):
     def fwd(self, obj):
         try:
             self.chessboard = self.chessboard.variations[0]
-            self.refresh_board()
+            self.refresh_board(update=False)
         except IndexError:
             pass
             # TODO: log error if in debug mode
@@ -1889,7 +1889,7 @@ class Chess_app(App):
             sq.remove_piece()
             # Update game notation
 
-    def refresh_board(self):
+    def refresh_board(self, update = True):
         # flatten lists into one list of 64 squares
 #        squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
         squares = self.chessboard.position
@@ -1903,11 +1903,8 @@ class Chess_app(App):
 #        print self.chessboard_root.game_score()
 
         all_moves = self.chessboard_root.game_score()
-#        all_moves = self.chessboard.get_prev_moves(format="san")
 
-    #        print all_moves
-        if all_moves:
-            score = self.generate_move_list(all_moves)
+        if all_moves and update:
             self.game_score.children[0].text="[color=000000]{0}[/color]".format(all_moves)
 
         if self.use_engine and self.uci_engine:
