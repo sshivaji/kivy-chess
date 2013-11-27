@@ -711,7 +711,7 @@ class Chess_app(App):
             # import leveldb
             # from chess.leveldict import LevelDict
             self.user_book = LevelJsonDict('book/userbook.db')
-            self.db_index_book = leveldb.LevelDB('book/test_polyglot_index.db')
+            self.db_index_book = leveldb.LevelDB('book/polyglot_index.db')
 #            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
 
 
@@ -1902,10 +1902,11 @@ class Chess_app(App):
 #        all_moves = self.chessboard.getAllTextMoves()
 #        print self.chessboard_root.game_score()
 
-        all_moves = self.chessboard_root.game_score()
 
-        if all_moves and update:
-            self.game_score.children[0].text="[color=000000]{0}[/color]".format(all_moves)
+        if update:
+            all_moves = self.chessboard_root.game_score()
+            if all_moves:
+                self.game_score.children[0].text="[color=000000]{0}[/color]".format(all_moves)
 
         if self.use_engine and self.uci_engine:
             #self.analysis_board.setFEN(self.chessboard.getFEN())
