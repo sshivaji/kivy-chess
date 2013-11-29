@@ -43,55 +43,55 @@ class PgnIndexTestCase(unittest.TestCase):
     def test_uncommented(self):
         """Tests indexing the uncommented Kasparov vs. Deep Blue PGN."""
         # gm_book = LevelJsonDict('gm_test.db')
-        gm_book = LevelJsonDict('book/test_pgn_index.db')
-        # pgn_file = "test/kasparov-deep-blue-1997.pgn"
-        pgn_file = "test/2600_2013_34.pgn"
+        gm_book = LevelJsonDict('book/userbook.db')
+        # # pgn_file = "test/kasparov-deep-blue-1997.pgn"
+        # pgn_file = "test/2600_2013_34.pgn"
+        #
+        # index = chess.PgnIndex(pgn_file)
+        # gm_book["total_game_count"] = index.__len__()
+        # gm_book["pgn_filename"] = pgn_file
+        # print "length:"
+        # print index.__len__()
+        # for i in range(0, index.__len__()):
+        #     g = index.get_game_headers(i)
+        #     # print index.get_pos(1)
+        #     self.write_header(g, gm_book, i, [{"file_pos":index.get_pos(i)},'Event', 'Site', 'Date', 'White', 'Black', 'Result', 'PlyCount', 'ECO', 'Round', 'EventDate', 'WhiteElo', 'BlackElo', 'PlyCount', 'Source', 'EventType'])
 
-        index = chess.PgnIndex(pgn_file)
-        gm_book["total_game_count"] = index.__len__()
-        gm_book["pgn_filename"] = pgn_file
-        print "length:"
-        print index.__len__()
-        for i in range(0, index.__len__()):
-            g = index.get_game_headers(i)
-            # print index.get_pos(1)
-            self.write_header(g, gm_book, i, [{"file_pos":index.get_pos(i)},'Event', 'Site', 'Date', 'White', 'Black', 'Result', 'PlyCount', 'ECO', 'Round', 'EventDate', 'WhiteElo', 'BlackElo', 'PlyCount', 'Source', 'EventType'])
+        games = chess.PgnFile.open('test/watson_strategic.pgn', leveldb_book=gm_book)
+        for game_index, g in enumerate(games):
+            while g:
+                if g.previous_node:
+                    position_hash = str(g.previous_node.position.__hash__())
+                    if position_hash not in gm_book:
+                        gm_book[position_hash] = {"moves": [], "annotation": "",
+                                                          "eval": "", "games": [game_index], "misc": ""}
 
-        # games = chess.PgnFile.open(pgn_file, leveldb_book=gm_book)
-        # for game_index, g in enumerate(games):
-        #     while g:
-        #         if g.previous_node:
-        #             position_hash = str(g.previous_node.position.__hash__())
-        #             if position_hash not in gm_book:
-        #                 gm_book[position_hash] = {"moves": [], "annotation": "",
-        #                                                   "eval": "", "games": [game_index], "misc": ""}
-        #
-        #             entry = gm_book[position_hash]
-        #
-        #             if g.move:
-        #                 moves = entry["moves"]
-        #                 str_move = str(g.move)
-        #
-        #                 if moves:
-        #                     if str_move not in moves:
-        #                         moves.append(str(g.move))
-        #                         entry["moves"]=moves
-        #                         gm_book[position_hash] = entry
-        #                 else:
-        #                     entry["moves"]=[str_move]
-        #                     gm_book[position_hash] = entry
-        #
-        #             entry = gm_book[position_hash]
-        #
-        #             games = entry["games"]
-        #             if game_index not in entry["games"]:
-        #                 games.append(game_index)
-        #                 entry["games"] = games
-        #                 gm_book[position_hash] = entry
-        #
-        #
-        #                 #                print g.move
-        #         g = g.get_next_main_move()
+                    entry = gm_book[position_hash]
+
+                    if g.move:
+                        moves = entry["moves"]
+                        str_move = str(g.move)
+
+                        if moves:
+                            if str_move not in moves:
+                                moves.append(str(g.move))
+                                entry["moves"]=moves
+                                gm_book[position_hash] = entry
+                        else:
+                            entry["moves"]=[str_move]
+                            gm_book[position_hash] = entry
+
+                    entry = gm_book[position_hash]
+
+                    games = entry["games"]
+                    if game_index not in entry["games"]:
+                        games.append(game_index)
+                        entry["games"] = games
+                        gm_book[position_hash] = entry
+
+
+                        #                print g.move
+                g = g.get_next_main_move()
 
 if __name__ == '__main__':
     unittest.main()

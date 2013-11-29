@@ -609,14 +609,20 @@ class Chess_app(App):
         if len(args[0].selection) == 1:
             game_index = args[0].selection[0].id
             current_fen = self.chessboard.position.fen
-            # temporarily disable sort criteria
-            db_sort_criteria = self.db_sort_criteria
-            self.db_sort_criteria = []
+            # reset sort criteria if a game is being loaded
+            # db_sort_criteria = self.db_sort_criteria
+            self.reset_db_sort_criteria()
             self.load_game_from_index(int(game_index))
             self.go_to_move(None, current_fen)
-            self.db_sort_criteria = db_sort_criteria
+            # self.db_sort_criteria = db_sort_criteria
             # print args[0].selection[0].text
         # self.selected_item = args[0].selection[0].text
+
+    def reset_db_sort_criteria(self):
+        self.db_sort_criteria = []
+        for bt in self.db_header_buttons:
+            if bt.text.endswith(DB_SORT_DESC) or bt.text.endswith(DB_SORT_ASC):
+                bt.text = bt.text[:-2]
 
     def update_db_sort_criteria(self, label):
         # print label.field
@@ -780,7 +786,7 @@ class Chess_app(App):
             result = tokens[4]
             date = tokens[5]
             event = tokens[6]
-            eco = tokens[7]
+            eco = tokens[8]
             return {'text': rec,
                   'size_hint_y': None,
                   'size_hint_x': 0.5,
@@ -884,24 +890,32 @@ class Chess_app(App):
         database_controls.add_widget(self.db_stat_label)
 
         database_header = BoxLayout(size_hint=(1,0.15))
+        self.db_header_buttons = []
         database_white_bt = DBHeaderButton("white", markup=True, text="White", on_press=self.update_db_sort_criteria)
+        self.db_header_buttons.append(database_white_bt)
         database_whiteelo_bt = DBHeaderButton("whiteelo", markup=True, text="Elo", on_press=self.update_db_sort_criteria)
+        self.db_header_buttons.append(database_whiteelo_bt)
+
         database_black_bt = DBHeaderButton("black", markup=True, text="Black", on_press=self.update_db_sort_criteria)
+        self.db_header_buttons.append(database_black_bt)
+
         database_blackelo_bt = DBHeaderButton("blackelo", markup=True, text="Elo", on_press=self.update_db_sort_criteria)
+        self.db_header_buttons.append(database_blackelo_bt)
+
         database_result_bt = DBHeaderButton("result", markup=True, text="Result", on_press=self.update_db_sort_criteria)
+        self.db_header_buttons.append(database_result_bt)
+
         database_date_bt = DBHeaderButton("date", markup=True, text="Date", on_press=self.update_db_sort_criteria)
+        self.db_header_buttons.append(database_date_bt)
+
         database_event_bt = DBHeaderButton("event", markup=True, text="Event", on_press=self.update_db_sort_criteria)
+        self.db_header_buttons.append(database_event_bt)
+
         database_eco_bt = DBHeaderButton("eco", markup=True, text="ECO", on_press=self.update_db_sort_criteria)
+        self.db_header_buttons.append(database_eco_bt)
 
-        database_header.add_widget(database_white_bt)
-        database_header.add_widget(database_whiteelo_bt)
-        database_header.add_widget(database_black_bt)
-        database_header.add_widget(database_blackelo_bt)
-        database_header.add_widget(database_result_bt)
-        database_header.add_widget(database_date_bt)
-        database_header.add_widget(database_event_bt)
-        database_header.add_widget(database_eco_bt)
-
+        for i in self.db_header_buttons:
+            database_header.add_widget(i)
 
         database_grid.add_widget(database_controls)
         database_grid.add_widget(database_header)
@@ -1169,7 +1183,7 @@ class Chess_app(App):
 
 
 #        f = open(self.pgn_index["pgn_filename"])
-        f = open("test/2600_2013_34.pgn")
+        f = open("test/2400_2013_47.pgn")
         first = int(first)
         # print "first: {0}".format(first)
 
@@ -1745,7 +1759,7 @@ class Chess_app(App):
                     db_game.result = tokens[4]
                     db_game.date = tokens[5]
                     db_game.event = tokens[6]
-                    db_game.eco = tokens[7]
+                    db_game.eco = tokens[8]
                 db_game_list.append(db_game)
 
             if self.db_sort_criteria:
