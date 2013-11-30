@@ -1086,16 +1086,17 @@ class Chess_app(App):
                 else:
                     return pos_evals[i+1].integer_eval
 
-    def update_user_book_positions(self, delete = False):
+    def update_user_book_positions(self, color="white", delete = False):
         game = self.chessboard
         while game.previous_node:
             prev = game.previous_node
             move = game.move
             move = str(move)
+            # curent_pos_hash = str(game.position.__hash__())
             # print "move:{0}".format(move)
             prev_pos_hash = str(prev.position.__hash__())
             if prev_pos_hash not in self.user_book:
-                v = {"moves":[move], "annotation":"",
+                v = {"moves":[move], "annotation":"", "color" : [color],
                  "eval": 5, "games":[], "misc":""}
                 # print "not in book"
                 self.user_book[prev_pos_hash] = v
@@ -1111,6 +1112,8 @@ class Chess_app(App):
                     moves = j["moves"]
                     moves.append(move)
                     j["moves"] = moves
+                    if color not in j["color"]:
+                        j["color"].append(color)
                     self.user_book[prev_pos_hash] = j
                 else:
                     if delete:
@@ -1119,6 +1122,9 @@ class Chess_app(App):
                         j["moves"] = moves
                         self.user_book[prev_pos_hash] = j
 
+                        # c = self.user_book[curent_pos_hash]
+                        # c["color"]=[]
+                        # self.user_book[curent_pos_hash] = c
                 # else:
                     # print "move already in book"
             if not delete:
@@ -1211,15 +1217,21 @@ class Chess_app(App):
 
         # self.game_score = games[0]
 
-    def add_book_moves(self, mv, ref_move=None):
+    def add_book_moves_white(self, mv, ref_move = None):
+        self.add_book_moves(mv, ref_move=ref_move, color="white")
+
+    def add_book_moves_black(self, mv, ref_move = None):
+        self.add_book_moves(mv, ref_move=ref_move, color="black")
+
+    def add_book_moves(self, mv, ref_move=None, color="white"):
         mv = self.get_grid_click_input(mv, ref_move)
         # print "mv:"+str(mv)
         # if mv ==
         if str(mv) == DELETE_FROM_USER_BOOK:
-            self.update_user_book_positions(delete=True)
+            self.update_user_book_positions(delete=True, color=color)
             self.update_book_panel()
         elif str(mv) == ADD_TO_USER_BOOK:
-            self.update_user_book_positions()
+            self.update_user_book_positions(color=color)
             self.update_book_panel()
         elif self.is_position_inf_eval(mv):
             # print "is_pos_eval"
@@ -1793,6 +1805,14 @@ class Chess_app(App):
     #                print self.user_book[self.chessboard.position.fen]
                     user_book_moves = self.user_book[pos_hash]
 #                    print user_book_moves
+                    col = user_book_moves["color"]
+                    color = ""
+                    if "white" in col and "black" not in col:
+                        color = "3333ff"
+                    elif "white" in col and "black" in col:
+                        color = "ff0000"
+                    elif "white" not in col and "black" in col:
+                        color = "bold"
 
                     user_book_moves = user_book_moves["moves"]
                     # print user_book_moves
@@ -1812,7 +1832,7 @@ class Chess_app(App):
                 else:
                     # Not found
                     #     print "pos not found"
-                        self.user_book[pos_hash] = {"moves":[], "annotation":"",
+                        self.user_book[pos_hash] = {"moves":[], "annotation":"", "color": [],
                                                                       "eval":5, "games":[], "misc":""}
 
             p = Position(fen)
@@ -1842,7 +1862,13 @@ class Chess_app(App):
                     pos = Position(fen)
                     move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
                     san = move_info.san
-                    self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(m, san), ''], callback=self.add_book_moves)
+                    # print "color:{0}".format(color)
+
+                    if color == "bold":
+                        self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(m, san), ''], callback=self.add_book_moves)
+                    else:
+                        self.book_panel.grid.add_row(["[ref={0}][color={2}]{1}[/color][/ref]".format(m, san, color), ''], callback=self.add_book_moves)
+
                 except Exception, ex:
                     pass
 
@@ -1856,7 +1882,11 @@ class Chess_app(App):
 
                     if e.in_user_book:
                         weight = str(e.weight)
-                        self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
+                        if color == "bold":
+                            self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
+                        else:
+                            self.book_panel.grid.add_row(["[ref={0}][color={2}]{1}[/color][/ref]".format(e.move.uci, san, color), weight], callback=self.add_book_moves)
+                        # self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
                     else:
                         self.book_panel.grid.add_row(["[ref={0}]{1}[/ref]".format(e.move.uci, san), str(e.weight)], callback=self.add_book_moves)
                     book_entries += 1
@@ -1870,8 +1900,10 @@ class Chess_app(App):
             weight = self.convert_int_eval_to_inf(current_eval)
             # print weight
 
-            self.book_panel.grid.add_row(["[ref=add_to_user_book]Add to Rep[/ref]",
-                                          ("[ref=%s]Delete[/ref]" % DELETE_FROM_USER_BOOK)], callback=self.add_book_moves)
+            self.book_panel.grid.add_row(["[color=3333ff][ref=add_to_user_book]Add to White Rep[/ref][/color]",
+                                          ("[color=3333ff][ref=%s]Delete[/ref][/color]" % DELETE_FROM_USER_BOOK)], callback=self.add_book_moves_white)
+            self.book_panel.grid.add_row(["[ref=add_to_user_book]Add to Black Rep[/ref]",
+                                          ("[ref=%s]Delete[/ref]" % DELETE_FROM_USER_BOOK)], callback=self.add_book_moves_black)
             self.book_panel.grid.add_row(["Eval", "[ref={0}]{0}[/ref]".format(weight)], callback=self.add_book_moves)
 
                 # current_eval = NONE
