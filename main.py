@@ -1806,13 +1806,13 @@ class Chess_app(App):
                     user_book_moves = self.user_book[pos_hash]
 #                    print user_book_moves
                     col = user_book_moves["color"]
-                    color = ""
+                    color = "bold"
                     if "white" in col and "black" not in col:
                         color = "3333ff"
                     elif "white" in col and "black" in col:
                         color = "ff0000"
-                    elif "white" not in col and "black" in col:
-                        color = "bold"
+                    # elif "white" not in col and "black" in col:
+                    #     color = "bold"
 
                     user_book_moves = user_book_moves["moves"]
                     # print user_book_moves
