@@ -620,6 +620,8 @@ class Chess_app(App):
 
     def reset_db_sort_criteria(self):
         self.db_sort_criteria = []
+        self.db_filter_field.text = ""
+
         for bt in self.db_header_buttons:
             if bt.text.endswith(DB_SORT_DESC) or bt.text.endswith(DB_SORT_ASC):
                 bt.text = bt.text[:-2]
@@ -880,13 +882,16 @@ class Chess_app(App):
         grandparent.add_widget(parent)
         database_grid = BoxLayout(size_hint=(1, 0.4), orientation='vertical')
 
-        database_controls = BoxLayout(size_hint=(1, 0.15))
+        database_controls = BoxLayout(size_hint=(1, 0.25))
         db_label = ToggleButton(text="Database",  state="down", on_press=self.update_database_display)
+
+        self.db_filter_field = TextInput(text="", focus=True, multiline=False, use_bubble = True)
+        self.db_filter_field.bind(on_text_validate=self.update_book_panel)
 
         self.db_stat_label = Label(text="No Games")
 
-
         database_controls.add_widget(db_label)
+        database_controls.add_widget(self.db_filter_field)
         database_controls.add_widget(self.db_stat_label)
 
         database_header = BoxLayout(size_hint=(1,0.15))
@@ -1548,7 +1553,7 @@ class Chess_app(App):
 
         # Return True to accept the key. Otherwise, it will be used by
         # the system.
-        return True
+        # return False
 
 
     def fwd(self, obj):
@@ -1759,9 +1764,25 @@ class Chess_app(App):
             #     game_ids = []
 
             db_game_list = []
+            filter_text = []
+            db_operator = ["-", " "]
+            db_text = self.db_filter_field.text
+            if db_text:
+                operator_match = False
+                for op in db_operator:
+                    if op in db_text:
+                        filter_tokens = db_text.split(op)
+                        for i, f in enumerate(filter_tokens):
+                            filter_tokens[i] = f.strip()
+                        filter_text = filter_tokens
+                        operator_match = True
+                        break
+                if not operator_match:
+                    filter_text = [db_text]
+
             for i in game_ids:
                 db_game = DBGame(i)
-                if self.db_sort_criteria:
+                if self.db_sort_criteria or len(filter_text) > 0:
                     record = self.get_game_header(i, "ALL")
                     tokens = record.split("|")
                     db_game.white = tokens[0]
@@ -1771,8 +1792,22 @@ class Chess_app(App):
                     db_game.result = tokens[4]
                     db_game.date = tokens[5]
                     db_game.event = tokens[6]
+                    db_game.site = tokens[7]
                     db_game.eco = tokens[8]
-                db_game_list.append(db_game)
+                if len(filter_text) > 0:
+                    match = True
+                    # print filter_text
+                    for f in filter_text:
+                        if f in db_game.white or f in db_game.black or f in db_game.event or f in db_game.site:
+                            pass
+                        else:
+                            match = False
+                    if match:
+                        db_game_list.append(db_game)
+                            # db_game_list.append(db_game)
+                else:
+                    db_game_list.append(db_game)
+
 
             if self.db_sort_criteria:
                 db_game_list = sorted(db_game_list, reverse = not self.db_sort_criteria[0].asc, key=attrgetter(self.db_sort_criteria[0].key))
