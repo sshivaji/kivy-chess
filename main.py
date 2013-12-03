@@ -718,7 +718,7 @@ class Chess_app(App):
             from chess.leveldict import LevelJsonDict
             # import leveldb
             # from chess.leveldict import LevelDict
-            self.user_book = LevelJsonDict('book/userbook.db')
+            self.user_book = LevelJsonDict('book/tbook/tbook.db')
             self.db_index_book = leveldb.LevelDB('book/polyglot_index.db')
 #            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
 
@@ -1194,7 +1194,7 @@ class Chess_app(App):
 
 
 #        f = open(self.pgn_index["pgn_filename"])
-        f = open("test/2400_2013_47.pgn")
+        f = open("test/2400_2013_47_classic.pgn")
         first = int(first)
         # print "first: {0}".format(first)
 
