@@ -103,7 +103,7 @@ ENGINE_HEADER = '[b][color=000000][ref='+ENGINE_ANALYSIS\
 
 BOOK_ON = "Book"
 USER_BOOK_ON = "User Book"
-DATABASE_ON = "Database"
+SHOW_GAMES = "Show Games"
 BOOK_OFF = "Hide"
 
 BOOK_HEADER = '[b][color=000000][ref=Book]{0}[/ref][/color][/b]'
@@ -586,15 +586,16 @@ class Chess_app(App):
 
     def update_database_display(self, game, ref_game=None):
         game = self.get_grid_click_input(game, ref_game)
-        if game == DATABASE_ON:
+        if game == SHOW_GAMES:
             if self.database_display:
                 self.database_panel.reset_grid()
-            self.database_display = not self.database_display
+            self.database_display = True
             if not self.database_display:
                 self.db_stat_label.text = "No Games"
                 self.db_adapter.data = {}
-#            self.update_database_panel()
-            self.update_book_panel()
+            self.update_database_panel()
+            # self.update_book_panel()
+            # self.database_display = False
 
     def update_book_display(self, mv, ref_move=None):
         mv = self.get_grid_click_input(mv, ref_move)
@@ -699,7 +700,7 @@ class Chess_app(App):
         self.setup_board_squares = []
         self.use_engine = False
         self.book_display = True
-        self.database_display = True
+        self.database_display = False
         self.user_book_display = True
         self.last_touch_down_move = None
         self.last_touch_up_move = None
@@ -778,6 +779,14 @@ class Chess_app(App):
         # print integers_dict
 
         def args_conv(row_index, rec):
+            if not self.database_display:
+                return {'text': rec,
+                  'size_hint_y': None,
+                  'size_hint_x': 0.5,
+                  'height': 30,
+                  'cls_dicts': []
+                 }
+
             record = self.get_game_header(rec.id, "ALL")
             tokens = record.split("|")
 
@@ -883,7 +892,7 @@ class Chess_app(App):
         database_grid = BoxLayout(size_hint=(1, 0.4), orientation='vertical')
 
         database_controls = BoxLayout(size_hint=(1, 0.25))
-        db_label = ToggleButton(text="Database",  state="down", on_press=self.update_database_display)
+        db_label = Button(text=SHOW_GAMES, on_press=self.update_database_display)
 
         self.db_filter_field = TextInput(text="", focus=True, multiline=False, use_bubble = True)
         self.db_filter_field.bind(on_text_validate=self.update_book_panel)
@@ -1735,7 +1744,9 @@ class Chess_app(App):
         except KeyError:
             return "Unknown"
 
-    def update_database_panel(self, pos_hash):
+    def update_database_panel(self):
+        pos_hash = str(self.chessboard.position.__hash__())
+
         if self.db_index_book is not None and self.database_display:
             # self.database_panel.reset_grid()
             # print "game_ids:"
@@ -1823,10 +1834,6 @@ class Chess_app(App):
         if self.book_display:
             user_book_moves_set = set()
             pos_hash = str(self.chessboard.position.__hash__())
-            if self.db_index_book is not None:
-                        # print "games:"
-                        # print user_book_moves["games"]
-                self.update_database_panel(pos_hash)
 
             # print pos_hash
             user_book_moves = None
@@ -2006,7 +2013,7 @@ class Chess_app(App):
                         winc=self.time_inc_white, binc=self.time_inc_black)
 
         self.update_book_panel()
-#        self.update_database_panel()
+        # self.update_database_panel()
 #        self.update_user_book_panel()
 
 if __name__ == '__main__':
