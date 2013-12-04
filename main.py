@@ -719,7 +719,7 @@ class Chess_app(App):
             from chess.leveldict import LevelJsonDict
             # import leveldb
             # from chess.leveldict import LevelDict
-            self.user_book = LevelJsonDict('book/tbook/tbook.db')
+            self.user_book = LevelJsonDict('book/custom/tbook.db')
             self.db_index_book = leveldb.LevelDB('book/polyglot_index.db')
 #            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
 
