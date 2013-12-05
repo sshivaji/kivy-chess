@@ -1,4 +1,5 @@
 import kivy
+import traceback
 import sys
 # from kivy.config import Config
 # Config.set('graphics', 'fullscreen', 0)
@@ -568,15 +569,20 @@ class Chess_app(App):
                                 prev_fen_start = self.chessboard.previous_node.position.fen.split()[0]
                                 if dgt_fen_start == prev_fen_start:
                                     self.back('dgt')
+                        if self.engine_mode != ENGINE_PLAY and self.engine_mode != ENGINE_ANALYSIS:
+                            if len(self.chessboard.variations)>0:
+                                self.dgtnix.SendToClock(self.format_move_for_dgt(str(self.chessboard.variations[0].move)), self.dgt_clock_sound, False)
 
                 elif new_dgt_fen:
                     self.dgt_fen = new_dgt_fen
                 if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
                     # Print engine move on DGT XL clock
                     self.dgtnix.SendToClock(self.format_str_for_dgt(self.format_time_str(self.time_white,separator='')+self.format_time_str(self.time_black, separator='')), False, True)
+
             except Exception:
                     self.dgt_connected = False
                     self.dgtnix=None
+                    print traceback.format_exc()
 
     def update_grid_border(self, instance, width, height):
         with self.grid.canvas.before:
