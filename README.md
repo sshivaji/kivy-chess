@@ -20,5 +20,5 @@ Features
    6. DGT board support
 
 Screenshots
-   1. ![Main Screen](/doc/screenshots/kivy-chess-main-shot.png "Main Screen")
+ 1. ![Main Screen](/doc/screenshots/kivy-chess-main-shot.png "Main Screen")
 
