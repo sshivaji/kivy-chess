@@ -17,5 +17,8 @@ Features
    3. Take back and move forward, with variation support.
    4. Opening book support
    5. Database support with position index.
+   6. DGT board support
 
-More features to come.
+Screenshots
+   1. ![Main Screen](/doc/screenshots/kivy-chess-main-shot.png "Main Screen")
+
