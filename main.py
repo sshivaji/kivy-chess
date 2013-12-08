@@ -618,7 +618,8 @@ class Chess_app(App):
             current_fen = self.chessboard.position.fen
             # reset sort criteria if a game is being loaded
             # db_sort_criteria = self.db_sort_criteria
-            self.reset_db_sort_criteria()
+            # self.reset_db_sort_criteria()
+
             self.load_game_from_index(int(game_index))
             self.go_to_move(None, current_fen)
             # self.db_sort_criteria = db_sort_criteria
@@ -646,7 +647,7 @@ class Chess_app(App):
             label.text += ' ' +DB_SORT_DESC
             self.db_sort_criteria[0].asc = False
 
-        self.update_book_panel()
+        self.update_database_panel()
 
 
         # label.text+=" ^"
@@ -1915,7 +1916,7 @@ class Chess_app(App):
                     if color == "bold":
                         self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(m, san), ''], callback=self.add_book_moves)
                     else:
-                        self.book_panel.grid.add_row(["[ref={0}][color={2}]{1}[/color][/ref]".format(m, san, color), ''], callback=self.add_book_moves)
+                        self.book_panel.grid.add_row(["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(m, san, color), ''], callback=self.add_book_moves)
 
                 except Exception, ex:
                     pass
@@ -1933,7 +1934,7 @@ class Chess_app(App):
                         if color == "bold":
                             self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
                         else:
-                            self.book_panel.grid.add_row(["[ref={0}][color={2}]{1}[/color][/ref]".format(e.move.uci, san, color), weight], callback=self.add_book_moves)
+                            self.book_panel.grid.add_row(["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(e.move.uci, san, color), weight], callback=self.add_book_moves)
                         # self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
                     else:
                         self.book_panel.grid.add_row(["[ref={0}]{1}[/ref]".format(e.move.uci, san), str(e.weight)], callback=self.add_book_moves)
