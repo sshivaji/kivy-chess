@@ -7,9 +7,10 @@ To Build
    1. Download Kivy
    2. Install and test that kivy works
    3. If not running on Mac OS X, the libchess.so library needs to be built, go to https://github.com/sshivaji/python-chess, switch to the pgn branch.
-   4. Then execute "python setup.py build". Copy libchess.so to root folder/chess
-   3. Finally, Execute "kivy main.py"
-   4. To deploy to IOS/android, download the respective toolkits and use this project's rootdir.
+   4. Then execute "python setup.py build". Copy libchess.so to root folder/chess.
+   5. Install leveldb for database functionality, "sudo pip install leveldb"
+   6. Finally, Execute "kivy main.py"
+   7. To deploy to IOS/android, download the respective toolkits and use this project's rootdir.
 
 Features
    1. Ability to play over human input moves.
