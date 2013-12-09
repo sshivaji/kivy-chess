@@ -30,6 +30,7 @@ from kivy.properties import BooleanProperty, ListProperty, ObjectProperty, Numer
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
+from kivy.graphics import Line
 from kivy.uix.scatter import Scatter
 from kivy.utils import get_color_from_hex
 from kivy.utils import escape_markup
@@ -152,6 +153,8 @@ COLOR_MAPS = {
 
 DARK_SQUARE = COLOR_MAPS['brown']
 LIGHT_SQUARE = COLOR_MAPS['cream']
+
+MERIDA = "img/pieces/Merida-shadow/"
 
 INITIAL_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 DB_HEADER_MAP = {"White": 0, "WhiteElo": 1, "Black": 2,
@@ -290,8 +293,6 @@ class ChessSquare(Button):
 
     def __init__(self, **kwargs):
         super(ChessSquare, self).__init__(**kwargs)
-        self.background_normal = ''
-        self.background_down = ''
 
     def add_piece(self, piece):
         self.remove_widget(self.piece)
@@ -303,10 +304,6 @@ class ChessSquare(Button):
             # print self.size
             piece.set_size(self.size)
             piece.set_pos(self.pos)
-
-#    def on_release(self):
-#        self.state = 'down'
-#        app.process_move(self)
 
     def remove_piece(self):
         if self.piece:
@@ -497,11 +494,13 @@ class Chess_app(App):
             bt.name = name
             if i in light_squares:
                 bt.sq_color = "l"
-                bt.background_normal = "img/pieces/Merida/light.png"
+                bt.background_normal = MERIDA+"light.png"
             else:
 #                bt.background_color = DARK_SQUARE
-                bt.background_normal = "img/pieces/Merida/dark.png"
+                bt.background_normal = MERIDA+"dark.png"
                 bt.sq_color = "d"
+            bt.background_down = bt.background_normal
+
 
             if type == "main":
                 bt.bind(on_touch_down=self.touch_down_move)
@@ -523,7 +522,7 @@ class Chess_app(App):
                 # bt.sq_color = "l"
 
                 if i!=".":
-                    piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[i])
+                    piece = ChessPiece(MERIDA+'%s.png' % IMAGE_PIECE_MAP[i])
                     bt.add_piece(piece)
 
                 bt.bind(on_touch_down=self.touch_down_setup)
@@ -1582,6 +1581,7 @@ class Chess_app(App):
     def touch_down_move(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
             return
+
         # print "touch_move"
         # print touch
         mv = img.name
@@ -1970,7 +1970,7 @@ class Chess_app(App):
 #            sq.remove_piece()
         if p:
             # print p.symbol
-            piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[p.symbol])
+            piece = ChessPiece(MERIDA+'%s.png' % IMAGE_PIECE_MAP[p.symbol])
             sq.add_piece(piece)
         else:
             sq.remove_piece()
