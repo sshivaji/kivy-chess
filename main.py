@@ -497,9 +497,10 @@ class Chess_app(App):
             bt.name = name
             if i in light_squares:
                 bt.sq_color = "l"
-                bt.background_color = LIGHT_SQUARE
+                bt.background_normal = "img/pieces/Merida/light.png"
             else:
-                bt.background_color = DARK_SQUARE
+#                bt.background_color = DARK_SQUARE
+                bt.background_normal = "img/pieces/Merida/dark.png"
                 bt.sq_color = "d"
 
             if type == "main":
@@ -524,15 +525,6 @@ class Chess_app(App):
                 if i!=".":
                     piece = ChessPiece('img/pieces/Merida/%s.png' % IMAGE_PIECE_MAP[i])
                     bt.add_piece(piece)
-                    if index%2==0:
-                        bt.background_color = DARK_SQUARE
-                    else:
-                        bt.background_color = LIGHT_SQUARE
-
-                else:
-                    bt.background_color = COLOR_MAPS["black"]
-
-                # bt.background_color = BLACK
 
                 bt.bind(on_touch_down=self.touch_down_setup)
                 bt.bind(on_touch_up=self.touch_up_setup)
