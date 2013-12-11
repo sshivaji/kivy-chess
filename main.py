@@ -151,8 +151,8 @@ COLOR_MAPS = {
     'brown': get_color_from_hex('#f2a257'),
     }
 
-DARK_SQUARE = COLOR_MAPS['brown']
-LIGHT_SQUARE = COLOR_MAPS['cream']
+DARK_SQUARE = "img/board/dark/"
+LIGHT_SQUARE = "img/board/light/"
 
 MERIDA = "img/pieces/Merida-shadow/"
 
@@ -494,10 +494,10 @@ class Chess_app(App):
             bt.name = name
             if i in light_squares:
                 bt.sq_color = "l"
-                bt.background_normal = MERIDA+"light.jpg"
+                bt.background_normal = LIGHT_SQUARE+"marble_166.jpg"
             else:
 #                bt.background_color = DARK_SQUARE
-                bt.background_normal = MERIDA+"dark.jpg"
+                bt.background_normal = DARK_SQUARE+"marble_252.jpg"
                 bt.sq_color = "d"
             bt.background_down = bt.background_normal
 
