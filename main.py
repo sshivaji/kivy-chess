@@ -494,10 +494,14 @@ class Chess_app(App):
             bt.name = name
             if i in light_squares:
                 bt.sq_color = "l"
-                bt.background_normal = LIGHT_SQUARE+"marble_166.jpg"
+                bt.background_normal = LIGHT_SQUARE+"fir-lite.jpg"
+                # marble
+                #  bt.background_normal = LIGHT_SQUARE+"marble_166.jpg"
             else:
 #                bt.background_color = DARK_SQUARE
-                bt.background_normal = DARK_SQUARE+"marble_252.jpg"
+                bt.background_normal = DARK_SQUARE+"wood-chestnut-oak2.jpg"
+                # marble
+                # bt.background_normal = DARK_SQUARE+"marble_252.jpg"
                 bt.sq_color = "d"
             bt.background_down = bt.background_normal
 
