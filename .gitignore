@@ -1,3 +1,5 @@
 .idea
 *.pyc
-
+book/*
+gm_test_index.db/*
+gm_test.db/*

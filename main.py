@@ -496,7 +496,7 @@ class Chess_app(App):
                 bt.sq_color = "l"
                 bt.background_normal = LIGHT_SQUARE+"fir-lite.jpg"
                 # marble
-                #  bt.background_normal = LIGHT_SQUARE+"marble_166.jpg"
+                # bt.background_normal = LIGHT_SQUARE+"marble_166.jpg"
             else:
 #                bt.background_color = DARK_SQUARE
                 bt.background_normal = DARK_SQUARE+"wood-chestnut-oak2.jpg"
@@ -721,7 +721,7 @@ class Chess_app(App):
             from chess.leveldict import LevelJsonDict
             # import leveldb
             # from chess.leveldict import LevelDict
-            self.user_book = LevelJsonDict('book/custom/tbook.db')
+            self.user_book = LevelJsonDict('book/custom/watson.db')
             self.db_index_book = leveldb.LevelDB('book/polyglot_index.db')
 #            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
 
@@ -1849,8 +1849,12 @@ class Chess_app(App):
 #                    print "found position"
     #                print self.user_book[self.chessboard.position.fen]
                     user_book_moves = self.user_book[pos_hash]
-#                    print user_book_moves
-                    col = user_book_moves["color"]
+                    # print user_book_moves
+                    try:
+                        col = user_book_moves["color"]
+                    except KeyError:
+                        print user_book_moves
+                        col = ["white"]
                     color = "bold"
                     if "white" in col and "black" not in col:
                         color = "3333ff"

@@ -43,7 +43,7 @@ class PgnIndexTestCase(unittest.TestCase):
     def test_uncommented(self):
         """Tests indexing the uncommented Kasparov vs. Deep Blue PGN."""
         # gm_book = LevelJsonDict('gm_test.db')
-        gm_book = LevelJsonDict('book/userbook.db')
+        gm_book = LevelJsonDict('book/custom/watson.db')
         # # pgn_file = "test/kasparov-deep-blue-1997.pgn"
         # pgn_file = "test/2600_2013_34.pgn"
         #
@@ -63,31 +63,31 @@ class PgnIndexTestCase(unittest.TestCase):
                 if g.previous_node:
                     position_hash = str(g.previous_node.position.__hash__())
                     if position_hash not in gm_book:
-                        gm_book[position_hash] = {"moves": [], "annotation": "",
-                                                          "eval": "", "games": [game_index], "misc": ""}
+                        gm_book[position_hash] = {"moves": [], "annotation": "", "color" : ["white"],
+                                                          "eval": 5, "games": [game_index], "misc": ""}
 
-                    entry = gm_book[position_hash]
+                    # entry = gm_book[position_hash]
 
                     if g.move:
-                        moves = entry["moves"]
+                        moves = gm_book[position_hash]["moves"]
                         str_move = str(g.move)
 
                         if moves:
                             if str_move not in moves:
                                 moves.append(str(g.move))
-                                entry["moves"]=moves
-                                gm_book[position_hash] = entry
+                                # entry["moves"]=moves
+                                gm_book[position_hash]["moves"] = moves
                         else:
-                            entry["moves"]=[str_move]
-                            gm_book[position_hash] = entry
+                            # entry["moves"]=[str_move]
+                            gm_book[position_hash]["moves"] = [str_move]
 
-                    entry = gm_book[position_hash]
+                    # entry = gm_book[position_hash]
 
-                    games = entry["games"]
-                    if game_index not in entry["games"]:
+                    games = gm_book[position_hash]["games"]
+                    if game_index not in games:
                         games.append(game_index)
-                        entry["games"] = games
-                        gm_book[position_hash] = entry
+                        # entry["games"] = games
+                        gm_book[position_hash]["games"] = games
 
 
                         #                print g.move

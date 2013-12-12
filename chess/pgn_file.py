@@ -141,8 +141,8 @@ class PgnFile(object):
         if g.previous_node:
             position_hash = str(g.previous_node.position.__hash__())
             if position_hash not in leveldb_book:
-                leveldb_book[position_hash] = {"moves": [], "annotation": "",
-                                               "eval": "", "games": [i], "misc": ""}
+                leveldb_book[position_hash] = {"moves": [], "annotation": "", "color":["white"],
+                                               "eval": 5, "games": [i], "misc": ""}
 
             entry = leveldb_book[position_hash]
 
