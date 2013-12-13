@@ -95,7 +95,7 @@ ENGINE_PLAY_STOP = "play_stop"
 
 ENGINE_PLAY_HINT = "play_hint"
 
-YOURTURN_MENU = "[color=000000][size=16][i]{2}[/i]    [b]{3}[/b][/size]\nYour turn\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint: {0}\nScore: {1} [/ref][/color]"
+YOURTURN_MENU = "[color=000000][size=24][i]{2}[/i]    [b]{3}[/b][/size]\nYour turn\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint: {0}\nScore: {1} [/ref][/color]"
 
 ENGINE_ANALYSIS = "engine_analysis"
 
@@ -553,7 +553,7 @@ class Chess_app(App):
         if self.engine_mode == ENGINE_PLAY:
             if self.engine_computer_move:
                 self.update_time(color=self.engine_comp_color)
-                self.engine_score.children[0].text = "[color=000000]Thinking..\n[size=16]{0}    [b]{1}[/size][/b][/color]".format(self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+                self.engine_score.children[0].text = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]".format(self.format_time_str(self.time_white), self.format_time_str(self.time_black))
             else:
                 self.update_player_time()
                 if self.show_hint:
