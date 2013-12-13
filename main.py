@@ -548,6 +548,27 @@ class Chess_app(App):
 
                 return True
 
+
+    def update_clocks(self, *args):
+        if self.engine_mode == ENGINE_PLAY:
+            if self.engine_computer_move:
+                self.update_time(color=self.engine_comp_color)
+                self.engine_score.children[0].text = "[color=000000]Thinking..\n[size=16]{0}    [b]{1}[/size][/b][/color]".format(self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+            else:
+                self.update_player_time()
+                if self.show_hint:
+                    if self.ponder_move and self.ponder_move!='(none)':
+    #                print self.ponder_move
+                        pos = Position(self.chessboard.position.fen)
+                        move_info = pos.make_move(Move.from_uci(self.ponder_move))
+                        san = move_info.san
+                        self.engine_score.children[0].text = YOURTURN_MENU.format(san, self.eng_eval, self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+                    else:
+                        self.engine_score.children[0].text = YOURTURN_MENU.format("Not available", self.eng_eval, self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+                else:
+                    self.engine_score.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+
+
     def dgt_probe(self, *args):
         if self.dgt_connected and self.dgtnix:
             try:
@@ -666,6 +687,7 @@ class Chess_app(App):
         self.from_move = None
         self.to_move = None
         self.db_sort_criteria = []
+        self.show_hint = False
 
 #        PGN Index test
 #        index = PgnIndex("kasparov-deep-blue-1997.pgn")
@@ -734,6 +756,7 @@ class Chess_app(App):
             print "cannot import leveldb userbook"
 
         Clock.schedule_interval(self.dgt_probe, 1)
+        Clock.schedule_interval(self.update_clocks, 1)
 
         grandparent = GridLayout(size_hint=(1,1), cols=1, orientation = 'vertical')
         parent = BoxLayout()
@@ -1320,15 +1343,7 @@ class Chess_app(App):
             self.engine_mode = ENGINE_ANALYSIS
             self.refresh_board()
         elif value == ENGINE_PLAY_HINT:
-#            print "engine_hint.."
-            pos = Position(self.chessboard.position.fen)
-            if self.ponder_move and self.ponder_move!='(none)':
-#                print self.ponder_move
-                move_info = pos.make_move(Move.from_uci(self.ponder_move))
-                san = move_info.san
-                self.engine_score.children[0].text = YOURTURN_MENU.format(san, self.eng_eval, self.format_time_str(self.time_white), self.format_time_str(self.time_black))
-            else:
-                self.engine_score.children[0].text = YOURTURN_MENU.format("Not available", self.eng_eval, self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+            self.show_hint = True
         else:
             for i, mv in enumerate(self.engine_score.raw):
                 if i >= 1:
@@ -1510,7 +1525,7 @@ class Chess_app(App):
                             score = self.get_score(line)
                             if score:
                                 self.eng_eval = score
-                            self.update_time(color=self.engine_comp_color)
+                            # self.update_time(color=self.engine_comp_color)
                             if best_move:
                                 self.add_try_variation(best_move)
                                 # self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
@@ -1521,14 +1536,14 @@ class Chess_app(App):
                                 if self.dgt_connected and self.dgtnix:
                                     # Print engine move on DGT XL clock
                                     self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), self.dgt_clock_sound, False)
+                                self.show_hint = False
+                                # output.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
 
-                                output.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
-
-                            else:
-                                output.children[0].text = "[color=000000]Thinking..\n[size=16]{0}    [b]{1}[/size][/b][/color]".format(self.format_time_str(self.time_white), self.format_time_str(self.time_black))
-                        else:
-#                            self.update_player_time()
-                            output.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+                            # else:
+                            #     output.children[0].text = "[color=000000]Thinking..\n[size=16]{0}    [b]{1}[/size][/b][/color]".format(self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+#                         else:
+# #                            self.update_player_time()
+#                             output.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
                             # sleep(1)
             else:
                 # if output.children[0].text != ENGINE_HEADER:
@@ -1655,6 +1670,11 @@ class Chess_app(App):
         if self.engine_comp_color == 'w':
             color = 'b'
         self.update_time(color=color)
+
+    def update_player_inc(self):
+        color = 'w'
+        if self.engine_comp_color == 'w':
+            color = 'b'
         self.time_add_increment(color=color)
 
     def is_promotion(self, move):
@@ -1686,7 +1706,8 @@ class Chess_app(App):
                 move = self.add_promotion_info(move)
             self.add_try_variation(move)
             if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
-                self.update_player_time()
+                # self.update_player_time()
+                self.update_player_inc()
                 self.engine_computer_move = True
 
             self.refresh_board()
