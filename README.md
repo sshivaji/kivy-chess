@@ -12,6 +12,12 @@ To Build
    6. Finally, Execute "kivy main.py"
    7. To deploy to IOS/android, download the respective toolkits and use this project's rootdir.
 
+To load large databases
+   1. Go to the github.com/sshivaji/polyglot project and follow instructions to build databases.
+   2. Rename polyglot leveldb folder to the name "polyglot_index.db"
+   3. Copy/move polyglot leveldb index folder to kivy-chess/book/
+   4. In the source code, search for .pgn and change "2400\_2013/\_47/\_classic.pgn" to your pgn file location (this hardcoding will be removed soon!) 
+
 Features
    1. Ability to play over human input moves.
    2. Observe engine output on positions.
