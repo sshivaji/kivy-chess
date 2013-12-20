@@ -16,7 +16,12 @@ To load large databases
    1. Go to the github.com/sshivaji/polyglot project and follow instructions to build databases.
    2. Rename polyglot leveldb folder to the name "polyglot_index.db"
    3. Copy/move polyglot leveldb index folder to kivy-chess/book/
-   4. In the source code, search for .pgn and change "2400_2013_47_classic.pgn" to your pgn file location (this hardcoding will be removed soon!) 
+   4. In the source code, search for .pgn and change "2400_2013_47_classic.pgn" to your pgn file location (this hardcoding will be removed soon!)
+   
+To use DGT support
+   1. Go to the DGT folder.
+   2. Follow instructions under https://github.com/sshivaji/kivy-chess/tree/master/dgt
+   3. Then go to the setup button and configure your DGT board.
 
 Features
    1. Ability to play over human input moves.
