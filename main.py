@@ -1592,9 +1592,9 @@ class Chess_app(App):
 
     def save(self, obj):
         f = open('game.pgn','w')
-        f.write('Game Header - Analysis \n\n')
-        f.write(self.chessboard_root.game_score(format="regular"))
-        f.write("\n")
+#        f.write('Game Header - Analysis \n\n')
+        f.write(self.chessboard_root.game_score(format="file"))
+#        f.write("\n")
         f.close()
 
     def touch_down_move(self, img, touch):

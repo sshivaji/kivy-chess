@@ -368,11 +368,19 @@ class GameNode(object):
         if self.headers.headers.has_key(attr):
             return self.headers.headers[attr]
 
-    def write_header(self, header_score, attr, definition=True, newline=True, force_new_line=False):
+    def write_header(self, header_score, attr, definition='hide_type', newline=True, force_new_line=False):
+        if definition=='file':
+            newline=True
+            force_new_line = False
         if self.fill_header_entry(attr):
-            if definition:
+            if definition=='view':
                 header_score += attr+": "
-            header_score += self.fill_header_entry(attr)
+                header_score += self.fill_header_entry(attr)
+            elif definition == 'file':
+                header_score += '['+attr+' "'+self.fill_header_entry(attr)+'"]'
+            else:
+                header_score += self.fill_header_entry(attr)
+
             if newline:
                 header_score += '\n'
             else:
@@ -382,27 +390,38 @@ class GameNode(object):
                 header_score += '\n'
         return header_score
 
-    def get_headers(self):
-        if not self.header_score:
+    def get_headers(self, definition):
+        if not self.header_score or definition=="file":
             header_score = ''
 
-            header_score = self.write_header(header_score, 'White', definition=False, newline=False)
-            header_score = self.write_header(header_score, 'WhiteElo', definition=False, force_new_line=True)
-            header_score = self.write_header(header_score, 'Black', definition=False, newline=False)
-            header_score = self.write_header(header_score, 'BlackElo', definition=False, force_new_line=True)
+            header_score = self.write_header(header_score, 'White', definition=definition, newline=False)
+            header_score = self.write_header(header_score, 'WhiteElo', definition=definition, force_new_line=True)
+            header_score = self.write_header(header_score, 'Black', definition=definition, newline=False)
+            header_score = self.write_header(header_score, 'BlackElo', definition=definition, force_new_line=True)
 
-            header_score = self.write_header(header_score, 'Result', definition=False)
-            header_score = self.write_header(header_score, 'Round')
-            header_score = self.write_header(header_score, 'Event')
-            header_score = self.write_header(header_score, 'Site')
-            header_score = self.write_header(header_score, 'Date')
-            header_score = self.write_header(header_score, 'ECO')
+            header_score = self.write_header(header_score, 'Result', definition=definition)
+
+            default_def = "hide_type"
+            if definition == "file":
+                default_def = "file"
+
+            header_score = self.write_header(header_score, 'Round', definition=default_def)
+            header_score = self.write_header(header_score, 'Event', definition=default_def)
+            header_score = self.write_header(header_score, 'Site', definition=default_def)
+            header_score = self.write_header(header_score, 'Date', definition=default_def)
+            header_score = self.write_header(header_score, 'ECO', definition=default_def)
             # print "generating headers.."
+            if definition=="file":
+                return header_score
+
             self.header_score = header_score
 
         return self.header_score
 
 
     def game_score(self, format="ref"):
+        header = "view"
+        if format == "file":
+            header = "file"
         # print self.headers.headers
-        return self.get_headers() + self.walk_tree(self.__variations, move=0, format=format)
+        return self.get_headers(header) + self.walk_tree(self.__variations, move=0, format=format)
