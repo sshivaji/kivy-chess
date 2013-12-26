@@ -768,6 +768,26 @@ class Chess_app(App):
 
         b = BoxLayout(size_hint=(0.15,0.15))
 
+        back_bt = Button(markeup=True)
+        back_bt.text="<"
+
+        back_bt.bind(on_press=self.back)
+        b.add_widget(back_bt)
+
+        fwd_bt = Button(markeup=True)
+        fwd_bt.text=">"
+
+        fwd_bt.bind(on_press=self.fwd)
+        b.add_widget(fwd_bt)
+
+
+        new_bt = Button(markeup=True)
+        new_bt.text="New"
+
+        new_bt.bind(on_press=self.new)
+        b.add_widget(new_bt)
+
+
         save_bt = Button(markup=True)
         save_bt.text="Save"
 
@@ -1359,6 +1379,11 @@ class Chess_app(App):
 #        print platform
         return True if platform.startswith('win') or platform.startswith('linux') or platform.startswith('mac') else False
 
+    def new(self, obj):
+        self.chessboard = Game()
+        self.chessboard_root = self.chessboard
+        self.refresh_board(update=True)
+
     def back(self, obj):
         if self.chessboard.previous_node:
             self.chessboard = self.chessboard.previous_node
@@ -1770,6 +1795,9 @@ class Chess_app(App):
 
     def update_database_panel(self):
         pos_hash = str(self.chessboard.position.__hash__())
+        print "pos_hash:{0}".format(pos_hash)
+        print self.chessboard.position.get_ep_square()
+#        print dir(self.chessboard.position)
 
         if self.db_index_book is not None and self.database_display:
             # self.database_panel.reset_grid()
