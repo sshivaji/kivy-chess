@@ -17,8 +17,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import chess
+try:
+    import libchess
+except ImportError:
+    from chess import libchess
+
 import unittest
-from chess.libchess import GameHeaderBag
+from libchess import GameHeaderBag
 from chess.leveldict import LevelJsonDict
 
 class PgnIndexTestCase(unittest.TestCase):

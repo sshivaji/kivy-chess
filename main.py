@@ -1,6 +1,6 @@
-import kivy
 import traceback
-import sys
+import kivy
+
 # from kivy.config import Config
 # Config.set('graphics', 'fullscreen', 0)
 # Config.write()
@@ -12,59 +12,56 @@ from kivy.app import App
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.screenmanager import ScreenManager, Screen
-from kivy.uix.settings import Settings, SettingItem, SettingsPanel, SettingTitle
-from kivy.uix.image import AsyncImage
-from kivy.uix.screenmanager import FadeTransition
-from kivy.uix.screenmanager import WipeTransition
-from kivy.uix.screenmanager import SwapTransition
+from kivy.uix.settings import Settings, SettingItem, SettingsPanel
 from kivy.uix.screenmanager import SlideTransition
 from kivy.graphics import Color
 
 from kivy.core.window import Window
 from kivy.clock import Clock
 from kivy.uix.textinput import TextInput
-from kivy.uix.dropdown import DropDown
 
-from kivy.properties import BooleanProperty, ListProperty, ObjectProperty, NumericProperty, StringProperty
+from kivy.properties import BooleanProperty, ObjectProperty, NumericProperty
 
 from kivy.uix.button import Button
 from kivy.uix.image import Image
 from kivy.uix.label import Label
-from kivy.graphics import Line
 from kivy.uix.scatter import Scatter
 from kivy.utils import get_color_from_hex
-from kivy.utils import escape_markup
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.popup import Popup
 from kivy.uix.switch import Switch
 from kivy.uix.slider import Slider
 from kivy.graphics import Rectangle
 from kivy.core.text.markup import MarkupLabel
-from kivy.adapters.dictadapter import DictAdapter
 from kivy.adapters.listadapter import ListAdapter
 
-from kivy.uix.listview import ListItemButton, ListItemLabel, CompositeListItem, ListView
+from kivy.uix.listview import ListItemButton, CompositeListItem, ListView
 #from kivy.core.clipboard import Clipboard
 
 #from ChessBoard import ChessBoard
 from sets import Set
 from uci import UCIEngine
-from uci import UCIOption
 from threading import Thread
 import itertools as it
-from operator import itemgetter, attrgetter
+from operator import attrgetter
 from time import sleep
 from chess import polyglot_opening_book
-from chess.libchess import Position
+
+try:
+    import libchess
+except ImportError:
+    from chess import libchess
+
+from libchess import Position
 # from chess.libchess import SanNotation
 # from chess.libchess import MoveError
-from chess.libchess import Move
+from libchess import Move
 from chess.game import Game
 from chess import PgnFile
 #from chess import PgnIndex
 from chess.game_node import GameNode
-from chess.libchess import Piece
-from chess.libchess import Square
+from libchess import Piece
+from libchess import Square
 from chess.game_header_bag import GameHeaderBag
 
 # DGT
