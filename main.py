@@ -36,6 +36,7 @@ from kivy.core.text.markup import MarkupLabel
 from kivy.adapters.listadapter import ListAdapter
 
 from kivy.uix.listview import ListItemButton, CompositeListItem, ListView
+from kivy.uix.dropdown import DropDown
 #from kivy.core.clipboard import Clipboard
 
 #from ChessBoard import ChessBoard
@@ -669,6 +670,7 @@ class Chess_app(App):
 
     def build(self):
         self.custom_fen = None
+        self.variation_dropdown = None
         self.start_pos_changed = False
         self.engine_mode = None
         self.engine_computer_move = True
@@ -763,49 +765,49 @@ class Chess_app(App):
         self.update_grid_border(0,0,0)
         Window.bind(on_resize=self.update_grid_border)
 
-        b = BoxLayout(size_hint=(0.15,0.15))
+        self.b = BoxLayout(size_hint=(0.15,0.15))
 
         back_bt = Button(markeup=True)
         back_bt.text="<"
 
         back_bt.bind(on_press=self.back)
-        b.add_widget(back_bt)
+        self.b.add_widget(back_bt)
 
         fwd_bt = Button(markeup=True)
         fwd_bt.text=">"
 
         fwd_bt.bind(on_press=self.fwd)
-        b.add_widget(fwd_bt)
+        self.b.add_widget(fwd_bt)
 
 
         new_bt = Button(markeup=True)
         new_bt.text="New"
 
         new_bt.bind(on_press=self.new)
-        b.add_widget(new_bt)
+        self.b.add_widget(new_bt)
 
 
         save_bt = Button(markup=True)
         save_bt.text="Save"
 
         save_bt.bind(on_press=self.save)
-        b.add_widget(save_bt)
+        self.b.add_widget(save_bt)
 
         settings_bt = Button(markup=True, text='Setup')
         settings_bt.bind(on_press=self.go_to_settings)
-        b.add_widget(settings_bt)
+        self.b.add_widget(settings_bt)
 
         parent.add_widget(self.grid)
 
-        info_grid = GridLayout(cols=1, rows=4, spacing=5, padding=(8, 8), orientation='vertical')
-        info_grid.add_widget(b)
+        self.info_grid = GridLayout(cols=1, rows=4, spacing=5, padding=(8, 8), orientation='vertical')
+        self.info_grid.add_widget(self.b)
 
         self.game_score = ScrollableLabel('[color=000000][b]%s[/b][/color]' % GAME_HEADER, ref_callback=self.go_to_move)
 
-        info_grid.add_widget(self.game_score)
+        self.info_grid.add_widget(self.game_score)
 
         self.engine_score = ScrollableLabel(ENGINE_HEADER, ref_callback=self.add_eng_moves)
-        info_grid.add_widget(self.engine_score)
+        self.info_grid.add_widget(self.engine_score)
 
         # book_grid = GridLayout(cols = 2, rows = 1, spacing = 1, size_hint=(0.3, 1))
 
@@ -815,7 +817,7 @@ class Chess_app(App):
                                          '',
                                          top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display)
 
-        info_grid.add_widget(self.book_panel)
+        self.info_grid.add_widget(self.book_panel)
         integers_dict = \
         {str(i): {'text': str(i), 'is_selected': False} for i in range(100)}
         # print integers_dict
@@ -929,7 +931,7 @@ class Chess_app(App):
         # info_grid.add_widget(book_grid)
 
         # parent.add_widget(Label(size_hint=(0.5,1)))
-        parent.add_widget(info_grid)
+        parent.add_widget(self.info_grid)
         grandparent.add_widget(parent)
         database_grid = BoxLayout(size_hint=(1, 0.4), orientation='vertical')
 
@@ -1603,6 +1605,14 @@ class Chess_app(App):
         # the system.
         # return False
 
+    def select_variation(self, i):
+        try:
+            i = int(i)
+            self.chessboard = self.chessboard.variations[i]
+            self.refresh_board(update=False)
+        except IndexError:
+            pass
+            
 
     def fwd(self, obj):
         try:
@@ -2048,6 +2058,40 @@ class Chess_app(App):
             all_moves = self.chessboard_root.game_score()
             if all_moves:
                 self.game_score.children[0].text="[color=000000]{0}[/color]".format(all_moves)
+        if self.variation_dropdown:
+            self.variation_dropdown.dismiss()
+        if len(self.chessboard.variations) > 1:
+            self.variation_dropdown = DropDown()
+            for i,v in enumerate(self.chessboard.variations):
+            # for index in range(len(self.chessboard.variations)):
+                btn = Button(id=str(i), text='{0}'.format(v.san), size_hint_y=None, height=20)
+                # btn = Button(text='Value %d' % index)
+                
+
+                # for each button, attach a callback that will call the select() method
+                # on the dropdown. We'll pass the text of the button as the data of the
+                # selection.
+                btn.bind(on_release=lambda btn: self.select_variation(btn.id))
+                # print i
+
+                # then add the button inside the dropdown
+                self.variation_dropdown.add_widget(btn)
+            # create a big main button
+            # mainbutton = Button(text='Hello', size_hint=(None, None))
+
+            # show the dropdown menu when the main button is released
+            # note: all the bind() calls pass the instance of the caller (here, the
+            # mainbutton instance) as the first argument of the callback (here,
+            # dropdown.open.).
+            # mainbutton.bind(on_release=dropdown.open)
+            self.variation_dropdown.open(self.b)
+            # one last thing, listen for the selection in the dropdown list and
+            # assign the data to the button text.
+            # self.variation_dropdown.bind(on_select=lambda instance, x: setattr(mainbutton, 'text', x))
+            # for v in self.chessboard.variations:
+   #              print v.san
+        
+        # print self.chessboard.variations
 
         if self.use_engine and self.uci_engine:
             #self.analysis_board.setFEN(self.chessboard.getFEN())
