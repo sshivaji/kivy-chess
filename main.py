@@ -457,10 +457,9 @@ class Chess_app(App):
 
         def go_back():
             self.root.current = 'main'
-            if self.engine_level!=self.level_label.text:
+            if self.engine_level != self.level_label.text:
                 self.engine_level = self.level_label.text
-                # if self.uci_engine:
-                #     self.uci_engine.configure({'skill level': self.engine_level})
+                sf.setOption('skill level', self.engine_level)
 
         settings_panel.on_close=go_back
 
@@ -963,7 +962,6 @@ class Chess_app(App):
         self.refresh_board()
 
         platform = kivy.utils.platform()
-        self.uci_engine = None
         if self.is_desktop():
             self._keyboard = Window.request_keyboard(
                 self._keyboard_closed, self)
@@ -1293,8 +1291,6 @@ class Chess_app(App):
         self.engine_score.children[0].text = ENGINE_HEADER
         # self.refresh_board()
         # print "Stopping engine"
-        # if self.uci_engine:
-            # self.uci_engine.stop()
 
     def reset_clock_update(self):
         self.time_last = datetime.datetime.now()
@@ -1751,7 +1747,7 @@ class Chess_app(App):
     def update_database_panel(self):
         pos_hash = str(self.chessboard.position.__hash__())
         # pos_hash = str(sf.key())
-        
+
         if self.db_index_book is not None and self.database_display:
             # self.database_panel.reset_grid()
             # print "game_ids:"
