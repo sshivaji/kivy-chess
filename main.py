@@ -64,6 +64,7 @@ from chess.game_node import GameNode
 from libchess import Piece
 from libchess import Square
 from chess.game_header_bag import GameHeaderBag
+import stockfish as sf
 
 # DGT
 from dgt.dgtnix import *
@@ -458,8 +459,8 @@ class Chess_app(App):
             self.root.current = 'main'
             if self.engine_level!=self.level_label.text:
                 self.engine_level = self.level_label.text
-                if self.uci_engine:
-                    self.uci_engine.configure({'skill level': self.engine_level})
+                # if self.uci_engine:
+                #     self.uci_engine.configure({'skill level': self.engine_level})
 
         settings_panel.on_close=go_back
 
@@ -722,6 +723,11 @@ class Chess_app(App):
         self.squares = []
         self.setup_board_squares = []
         self.use_engine = False
+        self.engine_running = False
+        sf.addObserver(self.update_engine_output)
+        # print sf.getOptions()
+        sf.setOption('OwnBook','true')
+
         self.book_display = True
         self.database_display = False
         self.user_book_display = True
@@ -866,31 +872,6 @@ class Chess_app(App):
                  }
 
 
-        # args_converter = \
-        #      lambda row_index, rec: \
-        #          {'text': rec,
-        #           'size_hint_y': None,
-        #           'size_hint_x': 0.5,
-        #           'height': 30,
-        #           'cls_dicts': [{'cls': CustomListItemButton,
-        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "White")+'[/color]'}},
-        #                         {'cls': CustomListItemButton,
-        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "WhiteElo") + '[/color]'}},
-        #                         {'cls': CustomListItemButton,
-        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Black")+'[/color]'}},
-        #                         {'cls': CustomListItemButton,
-        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "BlackElo")+'[/color]'}},
-        #                         {'cls': CustomListItemButton,
-        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Result")+'[/color]'}},
-        #                         {'cls': CustomListItemButton,
-        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Date")+'[/color]'}},
-        #                         {'cls': CustomListItemButton,
-        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "Event")+'[/color]'}},
-        #                         {'cls': CustomListItemButton,
-        #                          'kwargs': {'id': rec.id, 'text': '[color=000000]'+self.get_game_header(rec.id, "ECO")+'[/color]'}},
-        #                     ]
-        #          }
-
         self.db_adapter = ListAdapter(
                            data=integers_dict,
                            args_converter=args_conv,
@@ -989,7 +970,7 @@ class Chess_app(App):
             self._keyboard.bind(on_key_down=self._on_keyboard_down)
             # Clock.schedule_interval(self.update_engine_output, 0.01)
 
-            self.start_engine_thread()
+            # self.start_engine_thread()
         sm = ScreenManager(transition=SlideTransition())
         board_screen = Screen(name='main')
         board_screen.add_widget(grandparent)
@@ -1304,9 +1285,16 @@ class Chess_app(App):
             self.refresh_board()
 
     def stop_engine(self):
+        sf.stop()
+        # print "stopping engine"
+        # sleep(1)
+        
         self.use_engine = False
-        if self.uci_engine:
-            self.uci_engine.stop()
+        self.engine_score.children[0].text = ENGINE_HEADER
+        # self.refresh_board()
+        # print "Stopping engine"
+        # if self.uci_engine:
+            # self.uci_engine.stop()
 
     def reset_clock_update(self):
         self.time_last = datetime.datetime.now()
@@ -1356,11 +1344,11 @@ class Chess_app(App):
                     self.engine_computer_move = True
                     self.engine_comp_color = self.chessboard.position.turn
                     self.reset_clocks()
-            self.refresh_board()
+            # self.refresh_board()
         elif value == ENGINE_PLAY_STOP:
 #            self.stop_engine()
             self.engine_mode = ENGINE_ANALYSIS
-            self.refresh_board()
+            # self.refresh_board()
         elif value == ENGINE_PLAY_HINT:
             self.show_hint = True
         else:
@@ -1392,30 +1380,6 @@ class Chess_app(App):
 #        print 'My keyboard have been closed!'
         self._keyboard.unbind(on_key_down=self.back)
         self._keyboard = None
-
-    def start_engine_thread(self):
-        t = Thread(target=self.update_engine_output, args=(None,))
-        t.daemon = True # thread dies with the program
-        t.start()
-
-    def start_engine(self):
-#        self.use_engine = False
-
-        uci_engine = UCIEngine()
-        uci_engine.start()
-        uci_engine.configure({'Threads': '1'})
-        uci_engine.configure({'OwnBook': 'true'})
-        # uci_engine.configure({'Book File': 'gm1950.bin'})
-
-        #uci_engine.configure({'Use Sleeping Threads': 'false'})
-
-        # Wait until the uci connection is setup
-        while not uci_engine.ready:
-            uci_engine.registerIncomingData()
-
-        uci_engine.startGame()
-        # uci_engine.requestMove()
-        self.uci_engine=uci_engine
 
     def parse_bestmove(self, line):
 #        print "line:{0}".format(line)
@@ -1475,23 +1439,15 @@ class Chess_app(App):
         return score
 
     def parse_score(self, line):
-        # p = Position(fen=str(self.chessboard.position.fen))
-        # analysis_board = GameNode(self.chessboard, None)
-        # print line
         score = self.get_score(line)
         move_list = []
         tokens = line.split()
         first_mv = None
         try:
             line_index = tokens.index('pv')
-            pos = Position(self.chessboard.position.fen)
             first_mv = tokens[line_index+1]
-            for mv in tokens[line_index+1:]:
-                move_info = pos.make_move(Move.from_uci(mv))
-               # self.analysis_board.addTextMove(mv)
-               #  move = SanNotation.to_move(self.chessboard.position, mv)
-                # variation_board = self.chessboard.prepare_variation(move)
-                move_list.append(move_info.san)
+            move_list=sf.toSAN(tokens[line_index+1:])
+
         except ValueError, e:
             line_index = -1
         variation = self.generate_move_list(move_list,start_move_num=self.chessboard.half_move_num) if line_index!=-1 else None
@@ -1508,71 +1464,63 @@ class Chess_app(App):
     def format_time_str(self,time_a, separator='.'):
         return "%d%s%02d" % (int(time_a/60), separator, int(time_a%60))
 
-    def update_engine_output(self, callback):
-        if not self.uci_engine:
-            self.start_engine()
 
-        while True:
+    def update_engine_output(self, line):
+        # if not self.uci_engine:
+            # self.start_engine()
+        # # while True:
+        # print line
+        if self.use_engine:
             output = self.engine_score
-            if self.use_engine:
-                line = self.uci_engine.getOutput()
-                if line:
-                    # print out_score
-                    if self.engine_mode == ENGINE_ANALYSIS:
-                        out_score = self.parse_score(line)
-                        #out_score = None
-                        if out_score:
-                            first_mv, raw_line, cleaned_line = out_score
+            if self.engine_mode == ENGINE_ANALYSIS:
+                out_score = self.parse_score(line)
+                #out_score = None
+                if out_score:
+                    first_mv, raw_line, cleaned_line = out_score
 
-                            if self.dgt_connected and self.dgtnix:
-                                # Display score on the DGT clock
-                                score = str(self.get_score(line))
-                                if score.startswith("mate"):
-                                    score = score[4:]
-                                    score = "m "+score
-                                score = score.replace("-", "n")
-                                self.dgtnix.SendToClock(self.format_str_for_dgt(score), False, True)
-                                if first_mv:
-                                    sleep(1)
-                                    self.dgtnix.SendToClock(self.format_move_for_dgt(first_mv), False, False)
+                    if self.dgt_connected and self.dgtnix:
+                        # Display score on the DGT clock
+                        score = str(self.get_score(line))
+                        if score.startswith("mate"):
+                            score = score[4:]
+                            score = "m "+score
+                        score = score.replace("-", "n")
+                        self.dgtnix.SendToClock(self.format_str_for_dgt(score), False, True)
+                        if first_mv:
+                            sleep(1)
+                            self.dgtnix.SendToClock(self.format_move_for_dgt(first_mv), False, False)
 
-                            if cleaned_line:
-                                output.children[0].text = cleaned_line
-                            if raw_line:
-                                output.raw = raw_line
-                    elif self.engine_mode == ENGINE_PLAY:
-                        if self.engine_computer_move:
-                            best_move, self.ponder_move = self.parse_bestmove(line)
-#                            print "best_move:{0}".format(best_move)
-#                            print "ponder_move:{0}".format(self.ponder_move)
+                    if cleaned_line:
+                        output.children[0].text = cleaned_line
+                    if raw_line:
+                        output.raw = raw_line
+            elif self.engine_mode == ENGINE_PLAY:
+                if self.engine_computer_move:
+                    best_move, self.ponder_move = self.parse_bestmove(line)
+    #                            print "best_move:{0}".format(best_move)
+    #                            print "ponder_move:{0}".format(self.ponder_move)
 
-                            score = self.get_score(line)
-                            if score:
-                                self.eng_eval = score
-                            # self.update_time(color=self.engine_comp_color)
-                            if best_move:
-                                self.add_try_variation(best_move)
-                                # self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
+                    score = self.get_score(line)
+                    if score:
+                        self.eng_eval = score
+                    # self.update_time(color=self.engine_comp_color)
+                    if best_move:
+                        self.add_try_variation(best_move)
+                        # self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
 
-                                self.engine_computer_move = False
-                                self.refresh_board()
-                                self.time_add_increment(color=self.engine_comp_color)
-                                if self.dgt_connected and self.dgtnix:
-                                    # Print engine move on DGT XL clock
-                                    self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), self.dgt_clock_sound, False)
-                                self.show_hint = False
-                                # output.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+                        self.engine_computer_move = False
+                        self.engine_running = False
 
-                            # else:
-                            #     output.children[0].text = "[color=000000]Thinking..\n[size=16]{0}    [b]{1}[/size][/b][/color]".format(self.format_time_str(self.time_white), self.format_time_str(self.time_black))
-#                         else:
-# #                            self.update_player_time()
-#                             output.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
-                            # sleep(1)
-            else:
-                # if output.children[0].text != ENGINE_HEADER:
-                output.children[0].text = ENGINE_HEADER
-                sleep(1)
+                        self.refresh_board()
+                        self.time_add_increment(color=self.engine_comp_color)
+                        if self.dgt_connected and self.dgtnix:
+                            # Print engine move on DGT XL clock
+                            self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), self.dgt_clock_sound, False)
+                        self.show_hint = False
+        else:
+            best_move, self.ponder_move = self.parse_bestmove(line)
+            if best_move:
+                self.engine_running = False
 
     def format_str_for_dgt(self, s):
         while len(s)>6:
@@ -1802,10 +1750,8 @@ class Chess_app(App):
 
     def update_database_panel(self):
         pos_hash = str(self.chessboard.position.__hash__())
-        print "pos_hash:{0}".format(pos_hash)
-        print self.chessboard.position.get_ep_square()
-#        print dir(self.chessboard.position)
-
+        # pos_hash = str(sf.key())
+        
         if self.db_index_book is not None and self.database_display:
             # self.database_panel.reset_grid()
             # print "game_ids:"
@@ -2076,38 +2022,44 @@ class Chess_app(App):
 
                 # then add the button inside the dropdown
                 self.variation_dropdown.add_widget(btn)
-            # create a big main button
-            # mainbutton = Button(text='Hello', size_hint=(None, None))
-
-            # show the dropdown menu when the main button is released
-            # note: all the bind() calls pass the instance of the caller (here, the
-            # mainbutton instance) as the first argument of the callback (here,
-            # dropdown.open.).
-            # mainbutton.bind(on_release=dropdown.open)
             self.variation_dropdown.open(self.b)
-            # one last thing, listen for the selection in the dropdown list and
-            # assign the data to the button text.
-            # self.variation_dropdown.bind(on_select=lambda instance, x: setattr(mainbutton, 'text', x))
-            # for v in self.chessboard.variations:
-   #              print v.san
-        
-        # print self.chessboard.variations
 
-        if self.use_engine and self.uci_engine:
-            #self.analysis_board.setFEN(self.chessboard.getFEN())
-            self.uci_engine.stop()
-#            moves_so_far = self.chessboard.get_prev_moves()
-            self.uci_engine.reportMoves(self.chessboard.get_prev_moves())
-        #            self.uci_engine.reportMoves(self.chessboard.getAllTextMoves(format=0, till_current_move=True))
+        if self.use_engine:
             if self.start_pos_changed:
-                self.uci_engine.sendFen(self.custom_fen)
+                # self.uci_engine.sendFen(self.custom_fen)
                 self.start_pos_changed = False
-            if self.engine_mode == ENGINE_ANALYSIS:
-                self.uci_engine.requestAnalysis()
+            if self.custom_fen:
+                sf.position(self.custom_fen, self.chessboard.get_prev_moves())
             else:
+                sf.position('startpos', self.chessboard.get_prev_moves())
+            if self.engine_running:
+                    # sf.stop()
+                    # sleep(1)
+                    self.stop_engine()
+                    while self.engine_running:
+                        pass
+                    self.use_engine = True
+
+            # print "self.engine_mode: "
+            # print self.engine_mode
+            if self.engine_mode == ENGINE_ANALYSIS:
+                # sf.stop()
+                sf.go(infinite=True)
+                self.engine_running = True
+                # print "After go infinite"
+                
+                # self.uci_engine.requestAnalysis()
+            else:
+                # print "computer_move: "
+                # print self.engine_computer_move
                 if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
-                    self.uci_engine.requestMove(wtime=self.time_white, btime=self.time_black,
-                        winc=self.time_inc_white, binc=self.time_inc_black)
+                    # print "before go play"
+                    # sf.go(movetime=10)
+                    sf.go(wtime=int(self.time_white*1000), btime=int(self.time_black*1000), winc=int(self.time_inc_white*1000), binc=int(self.time_inc_black*1000))
+                    self.engine_running = True
+
+                    # self.uci_engine.requestMove(wtime=self.time_white, btime=self.time_black,
+                    #     winc=self.time_inc_white, binc=self.time_inc_black)
 
         self.update_book_panel()
         # self.update_database_panel()
