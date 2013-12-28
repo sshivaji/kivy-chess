@@ -144,7 +144,8 @@ SPOKEN_PIECE_SOUNDS = {
     "R": " Rook ",
     "Q": " Queen ",
     "K": " King ",
-    "O-O": " Castles "
+    "O-O": " Castles ",
+    "++": " Double Check ",
 }
 
 img_piece_abv={"B":"WBishop", "R":"WRook", "N":"WKnight", "Q":"WQueen", "K":"WKing", "P": "WPawn",
@@ -565,16 +566,21 @@ class Chess_app(App):
             else:
                 self.update_player_time()
                 if self.show_hint:
-                    if self.ponder_move and self.ponder_move!='(none)':
+                    if not self.ponder_move_san and self.ponder_move and self.ponder_move!='(none)':
                         # print self.ponder_move
                         try:
-                            san = sf.toSAN([self.ponder_move])[0]
-                            if not self.spoke_hint:
-                                self.spoke_hint = True
-                                self.speak_move(self.ponder_move)
+                            self.ponder_move_san = sf.toSAN([self.ponder_move])[0]
+                            # print "ponder_move_san: "+self.ponder_move_san
+                            # if not self.spoke_hint:
+                            #     self.spoke_hint = True
+                            #     self.speak_move(self.ponder_move)
                         except IndexError:
-                            san = "None"
-                        self.engine_score.children[0].text = YOURTURN_MENU.format(san, self.eng_eval, self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+                            self.ponder_move_san = "None"
+                    if self.ponder_move_san:
+                        self.engine_score.children[0].text = YOURTURN_MENU.format(self.ponder_move_san, self.eng_eval, self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+                        if not self.spoke_hint:
+                            self.spoke_hint = True
+                            self.speak_move(self.ponder_move, immediate=True)
                     else:
                         self.engine_score.children[0].text = YOURTURN_MENU.format("Not available", self.eng_eval, self.format_time_str(self.time_white), self.format_time_str(self.time_black))
                 else:
@@ -701,7 +707,7 @@ class Chess_app(App):
         self.to_move = None
         self.db_sort_criteria = []
         self.show_hint = False
-
+        self.speak_move_queue = []
 #        PGN Index test
 #        index = PgnIndex("kasparov-deep-blue-1997.pgn")
 ##
@@ -728,6 +734,7 @@ class Chess_app(App):
         self.chessboard = Game()
         self.chessboard_root = self.chessboard
         self.ponder_move = None
+        self.ponder_move_san = None
         self.eng_eval = None
 
         self.setup_chessboard = Position()
@@ -1480,18 +1487,25 @@ class Chess_app(App):
         return "%d%s%02d" % (int(time_a/60), separator, int(time_a%60))
 
 
-    def speak_move(self, best_move):
+    def speak_move(self, best_move, immediate=False):
         if self.is_mac():
             san = sf.toSAN([best_move])[0]
             # print san
             spoken_san = san
             spoken_san = spoken_san.replace('O-O-O', ' castles long ')
+            spoken_san = spoken_san.replace('+', ' check ')
+
             for k, v in SPOKEN_PIECE_SOUNDS.iteritems():
                 spoken_san = spoken_san.replace(k, v)
             spoken_san = spoken_san.replace('x', ' captures ')
             spoken_san = spoken_san.replace('=', ' promotes to ')
             # print spoken_san
-            os.system("say " + spoken_san)
+            if immediate:
+                os.system("say " + spoken_san)
+            else:
+                if spoken_san not in self.speak_move_queue:
+                    self.speak_move_queue.append(spoken_san)
+            # os.system("say " + spoken_san)
 
     def update_engine_output(self, line):
         # if not self.uci_engine:
@@ -1534,20 +1548,24 @@ class Chess_app(App):
                     # self.update_time(color=self.engine_comp_color)
                     if best_move:
                         self.add_try_variation(best_move)
-                        # print sf.toSAN([best_move])
                         self.speak_move(best_move)
+
+                        # print sf.toSAN([best_move])
                         # self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
 
                         self.engine_computer_move = False
                         self.engine_running = False
 
-                        self.refresh_board()
+                        self.refresh_board(spoken=True)
                         self.time_add_increment(color=self.engine_comp_color)
                         if self.dgt_connected and self.dgtnix:
                             # Print engine move on DGT XL clock
                             self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), self.dgt_clock_sound, False)
                         self.show_hint = False
                         self.spoke_hint = False
+                        self.ponder_move_san = None
+                        # se(best_move)
+
         else:
             best_move, self.ponder_move = self.parse_bestmove(line)
             if best_move:
@@ -1716,14 +1734,19 @@ class Chess_app(App):
             if self.is_promotion(move):
                 move = self.add_promotion_info(move)
             self.add_try_variation(move)
+
+
             if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
                 # self.update_player_time()
                 self.update_player_inc()
-                self.speak_move(move)
+                # self.speak_move_queue.append(move)
 
                 self.engine_computer_move = True
-
-            self.refresh_board()
+            if self.engine_mode == ENGINE_PLAY:
+                self.speak_move(move)
+                self.refresh_board(spoken=True)
+            else:
+                self.refresh_board()
         except Exception, e:
             print e
             pass
@@ -2019,7 +2042,7 @@ class Chess_app(App):
             sq.remove_piece()
             # Update game notation
 
-    def refresh_board(self, update = True):
+    def refresh_board(self, update = True, spoken = False):
         # flatten lists into one list of 64 squares
 #        squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
         squares = self.chessboard.position
@@ -2095,6 +2118,12 @@ class Chess_app(App):
                     #     winc=self.time_inc_white, binc=self.time_inc_black)
 
         self.update_book_panel()
+        # print self.speak_move_queue
+        if spoken:
+            if len(self.speak_move_queue)>0:
+                for e in self.speak_move_queue:
+                    self.speak_move_queue = []
+                    os.system("say "+e)
         # self.update_database_panel()
 #        self.update_user_book_panel()
 
