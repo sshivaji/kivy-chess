@@ -1,5 +1,6 @@
 import traceback
 import kivy
+import os
 
 # from kivy.config import Config
 # Config.set('graphics', 'fullscreen', 0)
@@ -135,6 +136,15 @@ IMAGE_PIECE_MAP = {
     "q": "bq",
     "k": "bk",
     "p": "bp"
+}
+
+SPOKEN_PIECE_SOUNDS = {
+    "B": " Bishop ",
+    "N": " Knight ",
+    "R": " Rook ",
+    "Q": " Queen ",
+    "K": " King ",
+    "O-O": " Castles "
 }
 
 img_piece_abv={"B":"WBishop", "R":"WRook", "N":"WKnight", "Q":"WQueen", "K":"WKing", "P": "WPawn",
@@ -556,10 +566,14 @@ class Chess_app(App):
                 self.update_player_time()
                 if self.show_hint:
                     if self.ponder_move and self.ponder_move!='(none)':
-    #                print self.ponder_move
-                        pos = Position(self.chessboard.position.fen)
-                        move_info = pos.make_move(Move.from_uci(self.ponder_move))
-                        san = move_info.san
+                        # print self.ponder_move
+                        try:
+                            san = sf.toSAN([self.ponder_move])[0]
+                            if not self.spoke_hint:
+                                self.spoke_hint = True
+                                self.speak_move(self.ponder_move)
+                        except IndexError:
+                            san = "None"
                         self.engine_score.children[0].text = YOURTURN_MENU.format(san, self.eng_eval, self.format_time_str(self.time_white), self.format_time_str(self.time_black))
                     else:
                         self.engine_score.children[0].text = YOURTURN_MENU.format("Not available", self.eng_eval, self.format_time_str(self.time_white), self.format_time_str(self.time_black))
@@ -723,6 +737,7 @@ class Chess_app(App):
         self.setup_board_squares = []
         self.use_engine = False
         self.engine_running = False
+        self.spoke_hint = False
         sf.addObserver(self.update_engine_output)
         # print sf.getOptions()
         sf.setOption('OwnBook','true')
@@ -1362,6 +1377,10 @@ class Chess_app(App):
 #        print platform
         return True if platform.startswith('win') or platform.startswith('linux') or platform.startswith('mac') else False
 
+    def is_mac(self):
+        platform = kivy.utils.platform()
+        return True if platform.startswith('mac') else False
+
     def new(self, obj):
         self.chessboard = Game()
         self.chessboard_root = self.chessboard
@@ -1461,6 +1480,19 @@ class Chess_app(App):
         return "%d%s%02d" % (int(time_a/60), separator, int(time_a%60))
 
 
+    def speak_move(self, best_move):
+        if self.is_mac():
+            san = sf.toSAN([best_move])[0]
+            # print san
+            spoken_san = san
+            spoken_san = spoken_san.replace('O-O-O', ' castles long ')
+            for k, v in SPOKEN_PIECE_SOUNDS.iteritems():
+                spoken_san = spoken_san.replace(k, v)
+            spoken_san = spoken_san.replace('x', ' captures ')
+            spoken_san = spoken_san.replace('=', ' promotes to ')
+            # print spoken_san
+            os.system("say " + spoken_san)
+
     def update_engine_output(self, line):
         # if not self.uci_engine:
             # self.start_engine()
@@ -1502,6 +1534,8 @@ class Chess_app(App):
                     # self.update_time(color=self.engine_comp_color)
                     if best_move:
                         self.add_try_variation(best_move)
+                        # print sf.toSAN([best_move])
+                        self.speak_move(best_move)
                         # self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
 
                         self.engine_computer_move = False
@@ -1513,6 +1547,7 @@ class Chess_app(App):
                             # Print engine move on DGT XL clock
                             self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), self.dgt_clock_sound, False)
                         self.show_hint = False
+                        self.spoke_hint = False
         else:
             best_move, self.ponder_move = self.parse_bestmove(line)
             if best_move:
@@ -1684,6 +1719,8 @@ class Chess_app(App):
             if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
                 # self.update_player_time()
                 self.update_player_inc()
+                self.speak_move(move)
+
                 self.engine_computer_move = True
 
             self.refresh_board()
