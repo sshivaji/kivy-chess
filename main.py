@@ -796,27 +796,30 @@ class Chess_app(App):
         self.b = BoxLayout(size_hint=(0.15,0.15))
 
         back_bt = Button(markeup=True)
-        back_bt.text="<"
+        back_bt.text = "<"
 
         back_bt.bind(on_press=self.back)
         self.b.add_widget(back_bt)
 
+        self.prev_move = Label(markup=True)
+        self.b.add_widget(self.prev_move)
+
         fwd_bt = Button(markeup=True)
-        fwd_bt.text=">"
+        fwd_bt.text = ">"
 
         fwd_bt.bind(on_press=self.fwd)
         self.b.add_widget(fwd_bt)
 
 
         new_bt = Button(markeup=True)
-        new_bt.text="New"
+        new_bt.text = "New"
 
         new_bt.bind(on_press=self.new)
         self.b.add_widget(new_bt)
 
 
         save_bt = Button(markup=True)
-        save_bt.text="Save"
+        save_bt.text = "Save"
 
         save_bt.bind(on_press=self.save)
         self.b.add_widget(save_bt)
@@ -861,7 +864,7 @@ class Chess_app(App):
 
             record = self.get_game_header(rec.id, "ALL")
             tokens = record.split("|")
-
+            # print record
             white = tokens[0]
             whiteelo = tokens[1]
             black = tokens[2]
@@ -1493,8 +1496,10 @@ class Chess_app(App):
         if self.is_mac():
             # print "best_move:{0}".format(best_move)
             # print sf.position()
-
-            san = sf.toSAN([best_move])[0]
+            try:
+                san = sf.toSAN([best_move])[0]
+            except IndexError:
+                return
             # print san
             spoken_san = san
             spoken_san = spoken_san.replace('O-O-O', ' castles long ')
@@ -2064,6 +2069,15 @@ class Chess_app(App):
 
         for i, p in enumerate(SQUARES):
             self.fill_chess_board(self.squares[i], squares[p])
+
+        if self.chessboard.san:
+            filler = ''
+            # current turn is toggle from previous
+            # add in a dot if is now white to move
+            if self.chessboard.position.turn == 'w':
+                filler = '.'
+            self.prev_move.text = "{0}.{1} {2}".format(self.chessboard.half_move_num/2, filler, self.chessboard.san)
+
 
 #        all_moves = self.chessboard.getAllTextMoves()
 #        print self.chessboard_root.game_score()
