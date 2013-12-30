@@ -743,7 +743,8 @@ class Chess_app(App):
         self.squares = []
         self.setup_board_squares = []
         self.use_engine = False
-        self.engine_running = False
+        self.stop_called = False
+        # self.engine_running = False
         self.spoke_hint = False
         sf.addObserver(self.update_engine_output)
         # print sf.getOptions()
@@ -1308,7 +1309,7 @@ class Chess_app(App):
         sf.stop()
         # print "stopping engine"
         # sleep(1)
-        
+
         self.use_engine = False
         self.engine_score.children[0].text = ENGINE_HEADER
         # self.refresh_board()
@@ -1346,6 +1347,7 @@ class Chess_app(App):
             # Swap time allotments if comp is black (comp gets less time)
             self.time_white, self.time_black = self.time_black, self.time_white
             self.time_inc_white, self.time_inc_black = self.time_inc_black, self.time_inc_white
+
     def add_eng_moves(self, instance, value):
 #        print "value:"
 #        print value
@@ -1489,6 +1491,9 @@ class Chess_app(App):
 
     def speak_move(self, best_move, immediate=False):
         if self.is_mac():
+            # print "best_move:{0}".format(best_move)
+            # print sf.position()
+
             san = sf.toSAN([best_move])[0]
             # print san
             spoken_san = san
@@ -1547,16 +1552,17 @@ class Chess_app(App):
                         self.eng_eval = score
                     # self.update_time(color=self.engine_comp_color)
                     if best_move:
-                        self.add_try_variation(best_move)
+                        # print "comp best_move:{0}".format(best_move)
                         self.speak_move(best_move)
 
                         # print sf.toSAN([best_move])
                         # self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
 
-                        self.engine_computer_move = False
-                        self.engine_running = False
+                        self.process_move(best_move)
+                        # self.engine_computer_move = False
+                        # self.engine_running = False
 
-                        self.refresh_board(spoken=True)
+                        # self.refresh_board(spoken=True)
                         self.time_add_increment(color=self.engine_comp_color)
                         if self.dgt_connected and self.dgtnix:
                             # Print engine move on DGT XL clock
@@ -1566,10 +1572,11 @@ class Chess_app(App):
                         self.ponder_move_san = None
                         # se(best_move)
 
-        else:
-            best_move, self.ponder_move = self.parse_bestmove(line)
-            if best_move:
-                self.engine_running = False
+        # else:
+        #     print line
+        #     best_move, self.ponder_move = self.parse_bestmove(line)
+        #     if best_move:
+        #         self.engine_running = False
 
     def format_str_for_dgt(self, s):
         while len(s)>6:
@@ -1609,7 +1616,7 @@ class Chess_app(App):
             self.refresh_board(update=False)
         except IndexError:
             pass
-            
+
 
     def fwd(self, obj):
         try:
@@ -1727,21 +1734,26 @@ class Chess_app(App):
             return move + "q"
 
     def process_move(self, move=None):
+        # print "process_move"
+        # print "move:{0}".format(move)
+
 #        if self.chessboard.addTextMove(self.last_touch_down_move+self.last_touch_up_move):
         try:
             if not move:
                 move = self.last_touch_down_move+self.last_touch_up_move
+            # print "move:{0}".format(move)
             if self.is_promotion(move):
                 move = self.add_promotion_info(move)
             self.add_try_variation(move)
 
-
-            if not self.engine_computer_move and self.engine_mode == ENGINE_PLAY:
-                # self.update_player_time()
-                self.update_player_inc()
-                # self.speak_move_queue.append(move)
-
-                self.engine_computer_move = True
+            if self.engine_mode == ENGINE_PLAY:
+                if not self.engine_computer_move:
+                    # self.update_player_time()
+                    self.update_player_inc()
+                    # self.speak_move_queue.append(move)
+                    self.engine_computer_move = True
+                else:
+                    self.engine_computer_move = False
             if self.engine_mode == ENGINE_PLAY:
                 self.speak_move(move)
                 self.refresh_board(spoken=True)
@@ -1749,7 +1761,7 @@ class Chess_app(App):
                 self.refresh_board()
         except Exception, e:
             print e
-            pass
+            # raise
             # TODO: log error
 
     def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
@@ -2043,6 +2055,7 @@ class Chess_app(App):
             # Update game notation
 
     def refresh_board(self, update = True, spoken = False):
+        # print "refresh_board"
         # flatten lists into one list of 64 squares
 #        squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
         squares = self.chessboard.position
@@ -2054,7 +2067,6 @@ class Chess_app(App):
 
 #        all_moves = self.chessboard.getAllTextMoves()
 #        print self.chessboard_root.game_score()
-
 
         if update:
             all_moves = self.chessboard_root.game_score()
@@ -2068,7 +2080,7 @@ class Chess_app(App):
             # for index in range(len(self.chessboard.variations)):
                 btn = Button(id=str(i), text='{0}'.format(v.san), size_hint_y=None, height=20)
                 # btn = Button(text='Value %d' % index)
-                
+
 
                 # for each button, attach a callback that will call the select() method
                 # on the dropdown. We'll pass the text of the button as the data of the
@@ -2080,31 +2092,39 @@ class Chess_app(App):
                 self.variation_dropdown.add_widget(btn)
             self.variation_dropdown.open(self.b)
 
+        # print self.chessboard.get_prev_moves()
+
+        # print "Before stopping"
+        # if self.engine_running:
+        if self.engine_mode != ENGINE_PLAY:
+            sf.stop()
+            # print self.chessboard_root.game_score()
+
+        if self.custom_fen:
+            sf.position(self.custom_fen, self.chessboard.get_prev_moves())
+        else:
+            sf.position('startpos', self.chessboard.get_prev_moves())
+
         if self.use_engine:
             if self.start_pos_changed:
                 # self.uci_engine.sendFen(self.custom_fen)
                 self.start_pos_changed = False
-            if self.custom_fen:
-                sf.position(self.custom_fen, self.chessboard.get_prev_moves())
-            else:
-                sf.position('startpos', self.chessboard.get_prev_moves())
-            if self.engine_running:
-                    # sf.stop()
-                    # sleep(1)
-                    self.stop_engine()
-                    while self.engine_running:
-                        pass
-                    self.use_engine = True
+
+            # if self.engine_running:
+            #     # sf.stop()
+            #         # sleep(1)
+            #     self.stop_engine()
+            #     while self.engine_running:
+            #         pass
+            #     self.use_engine = True
 
             # print "self.engine_mode: "
             # print self.engine_mode
             if self.engine_mode == ENGINE_ANALYSIS:
-                # sf.stop()
+                # if self.engine_running:
                 sf.go(infinite=True)
-                self.engine_running = True
-                # print "After go infinite"
-                
-                # self.uci_engine.requestAnalysis()
+                # print "Started engine"
+                # self.engine_running = True
             else:
                 # print "computer_move: "
                 # print self.engine_computer_move
@@ -2112,7 +2132,8 @@ class Chess_app(App):
                     # print "before go play"
                     # sf.go(movetime=10)
                     sf.go(wtime=int(self.time_white*1000), btime=int(self.time_black*1000), winc=int(self.time_inc_white*1000), binc=int(self.time_inc_black*1000))
-                    self.engine_running = True
+                    # print "Started engine"
+                    # self.engine_running = True
 
                     # self.uci_engine.requestMove(wtime=self.time_white, btime=self.time_black,
                     #     winc=self.time_inc_white, binc=self.time_inc_black)
