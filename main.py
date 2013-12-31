@@ -38,6 +38,8 @@ from kivy.adapters.listadapter import ListAdapter
 
 from kivy.uix.listview import ListItemButton, CompositeListItem, ListView
 from kivy.uix.dropdown import DropDown
+from kivy.uix.filechooser import FileChooserListView
+
 #from kivy.core.clipboard import Clipboard
 
 #from ChessBoard import ChessBoard
@@ -353,10 +355,42 @@ class Chess_app(App):
             return False
         return True
 
+    def process_database(self, obj, f, mevent):
+        folder_tokens = f[0].split('/')
+        if '.db' in folder_tokens[-2]:
+            leveldb_path = folder_tokens[:-1]
+            if leveldb_path:
+                # print '/'.join(leveldb_path)
+                self.db_index_book = leveldb.LevelDB('/'.join(leveldb_path))
+                self.db_popup.dismiss()
+
+        elif '.pgn' in folder_tokens[-1]:
+            pgn_path = f[0]
+            leveldb_path = pgn_path+'.db'
+            if not os.path.exists(leveldb_path):
+                os.system("polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".format(pgn_path, leveldb_path))
+            self.db_index_book = leveldb.LevelDB(leveldb_path)
+            self.db_popup.dismiss()
+
+    def open_database(self, x):
+        # print "Opening db"
+         # then, create the fileChooser and integrate it in the scrollView
+        self.fileChooser = fileChooser = FileChooserListView(path='~')
+        fileChooser.bind(on_submit=self.process_database)
+
+        # fileChooser.bind(on_submit=self._validate)
+        # fileChooser.height = 500 # this is a bit ugly...
+        self.db_popup = Popup(title='Select PGN file (.pgn) or PGN Index folder (.db)',
+                content=self.fileChooser, size_hint=(0.75, 1))
+        self.db_popup.open()
+        # self.db_open_item.add_widget(fileChooser)
+
+
     def generate_settings(self):
 
         def go_to_setup_board(value):
             self.root.current = 'setup_board'
+
 
         def on_dgt_dev_input(instance):
 #            print instance.text
@@ -400,6 +434,12 @@ class Chess_app(App):
         setup_pos_item = SettingItem(panel=board_panel, title="Input FEN") #create instance of one item in left side panel
         setup_board_item = SettingItem(panel=board_panel, title="Setup Board") #create instance of one item in left side panel
         setup_board_item.bind(on_release=go_to_setup_board)
+
+        database_panel = SettingsPanel(title="Database") #create instance of left side panel
+        self.db_open_item = SettingItem(panel=board_panel, title="Open Database") #create instance of one item in left side panel
+        # db_polyglot_item = SettingItem(panel=board_panel, title="Polyglot exec location") #create instance of one item in left side panel
+        self.db_open_item.bind(on_release=self.open_database)
+        database_panel.add_widget(self.db_open_item)
 
         dgt_panel = SettingsPanel(title="DGT")
         setup_dgt_item = SettingItem(panel=dgt_panel, title="Input DGT Device (/dev/..)") #create instance of one item in left side panel
@@ -464,6 +504,7 @@ class Chess_app(App):
         engine_panel.add_widget(level_current) # add item2 to left side panel
 
         settings_panel.add_widget(board_panel)
+        settings_panel.add_widget(database_panel)
         settings_panel.add_widget(dgt_panel)
 
         settings_panel.add_widget(engine_panel) #add left side panel itself to the settings menu
@@ -1906,6 +1947,8 @@ class Chess_app(App):
             self.db_stat_label.text = "{0} games".format(len(game_ids))
 #            self.db_adapter.data = {str(i): {'text': str(g.id), 'is_selected': False} for i, g in enumerate(db_game_list)}
             self.db_adapter.data = db_game_list
+            self.database_list_view.scroll_to(0)
+
 
     def update_book_panel(self, ev=None):
         # print "ev:"+str(ev)
