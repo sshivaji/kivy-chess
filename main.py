@@ -1,7 +1,7 @@
 import traceback
 import kivy
 import os
-
+import random
 # from kivy.config import Config
 # Config.set('graphics', 'fullscreen', 0)
 # Config.write()
@@ -108,6 +108,7 @@ ENGINE_HEADER = '[b][color=000000][ref='+ENGINE_ANALYSIS\
 BOOK_ON = "Book"
 USER_BOOK_ON = "User Book"
 SHOW_GAMES = "Show Games"
+SHOW_REF_GAMES = "Show Reference Games"
 BOOK_OFF = "Hide"
 
 BOOK_HEADER = '[b][color=000000][ref=Book]{0}[/ref][/color][/b]'
@@ -355,36 +356,52 @@ class Chess_app(App):
             return False
         return True
 
-    def process_database(self, obj, f, mevent):
+    def open_create_index(self, f):
         folder_tokens = f[0].split('/')
+        leveldb_path = None
         if '.db' in folder_tokens[-2]:
             leveldb_path = folder_tokens[:-1]
             if leveldb_path:
-                # print '/'.join(leveldb_path)
-                self.db_index_book = leveldb.LevelDB('/'.join(leveldb_path))
-                self.db_popup.dismiss()
+                leveldb_path = '/'.join(leveldb_path)
 
         elif '.pgn' in folder_tokens[-1]:
             pgn_path = f[0]
-            leveldb_path = pgn_path+'.db'
+            leveldb_path = pgn_path + '.db'
             if not os.path.exists(leveldb_path):
                 os.system("polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".format(pgn_path, leveldb_path))
-            self.db_index_book = leveldb.LevelDB(leveldb_path)
+        return leveldb_path
+
+    def process_database(self, obj, f, mevent):
+        leveldb_path = self.open_create_index(f)
+        if leveldb_path:
             self.db_popup.dismiss()
+            self.db_index_book = leveldb.LevelDB(leveldb_path)
+
+    def process_ref_database(self, obj, f, mevent):
+        leveldb_path = self.open_create_index(f)
+
+        if leveldb_path:
+            self.db_popup.dismiss()
+            self.ref_db_index_book = leveldb.LevelDB(leveldb_path)
+
 
     def open_database(self, x):
-        # print "Opening db"
-         # then, create the fileChooser and integrate it in the scrollView
         self.fileChooser = fileChooser = FileChooserListView(path='~')
         fileChooser.bind(on_submit=self.process_database)
 
-        # fileChooser.bind(on_submit=self._validate)
-        # fileChooser.height = 500 # this is a bit ugly...
-        self.db_popup = Popup(title='Select PGN file (.pgn) or PGN Index folder (.db)',
-                content=self.fileChooser, size_hint=(0.75, 1))
-        self.db_popup.open()
-        # self.db_open_item.add_widget(fileChooser)
+        self.open_db_popup()
 
+
+    def open_db_popup(self):
+        self.db_popup = Popup(title='Select PGN file (.pgn) or PGN Index folder (.db)',
+                              content=self.fileChooser, size_hint=(0.75, 1))
+        self.db_popup.open()
+
+    def open_ref_database(self, x):
+        self.fileChooser = fileChooser = FileChooserListView(path='~')
+        fileChooser.bind(on_submit=self.process_ref_database)
+
+        self.open_db_popup()
 
     def generate_settings(self):
 
@@ -437,9 +454,13 @@ class Chess_app(App):
 
         database_panel = SettingsPanel(title="Database") #create instance of left side panel
         self.db_open_item = SettingItem(panel=board_panel, title="Open Database") #create instance of one item in left side panel
-        # db_polyglot_item = SettingItem(panel=board_panel, title="Polyglot exec location") #create instance of one item in left side panel
         self.db_open_item.bind(on_release=self.open_database)
+
+        self.ref_db_open_item = SettingItem(panel=board_panel, title="Open Reference Database") #create instance of one item in left side panel
+        self.ref_db_open_item.bind(on_release=self.open_database)
+
         database_panel.add_widget(self.db_open_item)
+        database_panel.add_widget(self.ref_db_open_item)
 
         dgt_panel = SettingsPanel(title="DGT")
         setup_dgt_item = SettingItem(panel=dgt_panel, title="Input DGT Device (/dev/..)") #create instance of one item in left side panel
@@ -669,14 +690,19 @@ class Chess_app(App):
 
     def update_database_display(self, game, ref_game=None):
         game = self.get_grid_click_input(game, ref_game)
-        if game == SHOW_GAMES:
+        if game == SHOW_GAMES or game == SHOW_REF_GAMES:
             if self.database_display:
                 self.database_panel.reset_grid()
             self.database_display = True
             if not self.database_display:
                 self.db_stat_label.text = "No Games"
                 self.db_adapter.data = {}
-            self.update_database_panel()
+            if game == SHOW_REF_GAMES:
+                self.update_database_panel(ref_db=True)
+                self.use_ref_db = True
+            else:
+                self.update_database_panel(ref_db=False)
+                self.use_ref_db = False
             # self.update_book_panel()
             # self.database_display = False
 
@@ -688,6 +714,13 @@ class Chess_app(App):
             self.book_display = not self.book_display
             self.update_book_panel()
 
+    def ref_db_selection_changed(self, *args):
+       if len(args[0].selection) == 1:
+            game_index = args[0].selection[0].id
+            current_fen = self.chessboard.position.fen
+            self.load_game_from_index(int(game_index), self.ref_db_index_book)
+            self.go_to_move(None, current_fen)
+
     def db_selection_changed(self, *args):
         # print '    args when selection changes gets you the adapter', args
         if len(args[0].selection) == 1:
@@ -697,7 +730,7 @@ class Chess_app(App):
             # db_sort_criteria = self.db_sort_criteria
             # self.reset_db_sort_criteria()
 
-            self.load_game_from_index(int(game_index))
+            self.load_game_from_index(int(game_index), self.db_index_book)
             self.go_to_move(None, current_fen)
             # self.db_sort_criteria = db_sort_criteria
             # print args[0].selection[0].text
@@ -724,12 +757,63 @@ class Chess_app(App):
             label.text += ' ' +DB_SORT_DESC
             self.db_sort_criteria[0].asc = False
 
-        self.update_database_panel()
+        self.update_database_panel(ref_db=self.use_ref_db)
 
+    def generate_rows(self, rec, record):
+        tokens = record.split("|")
+        # print record
+        white = tokens[0]
+        whiteelo = tokens[1]
+        black = tokens[2]
+        blackelo = tokens[3]
+        result = tokens[4]
+        date = tokens[5]
+        event = tokens[6]
+        eco = tokens[8]
+        return {'text': rec,
+                'size_hint_y': None,
+                'size_hint_x': 0.5,
+                'height': 30,
+                'cls_dicts': [{'cls': CustomListItemButton,
+                               'kwargs': {'id': rec.id, 'text': '[color=000000]' + white + '[/color]'}},
+                              {'cls': CustomListItemButton,
+                               'kwargs': {'id': rec.id, 'text': '[color=000000]' + whiteelo + '[/color]'}},
+                              {'cls': CustomListItemButton,
+                               'kwargs': {'id': rec.id, 'text': '[color=000000]' + black + '[/color]'}},
+                              {'cls': CustomListItemButton,
+                               'kwargs': {'id': rec.id, 'text': '[color=000000]' + blackelo + '[/color]'}},
+                              {'cls': CustomListItemButton,
+                               'kwargs': {'id': rec.id, 'text': '[color=000000]' + result + '[/color]'}},
+                              {'cls': CustomListItemButton,
+                               'kwargs': {'id': rec.id, 'text': '[color=000000]' + date + '[/color]'}},
+                              {'cls': CustomListItemButton,
+                               'kwargs': {'id': rec.id, 'text': '[color=000000]' + event + '[/color]'}},
+                              {'cls': CustomListItemButton,
+                               'kwargs': {'id': rec.id, 'text': '[color=000000]' + eco + '[/color]'}},
+                ]
+        }
 
-        # label.text+=" ^"
-        # print label.text
-        # print label.state
+    def generate_empty_rows(self, rec):
+        return {'text': rec,
+                'size_hint_y': None,
+                'size_hint_x': 0.5,
+                'height': 30,
+                'cls_dicts': []
+        }
+
+    def args_conv(self, row_index, rec):
+        if not self.database_display:
+            return self.generate_empty_rows(rec)
+
+        record = self.get_game_header(rec.id, "ALL")
+        return self.generate_rows(rec, record)
+
+    def ref_db_args_conv(self,row_index, rec):
+        if not self.database_display:
+            return self.generate_empty_rows(rec)
+
+        record = self.get_game_header(rec.id, "ALL", ref_db=True)
+        return self.generate_rows(rec, record)
 
     def build(self):
         self.custom_fen = None
@@ -786,6 +870,7 @@ class Chess_app(App):
         self.squares = []
         self.setup_board_squares = []
         self.use_engine = False
+        self.use_ref_db = True
         self.stop_called = False
         # self.engine_running = False
         self.spoke_hint = False
@@ -814,7 +899,8 @@ class Chess_app(App):
             # import leveldb
             # from chess.leveldict import LevelDict
             self.user_book = LevelJsonDict('book/custom/watson.db')
-            self.db_index_book = leveldb.LevelDB('book/polyglot_index.db')
+            self.ref_db_index_book = leveldb.LevelDB('book/polyglot_index.db')
+            self.db_index_book = None
 #            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
 
 
@@ -896,53 +982,9 @@ class Chess_app(App):
         {str(i): {'text': str(i), 'is_selected': False} for i in range(100)}
         # print integers_dict
 
-        def args_conv(row_index, rec):
-            if not self.database_display:
-                return {'text': rec,
-                  'size_hint_y': None,
-                  'size_hint_x': 0.5,
-                  'height': 30,
-                  'cls_dicts': []
-                 }
-
-            record = self.get_game_header(rec.id, "ALL")
-            tokens = record.split("|")
-            # print record
-            white = tokens[0]
-            whiteelo = tokens[1]
-            black = tokens[2]
-            blackelo = tokens[3]
-            result = tokens[4]
-            date = tokens[5]
-            event = tokens[6]
-            eco = tokens[8]
-            return {'text': rec,
-                  'size_hint_y': None,
-                  'size_hint_x': 0.5,
-                  'height': 30,
-                  'cls_dicts': [{'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ white +'[/color]'}},
-                                {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ whiteelo + '[/color]'}},
-                                {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ black +'[/color]'}},
-                                {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ blackelo +'[/color]'}},
-                                {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ result +'[/color]'}},
-                                {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ date +'[/color]'}},
-                                {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ event +'[/color]'}},
-                                {'cls': CustomListItemButton,
-                                 'kwargs': {'id': rec.id, 'text': '[color=000000]'+ eco +'[/color]'}},
-                            ]
-                 }
-
-
         self.db_adapter = ListAdapter(
                            data=integers_dict,
-                           args_converter=args_conv,
+                           args_converter=self.args_conv,
                            selection_mode='single',
                            # propagate_selection_to_data=True,
                            allow_empty_selection=True,
@@ -950,7 +992,7 @@ class Chess_app(App):
 
 
         self.database_list_view = ListView(adapter=self.db_adapter)
-        self.database_list_view.adapter.bind(on_selection_change=self.db_selection_changed)
+        self.database_list_view.adapter.bind(on_selection_change=self.ref_db_selection_changed)
 
         # self.add_widget(list_view)
 
@@ -985,18 +1027,24 @@ class Chess_app(App):
         database_grid = BoxLayout(size_hint=(1, 0.4), orientation='vertical')
 
         database_controls = BoxLayout(size_hint=(1, 0.25))
+        ref_db_label = Button(text=SHOW_REF_GAMES, on_press=self.update_database_display)
         db_label = Button(text=SHOW_GAMES, on_press=self.update_database_display)
 
         self.db_filter_field = TextInput(text="", focus=True, multiline=False, use_bubble = True)
         self.db_filter_field.bind(on_text_validate=self.update_book_panel)
 
+        self.db_random_game_btn = Button(text="Load Random Game", on_press=self.load_random_game)
+
         self.db_stat_label = Label(text="No Games")
 
+        database_controls.add_widget(ref_db_label)
         database_controls.add_widget(db_label)
         database_controls.add_widget(self.db_filter_field)
+        database_controls.add_widget(self.db_random_game_btn)
+
         database_controls.add_widget(self.db_stat_label)
 
-        database_header = BoxLayout(size_hint=(1,0.15))
+        database_header = BoxLayout(size_hint=(1, 0.15))
         self.db_header_buttons = []
         database_white_bt = DBHeaderButton("white", markup=True, text="White", on_press=self.update_db_sort_criteria)
         self.db_header_buttons.append(database_white_bt)
@@ -1260,42 +1308,32 @@ class Chess_app(App):
                 mv = mv.text
         return mv
 
-    def add_database_games(self, game, ref_game=None):
-        gamenum_str = self.get_grid_click_input(game, ref_game)
-        game_num = int(gamenum_str)
-        # print "game_num:"
-        # print game_num
-        # current_fen = str(self.chessboard.position.fen)
-        # print current_fen
-        self.load_game_from_index(game_num)
-        # self.go_to_move(None, current_fen)
-        # print game_num
-        # print self.user_book["game_index_{0}".format(game_num)][INDEX_FILE_POS]
-        # print self.user_book[INDEX_TOTAL_GAME_COUNT]
+    def load_random_game(self, x):
+        db_index = self.db_index_book
+        if self.use_ref_db:
+            db_index = self.ref_db_index_book
 
-    def load_game_from_index(self, game_num):
-#        print "game_num:"
-#        print game_num
-        first = self.db_index_book.Get("game_{0}_data".format(game_num)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
+        total_games = int(db_index.Get(INDEX_TOTAL_GAME_COUNT))
+
+        rand_game_num = random.randint(0, total_games)
+        self.load_game_from_index(rand_game_num, db_index)
+
+
+    def load_game_from_index(self, game_num, db_index):
+
+        first = db_index.Get("game_{0}_data".format(game_num)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
 
 #        if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
 #            second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
 
 #        second = self.pgn_index["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
-        second = self.db_index_book.Get("game_{0}_data".format(game_num+1)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
+        second = db_index.Get("game_{0}_data".format(game_num+1)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
 #        else:
 #            second = None
        #print second
-        # print self.pgn_index["game_index_{0}".format(game_num)]['White']
-        # print self.pgn_index["game_index_{0}".format(game_num)]['Black']
-        # print self.pgn_index["game_index_{0}".format(game_num)]['Result']
-        # print self.pgn_index["game_index_{0}".format(game_num)]['Date']
-
-
-
 
 #        f = open(self.pgn_index["pgn_filename"])
-        f = open(self.db_index_book.Get("pgn_filename"))
+        f = open(db_index.Get("pgn_filename"))
         first = int(first)
         # print "first: {0}".format(first)
 
@@ -1836,11 +1874,14 @@ class Chess_app(App):
         print "action"
         pass
 
-    def get_game_header(self, g, header, first_line = False):
+    def get_game_header(self, g, header, first_line=False, ref_db=False):
 
         try:
-            record = self.db_index_book.Get("game_{0}_data".format(g))
-            if header=="ALL":
+            if ref_db:
+                record = self.ref_db_index_book.Get("game_{0}_data".format(g))
+            else:
+                record = self.db_index_book.Get("game_{0}_data".format(g))
+            if header == "ALL":
                 return record
             text = ""
             text = record.split("|")[DB_HEADER_MAP[header]]
@@ -1864,18 +1905,21 @@ class Chess_app(App):
         except KeyError:
             return "Unknown"
 
-    def update_database_panel(self):
+    def update_database_panel(self, ref_db=True):
         pos_hash = str(self.chessboard.position.__hash__())
         # pos_hash = str(sf.key())
-
-        if self.db_index_book is not None and self.database_display:
+        if ref_db:
+            db_index = self.ref_db_index_book
+        else:
+            db_index = self.db_index_book
+        if db_index is not None and self.database_display:
             # self.database_panel.reset_grid()
             # print "game_ids:"
             # print self.db_index_book.GetStats()
             # print "pos_hash:"
             # print pos_hash
             try:
-                game_ids = self.db_index_book.Get(pos_hash).split(',')[:-1]
+                game_ids = db_index.Get(pos_hash).split(',')[:-1]
                 # print len(game_ids)
                 # print game_ids[:]
                 # print type(game_ids)
@@ -1946,6 +1990,13 @@ class Chess_app(App):
 
             self.db_stat_label.text = "{0} games".format(len(game_ids))
 #            self.db_adapter.data = {str(i): {'text': str(g.id), 'is_selected': False} for i, g in enumerate(db_game_list)}
+            if ref_db:
+                self.db_adapter.args_converter = self.ref_db_args_conv
+                self.database_list_view.adapter.bind(on_selection_change=self.ref_db_selection_changed)
+            else:
+                self.db_adapter.args_converter = self.args_conv
+                self.database_list_view.adapter.bind(on_selection_change=self.db_selection_changed)
+
             self.db_adapter.data = db_game_list
             self.database_list_view.scroll_to(0)
 
