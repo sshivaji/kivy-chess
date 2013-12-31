@@ -352,8 +352,11 @@ class GameNode(object):
                 score+= "{0} ".format(v.__san,)
             else:
                 score+= "{0} ".format(v.move)
-            if v.comment:
-                score += "[color=3333ff]{0}[/color]".format(v.comment)
+            try:
+                if v.comment:
+                    score += "[color=3333ff]{0}[/color]".format(v.comment)
+            except UnicodeEncodeError:
+                pass
 
             if format=="ref":
                 score+=" [/ref] "

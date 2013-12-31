@@ -246,8 +246,8 @@ class SettingsScreen(Screen):
     pass
 
 class ChessPiece(Scatter):
-    image = ObjectProperty(None)
-    moving = BooleanProperty(False)
+    image = ObjectProperty()
+    moving = BooleanProperty(True)
     allowed_to_move = BooleanProperty(False)
 
     hide = BooleanProperty(False)
@@ -274,6 +274,7 @@ class ChessPiece(Scatter):
         # the image.
         self.size = size[0], size[1]
         self.image.size = size[0], size[1]
+        # self.scale = 0.9
 
     def set_pos(self, pos):
         self.pos = pos[0], pos[1]
@@ -283,6 +284,7 @@ class ChessPiece(Scatter):
             return
         if super(ChessPiece, self).on_touch_move(touch):
             self.moving = True
+        #     self.image.size = self.size[0]*1.2, self.size[1]*1.2
 
     def on_touch_up(self, touch):
         if super(ChessPiece, self).on_touch_up(touch):
@@ -1252,7 +1254,7 @@ class Chess_app(App):
 
 
 #        f = open(self.pgn_index["pgn_filename"])
-        f = open("test/2400_2013_47_classic.pgn")
+        f = open(self.db_index_book.Get("pgn_filename"))
         first = int(first)
         # print "first: {0}".format(first)
 
