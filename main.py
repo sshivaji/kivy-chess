@@ -698,11 +698,11 @@ class Chess_app(App):
                 self.db_stat_label.text = "No Games"
                 self.db_adapter.data = {}
             if game == SHOW_REF_GAMES:
-                self.update_database_panel(ref_db=True)
                 self.use_ref_db = True
+                self.update_database_panel(ref_db=True)
             else:
-                self.update_database_panel(ref_db=False)
                 self.use_ref_db = False
+                self.update_database_panel(ref_db=False)
             # self.update_book_panel()
             # self.database_display = False
 
@@ -714,12 +714,6 @@ class Chess_app(App):
             self.book_display = not self.book_display
             self.update_book_panel()
 
-    def ref_db_selection_changed(self, *args):
-       if len(args[0].selection) == 1:
-            game_index = args[0].selection[0].id
-            current_fen = self.chessboard.position.fen
-            self.load_game_from_index(int(game_index), self.ref_db_index_book)
-            self.go_to_move(None, current_fen)
 
     def db_selection_changed(self, *args):
         # print '    args when selection changes gets you the adapter', args
@@ -729,8 +723,11 @@ class Chess_app(App):
             # reset sort criteria if a game is being loaded
             # db_sort_criteria = self.db_sort_criteria
             # self.reset_db_sort_criteria()
+            db_index = self.db_index_book
+            if self.use_ref_db:
+                db_index = self.ref_db_index_book
 
-            self.load_game_from_index(int(game_index), self.db_index_book)
+            self.load_game_from_index(int(game_index), db_index)
             self.go_to_move(None, current_fen)
             # self.db_sort_criteria = db_sort_criteria
             # print args[0].selection[0].text
@@ -759,17 +756,24 @@ class Chess_app(App):
 
         self.update_database_panel(ref_db=self.use_ref_db)
 
+    def get_token(self, tokens, index):
+        try:
+            return tokens[index]
+        except IndexError:
+            return '*'
+
     def generate_rows(self, rec, record):
+
         tokens = record.split("|")
-        # print record
-        white = tokens[0]
-        whiteelo = tokens[1]
-        black = tokens[2]
-        blackelo = tokens[3]
-        result = tokens[4]
-        date = tokens[5]
-        event = tokens[6]
-        eco = tokens[8]
+
+        white = self.get_token(tokens, 0)
+        whiteelo = self.get_token(tokens, 1)
+        black = self.get_token(tokens, 2)
+        blackelo = self.get_token(tokens, 3)
+        result = self.get_token(tokens, 4)
+        date = self.get_token(tokens, 5)
+        event = self.get_token(tokens, 6)
+        eco = self.get_token(tokens, 8)
         return {'text': rec,
                 'size_hint_y': None,
                 'size_hint_x': 0.5,
@@ -806,13 +810,6 @@ class Chess_app(App):
             return self.generate_empty_rows(rec)
 
         record = self.get_game_header(rec.id, "ALL")
-        return self.generate_rows(rec, record)
-
-    def ref_db_args_conv(self,row_index, rec):
-        if not self.database_display:
-            return self.generate_empty_rows(rec)
-
-        record = self.get_game_header(rec.id, "ALL", ref_db=True)
         return self.generate_rows(rec, record)
 
     def build(self):
@@ -992,7 +989,7 @@ class Chess_app(App):
 
 
         self.database_list_view = ListView(adapter=self.db_adapter)
-        self.database_list_view.adapter.bind(on_selection_change=self.ref_db_selection_changed)
+        self.database_list_view.adapter.bind(on_selection_change=self.db_selection_changed)
 
         # self.add_widget(list_view)
 
@@ -1327,17 +1324,16 @@ class Chess_app(App):
 #            second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
 
 #        second = self.pgn_index["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
-        second = db_index.Get("game_{0}_data".format(game_num+1)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
-#        else:
-#            second = None
-       #print second
+        try:
+            second = db_index.Get("game_{0}_data".format(game_num+1)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
+            second = int(second)
+        except KeyError:
+            second = None
 
-#        f = open(self.pgn_index["pgn_filename"])
         f = open(db_index.Get("pgn_filename"))
         first = int(first)
         # print "first: {0}".format(first)
 
-        second = int(second)
         # print "second: {0}".format(second)
 
         f.seek(first)
@@ -1874,9 +1870,10 @@ class Chess_app(App):
         print "action"
         pass
 
-    def get_game_header(self, g, header, first_line=False, ref_db=False):
+    def get_game_header(self, g, header, first_line=False):
 
         try:
+            ref_db=self.use_ref_db
             if ref_db:
                 record = self.ref_db_index_book.Get("game_{0}_data".format(g))
             else:
@@ -1913,31 +1910,12 @@ class Chess_app(App):
         else:
             db_index = self.db_index_book
         if db_index is not None and self.database_display:
-            # self.database_panel.reset_grid()
-            # print "game_ids:"
-            # print self.db_index_book.GetStats()
-            # print "pos_hash:"
-            # print pos_hash
             try:
                 game_ids = db_index.Get(pos_hash).split(',')[:-1]
-                # print len(game_ids)
-                # print game_ids[:]
-                # print type(game_ids)
-                # for g in game_ids[:5]:
-                #     print self.get_game_header(g, "White")
-                #     print self.get_game_header(g, "Black")
-                #     print self.get_game_header(g, "ELO")
-                #     print self.get_game_header(g, "Result")
-                #     print self.get_game_header(g, "ECO")
 
             except KeyError, e:
                 print "key not found!"
                 game_ids = []
-
-            # print "\n\n"
-
-            # except leveldb.LevelDBError, e:
-            #     game_ids = []
 
             db_game_list = []
             filter_text = []
@@ -1990,12 +1968,10 @@ class Chess_app(App):
 
             self.db_stat_label.text = "{0} games".format(len(game_ids))
 #            self.db_adapter.data = {str(i): {'text': str(g.id), 'is_selected': False} for i, g in enumerate(db_game_list)}
-            if ref_db:
-                self.db_adapter.args_converter = self.ref_db_args_conv
-                self.database_list_view.adapter.bind(on_selection_change=self.ref_db_selection_changed)
-            else:
-                self.db_adapter.args_converter = self.args_conv
-                self.database_list_view.adapter.bind(on_selection_change=self.db_selection_changed)
+#             if ref_db:
+#                 self.database_list_view.adapter.bind(on_selection_change=self.ref_db_selection_changed)
+#             else:
+            self.database_list_view.adapter.bind(on_selection_change=self.db_selection_changed)
 
             self.db_adapter.data = db_game_list
             self.database_list_view.scroll_to(0)
