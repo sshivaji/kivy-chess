@@ -18,6 +18,7 @@
 
 import libchess as chess
 import types
+import re
 
 class GameNode(object):
     """A node in the tree of a game.
@@ -343,7 +344,7 @@ class GameNode(object):
             if not v.is_main_variation():
                 score+= "{0} ".format("(",)
             if move % 2 == 1:
-                score+= "{0} ".format((move + 1)/2,)
+                score+= "{0}. ".format((move + 1)/2,)
 
             if format=="ref":
                 score+="[ref={0}]".format(v.fen)
@@ -426,5 +427,37 @@ class GameNode(object):
         header = "view"
         if format == "file":
             header = "file"
-        # print self.headers.headers
-        return self.get_headers(header) + self.walk_tree(self.__variations, move=0, format=format)
+
+        result = self.fill_header_entry('Result')
+        if not result:
+            result = '*'
+
+        body = self.walk_tree(self.__variations, move=0, format=format)
+        # if format == "file":
+        #     body = re.sub("(.{80})", "\\1\n", body, 0, re.DOTALL)
+
+        if format == "file":
+            # tokens_per_line = 20
+            # body_tokens = body.split()
+            # body_length = len(body)
+            # line_tokens = body_length/tokens_per_line
+            # body_tail = body_length % tokens_per_line
+            #
+            # output = ''
+            # for i in xrange(line_tokens):
+            #     chunk = body[i * tokens_per_line: (i+1)*tokens_per_line] + '\n'
+            #     print "chunk:"
+            #     print chunk
+            #     output += chunk
+            #
+            #     if i == line_tokens:
+            #         output += "\n"
+            # # body = re.sub("(.{80})", "\\1\n", body, 0, re.DOTALL)
+            # if body_tail:
+            #     output += body[tokens_per_line*line_tokens:]
+            delimiter = '\n'
+            # body = output
+        else:
+            delimiter = ''
+
+        return delimiter + self.get_headers(header) + delimiter + body + ' ' + result + delimiter

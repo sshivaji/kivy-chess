@@ -369,7 +369,9 @@ class Chess_app(App):
             pgn_path = f[0]
             leveldb_path = self.gen_leveldb_path(pgn_path)
             if not os.path.exists(leveldb_path):
-                os.system("polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".format(pgn_path, leveldb_path))
+                command = "polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".format(pgn_path, leveldb_path)
+                # print command
+                os.system(command)
         return leveldb_path
 
     def gen_leveldb_path(self, fname):
@@ -1337,20 +1339,20 @@ class Chess_app(App):
         except KeyError:
             second = None
 
-        f = open(db_index.Get("pgn_filename"))
-        first = int(first)
+        with open(db_index.Get("pgn_filename")) as f:
+            first = int(first)
 
-        f.seek(first)
-        line = 1
-        lines = []
-        while line:
-            line = f.readline()
-            pos = f.tell()
-            if second and pos >= second:
-                break
-            # print pos
-            lines.append(line)
-
+            f.seek(first)
+            line = 1
+            lines = []
+            while line:
+                line = f.readline()
+                pos = f.tell()
+                if second and pos >= second:
+                    break
+                # print pos
+                lines.append(line)
+        # f.close()
         # print lines
         games = PgnFile.open_text(lines)
         # print games[0].'White'
@@ -1719,9 +1721,9 @@ class Chess_app(App):
             use_db = True
             # Write to the open database
             pgn_file = self.db_index_book.Get("pgn_filename")
-            f = open(pgn_file, 'a')
+            f = open(pgn_file, 'ab')
         else:
-            f = open('game.pgn', 'w')
+            f = open('game.pgn', 'wb')
 #        f.write('Game Header - Analysis \n\n')
         f.write(self.chessboard_root.game_score(format="file"))
 #        f.write("\n")
@@ -1730,9 +1732,13 @@ class Chess_app(App):
             # Rebuild index
             # db_folder_path = os.path.abspath(os.path.join(pgn_file, os.pardir))
             db_folder_path = self.gen_leveldb_path(pgn_file)
+            del self.db_index_book
+            self.db_index_book = None
             # shutil.rmtree(db_folder_path)
-            os.system("polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".
-                format(pgn_file, db_folder_path))
+            command = "polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".format(pgn_file, db_folder_path)
+            # print command
+            os.system(command)
+            self.db_index_book = leveldb.LevelDB(db_folder_path)
 
     def touch_down_move(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
