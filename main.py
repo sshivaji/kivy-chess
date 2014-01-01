@@ -1,6 +1,7 @@
 import traceback
 import kivy
 import os
+import shutil
 import random
 # from kivy.config import Config
 # Config.set('graphics', 'fullscreen', 0)
@@ -366,10 +367,13 @@ class Chess_app(App):
 
         elif '.pgn' in folder_tokens[-1]:
             pgn_path = f[0]
-            leveldb_path = pgn_path + '.db'
+            leveldb_path = self.gen_leveldb_path(pgn_path)
             if not os.path.exists(leveldb_path):
                 os.system("polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".format(pgn_path, leveldb_path))
         return leveldb_path
+
+    def gen_leveldb_path(self, fname):
+        return fname + '.db'
 
     def process_database(self, obj, f, mevent):
         leveldb_path = self.open_create_index(f)
@@ -699,10 +703,10 @@ class Chess_app(App):
                 self.db_adapter.data = {}
             if game == SHOW_REF_GAMES:
                 self.use_ref_db = True
-                self.update_database_panel(ref_db=True)
+                self.update_database_panel()
             else:
                 self.use_ref_db = False
-                self.update_database_panel(ref_db=False)
+                self.update_database_panel()
             # self.update_book_panel()
             # self.database_display = False
 
@@ -723,11 +727,11 @@ class Chess_app(App):
             # reset sort criteria if a game is being loaded
             # db_sort_criteria = self.db_sort_criteria
             # self.reset_db_sort_criteria()
-            db_index = self.db_index_book
-            if self.use_ref_db:
-                db_index = self.ref_db_index_book
+            # db_index = self.db_index_book
+            # if self.use_ref_db:
+            #     db_index = self.ref_db_index_book
 
-            self.load_game_from_index(int(game_index), db_index)
+            self.load_game_from_index(int(game_index))
             self.go_to_move(None, current_fen)
             # self.db_sort_criteria = db_sort_criteria
             # print args[0].selection[0].text
@@ -754,7 +758,7 @@ class Chess_app(App):
             label.text += ' ' +DB_SORT_DESC
             self.db_sort_criteria[0].asc = False
 
-        self.update_database_panel(ref_db=self.use_ref_db)
+        self.update_database_panel()
 
     def get_token(self, tokens, index):
         try:
@@ -867,7 +871,7 @@ class Chess_app(App):
         self.squares = []
         self.setup_board_squares = []
         self.use_engine = False
-        self.use_ref_db = True
+        self.use_ref_db = False
         self.stop_called = False
         # self.engine_running = False
         self.spoke_hint = False
@@ -1313,10 +1317,13 @@ class Chess_app(App):
         total_games = int(db_index.Get(INDEX_TOTAL_GAME_COUNT))
 
         rand_game_num = random.randint(0, total_games)
-        self.load_game_from_index(rand_game_num, db_index)
+        self.load_game_from_index(rand_game_num)
 
 
-    def load_game_from_index(self, game_num, db_index):
+    def load_game_from_index(self, game_num):
+        db_index = self.db_index_book
+        if self.use_ref_db:
+            db_index = self.ref_db_index_book
 
         first = db_index.Get("game_{0}_data".format(game_num)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
 
@@ -1332,9 +1339,6 @@ class Chess_app(App):
 
         f = open(db_index.Get("pgn_filename"))
         first = int(first)
-        # print "first: {0}".format(first)
-
-        # print "second: {0}".format(second)
 
         f.seek(first)
         line = 1
@@ -1709,11 +1713,26 @@ class Chess_app(App):
             # TODO: log error if in debug mode
 
     def save(self, obj):
-        f = open('game.pgn','w')
+        use_db = False
+        pgn_file = None
+        if self.db_index_book is not None:
+            use_db = True
+            # Write to the open database
+            pgn_file = self.db_index_book.Get("pgn_filename")
+            f = open(pgn_file, 'a')
+        else:
+            f = open('game.pgn', 'w')
 #        f.write('Game Header - Analysis \n\n')
         f.write(self.chessboard_root.game_score(format="file"))
 #        f.write("\n")
         f.close()
+        if use_db:
+            # Rebuild index
+            # db_folder_path = os.path.abspath(os.path.join(pgn_file, os.pardir))
+            db_folder_path = self.gen_leveldb_path(pgn_file)
+            # shutil.rmtree(db_folder_path)
+            os.system("polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".
+                format(pgn_file, db_folder_path))
 
     def touch_down_move(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
@@ -1873,7 +1892,7 @@ class Chess_app(App):
     def get_game_header(self, g, header, first_line=False):
 
         try:
-            ref_db=self.use_ref_db
+            ref_db = self.use_ref_db
             if ref_db:
                 record = self.ref_db_index_book.Get("game_{0}_data".format(g))
             else:
@@ -1902,10 +1921,10 @@ class Chess_app(App):
         except KeyError:
             return "Unknown"
 
-    def update_database_panel(self, ref_db=True):
+    def update_database_panel(self):
         pos_hash = str(self.chessboard.position.__hash__())
         # pos_hash = str(sf.key())
-        if ref_db:
+        if self.use_ref_db:
             db_index = self.ref_db_index_book
         else:
             db_index = self.db_index_book
@@ -1971,7 +1990,7 @@ class Chess_app(App):
 #             if ref_db:
 #                 self.database_list_view.adapter.bind(on_selection_change=self.ref_db_selection_changed)
 #             else:
-            self.database_list_view.adapter.bind(on_selection_change=self.db_selection_changed)
+#             self.database_list_view.adapter.bind(on_selection_change=self.db_selection_changed)
 
             self.db_adapter.data = db_game_list
             self.database_list_view.scroll_to(0)
