@@ -2211,6 +2211,9 @@ class Chess_app(App):
             sf.stop()
             # print self.chessboard_root.game_score()
 
+        if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
+            self.custom_fen = self.chessboard_root.headers.headers['FEN']
+
         if self.custom_fen:
             sf.position(self.custom_fen, self.chessboard.get_prev_moves())
         else:
