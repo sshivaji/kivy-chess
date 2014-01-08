@@ -1353,10 +1353,10 @@ int dgtnixInit(const char *port)
 }
 
 const char *
-   getDgtFEN (char tomove = 'w')
+   getDgtFEN (char tomove)
    {
      const char *board = dgtnixGetBoard (false);
-     char FEN[90];
+     static char FEN[90];
      int pos = 0;
      int empty = 0;
  
@@ -1370,7 +1370,7 @@ const char *
                  pos++;
                  empty = 0;
                }
-             FEN[pos] = char(board[sq]);
+             FEN[pos] = board[sq];
              pos++;
            }
          else empty++;
@@ -1407,9 +1407,10 @@ const char *
      FEN[pos++] = ' ';
      FEN[pos++] = '1';
 
-     FEN[pos] = char(0);
+     FEN[pos] = '0';
 
-     return FEN; }
+     return FEN; 
+   }
 
 int dgtnixTestBoard(const char *board)
 {
