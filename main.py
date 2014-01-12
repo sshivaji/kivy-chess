@@ -540,7 +540,7 @@ class Chess_app(App):
             self.root.current = 'main'
             if self.engine_level != self.level_label.text:
                 self.engine_level = self.level_label.text
-                sf.setOption('skill level', self.engine_level)
+                sf.set_option('skill level', self.engine_level)
 
         settings_panel.on_close=go_back
 
@@ -725,7 +725,7 @@ class Chess_app(App):
         # print '    args when selection changes gets you the adapter', args
         if len(args[0].selection) == 1:
             game_index = args[0].selection[0].id
-            current_fen = self.chessboard.position.fen
+            current_pos_hash = self.chessboard.position.__hash__()
             # reset sort criteria if a game is being loaded
             # db_sort_criteria = self.db_sort_criteria
             # self.reset_db_sort_criteria()
@@ -734,7 +734,7 @@ class Chess_app(App):
             #     db_index = self.ref_db_index_book
 
             self.load_game_from_index(int(game_index))
-            self.go_to_move(None, current_fen)
+            self.go_to_move(None, current_pos_hash)
             # self.db_sort_criteria = db_sort_criteria
             # print args[0].selection[0].text
         # self.selected_item = args[0].selection[0].text
@@ -877,9 +877,9 @@ class Chess_app(App):
         self.stop_called = False
         # self.engine_running = False
         self.spoke_hint = False
-        sf.addObserver(self.update_engine_output)
+        sf.add_observer(self.update_engine_output)
         # print sf.getOptions()
-        sf.setOption('OwnBook','true')
+        sf.set_option('OwnBook','true')
 
         self.book_display = True
         self.database_display = False
@@ -1205,11 +1205,9 @@ class Chess_app(App):
     def go_to_settings(self, instance):
         self.root.current='settings'
 
-    def go_to_move(self, label, fen):
-        # print 'Going to move.. '
-        # print GameNode.positions[fen]
-        if GameNode.positions.has_key(fen):
-            self.chessboard = GameNode.positions[fen]
+    def go_to_move(self, label, pos_hash):
+        if GameNode.positions.has_key(pos_hash):
+            self.chessboard = GameNode.positions[pos_hash]
             self.refresh_board()
 
     def is_position_inf_eval(self, mv):
