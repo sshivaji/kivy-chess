@@ -15,6 +15,7 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from Queue import Queue
 
 import libchess as chess
 import types
@@ -82,7 +83,7 @@ class GameNode(object):
             self.__position.make_move(move)
 #            print GameNode.positions
 
-            GameNode.positions[self.__position.fen] = self
+            GameNode.positions[str(self.__position.__hash__())] = self
 
         self.__nags = nags
         self.comment = comment
@@ -337,35 +338,61 @@ class GameNode(object):
         """
         del self.__variations[self.index(variation)]
 
-    def walk_tree(self, variation, move, format="normal", score=""):
-        move += 1
+    def walk_tree_iterative(self, variation, move, format="normal", score=""):
+        score = ""
+        q = [variation]
+        # tree_depth = 1
 
-        for v in variation:
-            if not v.is_main_variation():
-                score+= "{0} ".format("(",)
-            if move % 2 == 1:
-                score+= "{0}. ".format((move + 1)/2,)
+        while len(q)>0:
+            # move += 1
+            n = q.pop()
 
-            if format=="ref":
-                score+="[ref={0}]".format(v.fen)
+            for el in n:
 
-            if v.__san:
-                score+= "{0} ".format(v.__san,)
-            else:
-                score+= "{0} ".format(v.move)
-            try:
-                if v.comment:
-                    score += "[color=3333ff]{0}[/color]".format(v.comment)
-            except UnicodeEncodeError:
-                pass
+                    # tree_depth +=1
 
-            if format=="ref":
-                score+=" [/ref] "
+                if format == "ref":
+                    score += "[ref={0}][size={1}]".format(el.__position.__hash__(), 16-len(q))
+                    if el.is_main_line():
+                        score +="[b]"
 
-            if v.__variations:
-                score+=self.walk_tree(v.__variations, move, format=format)
-            if not v.is_main_variation():
-                score+= "{0} ".format(")",)
+                if not el.is_main_variation():
+                    # score += " ("*tree_depth
+                    score += "{0} ".format("(",)
+
+                move = el.half_move_num
+                if move % 2 == 0:
+                    score += "{0}. ".format((move + 1)/2,)
+                if el.__san:
+                    score += "{0} ".format(el.__san,)
+                else:
+                    score += "{0} ".format(el.move)
+
+                try:
+                    if el.comment:
+                        score += "[color=3333ff]{0}[/color]".format(el.comment)
+                except UnicodeEncodeError:
+                    pass
+
+                if not el.is_main_line() and len(el.__variations) == 0:
+                    # print "move: {0} is a leaf".format(el.__san)
+                    score += " )"
+                    # len -=1
+
+                if format == "ref":
+                    score += " "
+                    if el.is_main_line():
+                        score +="[/b]"
+                    score+="[/size][/ref] "
+
+                if len(el)>0:
+                    for v in el.__variations:
+                        q.append([v])
+                    # q.append(el.__variations)
+
+                # print "move: {0}, variations: {1}, length: {2}".format(el.__san, el.__variations, len(el.__variations))
+
+        # print score
         return score
 
     def fill_header_entry(self, attr):
@@ -378,11 +405,15 @@ class GameNode(object):
             force_new_line = False
         if self.fill_header_entry(attr):
             if definition=='view':
-                header_score += attr+": "
+                # header_score += attr+": "
+                # if attr == 'Round':
+                # header_score += attr+": "
                 header_score += self.fill_header_entry(attr)
             elif definition == 'file':
                 header_score += '['+attr+' "'+self.fill_header_entry(attr)+'"]'
             else:
+                if attr == 'Round':
+                    header_score += attr+": "
                 header_score += self.fill_header_entry(attr)
 
             if newline:
@@ -432,32 +463,14 @@ class GameNode(object):
         if not result:
             result = '*'
 
-        body = self.walk_tree(self.__variations, move=0, format=format)
+        body = self.walk_tree_iterative(self.__variations, move=0, format=format)
         # if format == "file":
         #     body = re.sub("(.{80})", "\\1\n", body, 0, re.DOTALL)
 
         if format == "file":
-            # tokens_per_line = 20
-            # body_tokens = body.split()
-            # body_length = len(body)
-            # line_tokens = body_length/tokens_per_line
-            # body_tail = body_length % tokens_per_line
-            #
-            # output = ''
-            # for i in xrange(line_tokens):
-            #     chunk = body[i * tokens_per_line: (i+1)*tokens_per_line] + '\n'
-            #     print "chunk:"
-            #     print chunk
-            #     output += chunk
-            #
-            #     if i == line_tokens:
-            #         output += "\n"
-            # # body = re.sub("(.{80})", "\\1\n", body, 0, re.DOTALL)
-            # if body_tail:
-            #     output += body[tokens_per_line*line_tokens:]
             delimiter = '\n'
-            # body = output
         else:
             delimiter = ''
+            result = "[size=16][b][color=3333ff]"+result+"[/color][/b][/size]"
 
         return delimiter + self.get_headers(header) + delimiter + body + ' ' + result + delimiter
