@@ -639,7 +639,7 @@ class Chess_app(App):
                     if not self.ponder_move_san and self.ponder_move and self.ponder_move!='(none)':
                         # print self.ponder_move
                         try:
-                            self.ponder_move_san = sf.toSAN([self.ponder_move])[0]
+                            self.ponder_move_san = sf.to_san([self.ponder_move])[0]
                             # print "ponder_move_san: "+self.ponder_move_san
                             # if not self.spoke_hint:
                             #     self.spoke_hint = True
@@ -1554,7 +1554,7 @@ class Chess_app(App):
         try:
             line_index = tokens.index('pv')
             first_mv = tokens[line_index+1]
-            move_list=sf.toSAN(tokens[line_index+1:])
+            move_list=sf.to_san(tokens[line_index+1:])
 
         except ValueError, e:
             line_index = -1
@@ -1578,7 +1578,7 @@ class Chess_app(App):
             # print "best_move:{0}".format(best_move)
             # print sf.position()
             try:
-                san = sf.toSAN([best_move])[0]
+                san = sf.to_san([best_move])[0]
             except IndexError:
                 return
             # print san
