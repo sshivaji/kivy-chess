@@ -11,13 +11,11 @@ To Build
    5. Go to the pyfish tree at https://github.com/jromang/Stockfish/tree/pyfish (switch to branch pyfish), execute "sudo python setup.py install". Eventually pyfish will replace libchess entirely.
    6. Install leveldb for database functionality, "sudo pip install leveldb"
    7. Finally, Execute "kivy main.py"
-   8. To deploy to IOS/android, download the respective toolkits and use this project's rootdir.
 
 To load large databases
-   1. Go to the github.com/sshivaji/polyglot project and follow instructions to build databases.
-   2. Rename polyglot leveldb folder to the name "polyglot_index.db"
-   3. Copy/move polyglot leveldb index folder to kivy-chess/book/
-   4. In the source code, search for .pgn and change "2400_2013_47_classic.pgn" to your pgn file location (this hardcoding will be removed soon!)
+   1. Go to the github.com/sshivaji/polyglot project.
+   2. Execute "sudo make install"
+   3. Copy/move polyglot leveldb index folder to kivy-chess/book/ 
    
 To use DGT support
    1. Go to the DGT folder.
