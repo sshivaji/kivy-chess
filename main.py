@@ -1468,7 +1468,9 @@ class Chess_app(App):
 #            self.stop_engine()
             if self.engine_mode == ENGINE_PLAY:
                 self.engine_mode = ENGINE_ANALYSIS
-            else:
+            elif self.engine_mode == ENGINE_TRAINING:
+                # Reset Skill level
+                sf.set_option('skill level', '20')
                 self.engine_mode = None
                 # print "Stopping train"
                 self.use_engine = False
