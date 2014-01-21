@@ -52,6 +52,9 @@ from operator import attrgetter
 from time import sleep
 from chess import polyglot_opening_book
 
+THINKING_TIME = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]"
+THINKING = "[color=000000][b][size=16]Thinking..[/size][/b][/color]"
+
 try:
     import libchess
 except ImportError:
@@ -100,11 +103,17 @@ ENGINE_PLAY_HINT = "play_hint"
 
 YOURTURN_MENU = "[color=000000][size=24][i]{2}[/i]    [b]{3}[/b][/size]\nYour turn\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint: {0}\nScore: {1} [/ref][/color]"
 
+TRAIN_MENU = "[color=000000][b]{0}\n\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref][/b][/color]"
+
 ENGINE_ANALYSIS = "engine_analysis"
 
+ENGINE_TRAINING = "engine_training"
+
 ENGINE_HEADER = '[b][color=000000][ref='+ENGINE_ANALYSIS\
-                +']Analysis[/ref][ref='+ENGINE_PLAY+']\n\n\n' \
-                'Play vs Comp [/ref][/color][/b]'
+                +']Analysis[/ref][ref='+ENGINE_PLAY+']\n\n' \
+                'Play vs Comp [/ref][ref='+ENGINE_TRAINING+']\n\nTrain[/ref][/color][/b]'
+
+MOVE_OUT_FORMAT = '[color=000000][b]{0}[/b][/color]'
 
 BOOK_ON = "Book"
 USER_BOOK_ON = "User Book"
@@ -632,7 +641,7 @@ class Chess_app(App):
         if self.engine_mode == ENGINE_PLAY:
             if self.engine_computer_move:
                 self.update_time(color=self.engine_comp_color)
-                self.engine_score.children[0].text = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]".format(self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+                self.engine_score.children[0].text = THINKING_TIME.format(self.format_time_str(self.time_white), self.format_time_str(self.time_black))
             else:
                 self.update_player_time()
                 if self.show_hint:
@@ -942,6 +951,11 @@ class Chess_app(App):
         fwd_bt.bind(on_press=self.fwd)
         self.b.add_widget(fwd_bt)
 
+        comment_bt = Button(markup=True)
+        comment_bt.text = "!?"
+
+        comment_bt.bind(on_press=self.comment)
+        self.b.add_widget(comment_bt)
 
         new_bt = Button(markeup=True)
         new_bt.text = "New"
@@ -1437,7 +1451,7 @@ class Chess_app(App):
 #        print value
 #        print "instance:"
 #        print instance
-        if value == ENGINE_ANALYSIS or value == ENGINE_PLAY:
+        if value == ENGINE_ANALYSIS or value == ENGINE_PLAY or value == ENGINE_TRAINING:
 #            print "Bringing up engine menu"
             if self.use_engine:
                 self.stop_engine()
@@ -1448,10 +1462,17 @@ class Chess_app(App):
                     self.engine_computer_move = True
                     self.engine_comp_color = self.chessboard.position.turn
                     self.reset_clocks()
+
             # self.refresh_board()
         elif value == ENGINE_PLAY_STOP:
 #            self.stop_engine()
-            self.engine_mode = ENGINE_ANALYSIS
+            if self.engine_mode == ENGINE_PLAY:
+                self.engine_mode = ENGINE_ANALYSIS
+            else:
+                self.engine_mode = None
+                # print "Stopping train"
+                self.use_engine = False
+                self.engine_score.children[0].text = ENGINE_HEADER
             # self.refresh_board()
         elif value == ENGINE_PLAY_HINT:
             self.show_hint = True
@@ -1478,6 +1499,9 @@ class Chess_app(App):
         self.chessboard = Game()
         self.chessboard_root = self.chessboard
         self.refresh_board(update=True)
+
+    def comment(self, obj):
+        print "Comment button clicked"
 
     def back(self, obj):
         if self.chessboard.previous_node:
@@ -1547,6 +1571,7 @@ class Chess_app(App):
         return score
 
     def parse_score(self, line):
+        # print line
         score = self.get_score(line)
         move_list = []
         tokens = line.split()
@@ -1657,6 +1682,17 @@ class Chess_app(App):
                         self.spoke_hint = False
                         self.ponder_move_san = None
                         # se(best_move)
+            elif self.engine_mode == ENGINE_TRAINING:
+                output.children[0].text = THINKING
+                best_move, self.ponder_move = self.parse_bestmove(line)
+    #                            print "best_move:{0}".format(best_move)
+    #                            print "ponder_move:{0}".format(self.ponder_move)
+
+                score = self.get_score(line)
+                if best_move:
+                    # print "training_score : {0}".format(score)
+                    san = sf.to_san([best_move])[0]
+                    output.children[0].text = TRAIN_MENU.format(san)
 
         # else:
         #     print line
@@ -2237,6 +2273,9 @@ class Chess_app(App):
                 sf.go(infinite=True)
                 # print "Started engine"
                 # self.engine_running = True
+            elif self.engine_mode == ENGINE_TRAINING:
+                sf.set_option('skill level', '17')
+                sf.go(depth=15)
             else:
                 # print "computer_move: "
                 # print self.engine_computer_move
