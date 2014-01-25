@@ -103,7 +103,7 @@ ENGINE_PLAY_HINT = "play_hint"
 
 YOURTURN_MENU = "[color=000000][size=24][i]{2}[/i]    [b]{3}[/b][/size]\nYour turn\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint: {0}\nScore: {1} [/ref][/color]"
 
-TRAIN_MENU = "[color=000000][b]{0}\n\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref][/b][/color]"
+TRAIN_MENU = "[color=000000][b]{0}    [/b]{1}[b]\n\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref][/b][/color]"
 
 ENGINE_ANALYSIS = "engine_analysis"
 
@@ -876,6 +876,8 @@ class Chess_app(App):
         self.ponder_move_san = None
         self.eng_eval = None
 
+        self.train_eng_score = {}
+
         self.setup_chessboard = Position()
         self.setup_chessboard.clear_board()
 
@@ -1545,9 +1547,16 @@ class Chess_app(App):
         except ValueError, e:
             score_index = -1
         score = None
+        depth = None
         score_type = ""
         # print line
         if score_index != -1:
+            try:
+                depth_index = tokens.index('depth') + 1
+                depth = int(tokens[depth_index])
+            except ValueError as e:
+                # print "No depth"
+                depth = None
             score_type = tokens[score_index + 1]
             if tokens[score_index + 1] == "cp":
                 score = float(tokens[score_index + 2]) / 100 * 1.0
@@ -1570,11 +1579,11 @@ class Chess_app(App):
                     score *= -1
             if score_type == "mate":
                 score = score_type + " " + str(score)
-        return score
+        return depth, score
 
     def parse_score(self, line):
         # print line
-        score = self.get_score(line)
+        depth, score = self.get_score(line)
         move_list = []
         tokens = line.split()
         first_mv = None
@@ -1640,7 +1649,7 @@ class Chess_app(App):
 
                     if self.dgt_connected and self.dgtnix:
                         # Display score on the DGT clock
-                        score = str(self.get_score(line))
+                        depth, score = str(self.get_score(line))
                         if score.startswith("mate"):
                             score = score[4:]
                             score = "m "+score
@@ -1660,7 +1669,7 @@ class Chess_app(App):
     #                            print "best_move:{0}".format(best_move)
     #                            print "ponder_move:{0}".format(self.ponder_move)
 
-                    score = self.get_score(line)
+                    depth, score = self.get_score(line)
                     if score:
                         self.eng_eval = score
                     # self.update_time(color=self.engine_comp_color)
@@ -1685,16 +1694,31 @@ class Chess_app(App):
                         self.ponder_move_san = None
                         # se(best_move)
             elif self.engine_mode == ENGINE_TRAINING:
+
                 output.children[0].text = THINKING
                 best_move, self.ponder_move = self.parse_bestmove(line)
     #                            print "best_move:{0}".format(best_move)
     #                            print "ponder_move:{0}".format(self.ponder_move)
 
-                score = self.get_score(line)
+                depth, score = self.get_score(line)
+                # print score
+
+                if depth:
+                    self.train_eng_score[depth] = score
+                    # print "depth : {0}".format(depth)
                 if best_move:
+                    # print "best_move"
                     # print "training_score : {0}".format(score)
+                    random_depth = random.randint(3, 10)
+                    # print "random_depth : {0}".format(random_depth)
                     san = sf.to_san([best_move])[0]
-                    output.children[0].text = TRAIN_MENU.format(san)
+                    # print "san :{0}".format(san)
+                    score = ""
+                    if self.train_eng_score.has_key(random_depth):
+                        score = self.train_eng_score[random_depth]
+                    output.children[0].text = TRAIN_MENU.format(san, score)
+                    self.train_eng_score = {}
+
 
         # else:
         #     print line
