@@ -8,7 +8,7 @@ from data_grid import DataGrid
 class ScrollableLabel(ScrollView):
     def __init__(self, text, ref_callback=None, *args, **kwargs):
         super(ScrollableLabel, self).__init__(*args, **kwargs)
-        with self.canvas:
+        with self.canvas.before:
             Color(0.7, .02, 0.91, mode="hsv")
             # Color(.69, .93, .93)
             self.background = Rectangle(size_hint=(1,1))
@@ -36,7 +36,7 @@ class ScrollableGrid(ScrollView):
     def __init__(self, table_header, footer, editable, top_level_header=None, callback=None, *args, **kwargs):
         super(ScrollableGrid, self).__init__()
 
-        with self.canvas:
+        with self.canvas.before:
             Color(0.7, .02, 0.91, mode="hsv")
             self.background = Rectangle(size_hint=(1,1))
 

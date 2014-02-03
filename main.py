@@ -648,7 +648,7 @@ class Chess_app(App):
                     if not self.ponder_move_san and self.ponder_move and self.ponder_move!='(none)':
                         # print self.ponder_move
                         try:
-                            self.ponder_move_san = sf.to_san([self.ponder_move])[0]
+                            self.ponder_move_san = self.get_san([self.ponder_move])[0]
                             # print "ponder_move_san: "+self.ponder_move_san
                             # if not self.spoke_hint:
                             #     self.spoke_hint = True
@@ -829,6 +829,7 @@ class Chess_app(App):
 
     def build(self):
         self.custom_fen = None
+        self.pyfish_fen = 'startpos'
         self.variation_dropdown = None
         self.start_pos_changed = False
         self.engine_mode = None
@@ -891,6 +892,8 @@ class Chess_app(App):
         sf.add_observer(self.update_engine_output)
         # print sf.getOptions()
         sf.set_option('OwnBook','true')
+        # Make this an option later
+        # sf.set_option('SyzygyPath', '/Users/shiv/chess/tb/syzygy')
 
         self.book_display = True
         self.database_display = False
@@ -1581,19 +1584,29 @@ class Chess_app(App):
                 score = score_type + " " + str(score)
         return depth, score
 
+    def get_san(self, moves):
+        prev_fen = sf.get_fen(self.pyfish_fen,  self.chessboard.get_prev_moves())
+            # print prev_fen
+        return sf.to_san(prev_fen, moves)
+
     def parse_score(self, line):
         # print line
         depth, score = self.get_score(line)
         move_list = []
         tokens = line.split()
+        # print tokens
         first_mv = None
         try:
             line_index = tokens.index('pv')
             first_mv = tokens[line_index+1]
-            move_list=sf.to_san(tokens[line_index+1:])
-
+            # prev_fen = sf.get_fen(self.pyfish_fen,  self.chessboard.get_prev_moves())
+            # # print prev_fen
+            # move_list = sf.to_san(prev_fen, tokens[line_index+1:])
+            move_list = self.get_san(tokens[line_index+1:])
+            # print move_list
         except ValueError, e:
             line_index = -1
+            # raise
         variation = self.generate_move_list(move_list,start_move_num=self.chessboard.half_move_num) if line_index!=-1 else None
 
         #del analysis_board
@@ -1614,7 +1627,7 @@ class Chess_app(App):
             # print "best_move:{0}".format(best_move)
             # print sf.position()
             try:
-                san = sf.to_san([best_move])[0]
+                san = self.get_san([best_move])[0]
             except IndexError:
                 return
             # print san
@@ -1711,7 +1724,7 @@ class Chess_app(App):
                     # print "training_score : {0}".format(score)
                     random_depth = random.randint(3, 10)
                     # print "random_depth : {0}".format(random_depth)
-                    san = sf.to_san([best_move])[0]
+                    san = self.get_san([best_move])[0]
                     # print "san :{0}".format(san)
                     score = ""
                     if self.train_eng_score.has_key(random_depth):
@@ -2275,9 +2288,11 @@ class Chess_app(App):
             self.custom_fen = self.chessboard_root.headers.headers['FEN']
 
         if self.custom_fen:
-            sf.position(self.custom_fen, self.chessboard.get_prev_moves())
+            self.pyfish_fen = self.custom_fen
+            # sf.position(self.custom_fen, self.chessboard.get_prev_moves())
         else:
-            sf.position('startpos', self.chessboard.get_prev_moves())
+            self.pyfish_fen = 'startpos'
+            # sf.position('startpos', self.chessboard.get_prev_moves())
 
         if self.use_engine:
             if self.start_pos_changed:
@@ -2296,7 +2311,7 @@ class Chess_app(App):
             # print self.engine_mode
             if self.engine_mode == ENGINE_ANALYSIS:
                 # if self.engine_running:
-                sf.go(infinite=True)
+                sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), infinite=True)
                 # print "Started engine"
                 # self.engine_running = True
             elif self.engine_mode == ENGINE_TRAINING:
