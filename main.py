@@ -3,6 +3,7 @@ import kivy
 import os
 import shutil
 import random
+from kivy.config import ConfigParser
 # from kivy.config import Config
 # Config.set('graphics', 'fullscreen', 0)
 # Config.write()
@@ -183,6 +184,7 @@ INITIAL_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 DB_HEADER_MAP = {"White": 0, "WhiteElo": 1, "Black": 2,
                  "BlackElo": 3, "Result": 4, "Date": 5, "Event": 6, "Site": 7,
                  "ECO": 8, INDEX_FILE_POS:9, "FEN":10}
+config = ConfigParser()
 
 
 class DBGame(object):
@@ -458,7 +460,6 @@ class Chess_app(App):
                 except DgtnixError, e:
                     print "unable to load the library : %s " % e
 
-
         settings_panel = Settings() #create instance of Settings
 
         engine_panel = SettingsPanel(title="Engine") #create instance of left side panel
@@ -532,7 +533,6 @@ class Chess_app(App):
         level_current = SettingItem(panel=engine_panel, title="Selected Level") #create instance of one item in left side panel
         level_current.add_widget(self.level_label)
 
-
         board_panel.add_widget(setup_pos_item) # add item1 to left side panel
         board_panel.add_widget(setup_board_item)
 
@@ -542,7 +542,6 @@ class Chess_app(App):
         settings_panel.add_widget(board_panel)
         settings_panel.add_widget(database_panel)
         settings_panel.add_widget(dgt_panel)
-
         settings_panel.add_widget(engine_panel) #add left side panel itself to the settings menu
 
         def go_back():
@@ -893,6 +892,7 @@ class Chess_app(App):
         # print sf.getOptions()
         sf.set_option('OwnBook','true')
         # Make this an option later
+        self.use_tb = False
         # sf.set_option('SyzygyPath', '/Users/shiv/chess/tb/syzygy')
 
         self.book_display = True
@@ -1611,7 +1611,14 @@ class Chess_app(App):
 
         #del analysis_board
         if variation and score is not None:
-            return first_mv, move_list, "[color=000000][b]%s[/b]     [i][ref=%s]Stop[/ref][/i][/color]\n[color=000000]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
+            if self.use_tb and score == 151:
+                score = "Tablebase [b]1-0[/b]"
+            elif self.use_tb and score == -151:
+                score = "Tablebase [b]0-1[/b]"
+            else:
+                score = "[b]{0}[/b]".format(score)
+
+            return first_mv, move_list, "[color=000000]%s     [i][ref=%s]Stop[/ref][/i][/color]\n[color=000000]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
         # else:
         #     print "no score/var"
         #     print variation
@@ -1679,7 +1686,6 @@ class Chess_app(App):
             elif self.engine_mode == ENGINE_PLAY:
                 if self.engine_computer_move:
                     best_move, self.ponder_move = self.parse_bestmove(line)
-    #                            print "best_move:{0}".format(best_move)
     #                            print "ponder_move:{0}".format(self.ponder_move)
 
                     depth, score = self.get_score(line)
@@ -1688,9 +1694,8 @@ class Chess_app(App):
                     # self.update_time(color=self.engine_comp_color)
                     if best_move:
                         # print "comp best_move:{0}".format(best_move)
-                        self.speak_move(best_move)
+                        # self.speak_move(best_move)
 
-                        # print sf.toSAN([best_move])
                         # self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
 
                         self.process_move(best_move)
@@ -1924,7 +1929,6 @@ class Chess_app(App):
             # print "move:{0}".format(move)
             if self.is_promotion(move):
                 move = self.add_promotion_info(move)
-            self.add_try_variation(move)
 
             if self.engine_mode == ENGINE_PLAY:
                 if not self.engine_computer_move:
@@ -1936,12 +1940,14 @@ class Chess_app(App):
                     self.engine_computer_move = False
             if self.engine_mode == ENGINE_PLAY:
                 self.speak_move(move)
+                self.add_try_variation(move)
                 self.refresh_board(spoken=True)
             else:
+                self.add_try_variation(move)
                 self.refresh_board()
         except Exception, e:
             print e
-            # raise
+            raise
             # TODO: log error
 
     def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
@@ -2316,14 +2322,14 @@ class Chess_app(App):
                 # self.engine_running = True
             elif self.engine_mode == ENGINE_TRAINING:
                 sf.set_option('skill level', '17')
-                sf.go(depth=15)
+                sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), depth=15)
             else:
                 # print "computer_move: "
                 # print self.engine_computer_move
                 if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
                     # print "before go play"
                     # sf.go(movetime=10)
-                    sf.go(wtime=int(self.time_white*1000), btime=int(self.time_black*1000), winc=int(self.time_inc_white*1000), binc=int(self.time_inc_black*1000))
+                    sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), wtime=int(self.time_white*1000), btime=int(self.time_black*1000), winc=int(self.time_inc_white*1000), binc=int(self.time_inc_black*1000))
                     # print "Started engine"
                     # self.engine_running = True
 
