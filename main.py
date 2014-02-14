@@ -2288,6 +2288,7 @@ class Chess_app(App):
         # if self.engine_running:
         if self.engine_mode != ENGINE_PLAY:
             sf.stop()
+            sleep(0.05)
             # print self.chessboard_root.game_score()
 
         if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
