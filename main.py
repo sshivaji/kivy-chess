@@ -112,7 +112,7 @@ ENGINE_TRAINING = "engine_training"
 
 ENGINE_HEADER = '[b][color=000000][ref='+ENGINE_ANALYSIS\
                 +']Analysis[/ref][ref='+ENGINE_PLAY+']\n\n' \
-                'Play vs Comp [/ref][ref='+ENGINE_TRAINING+']\n\nTrain[/ref][/color][/b]'
+                'play vs Comp [/ref][ref='+ENGINE_TRAINING+']\n\nTrain[/ref][/color][/b]'
 
 MOVE_OUT_FORMAT = '[color=000000][b]{0}[/b][/color]'
 
@@ -892,8 +892,8 @@ class Chess_app(App):
         # print sf.getOptions()
         sf.set_option('OwnBook','true')
         # Make this an option later
-        self.use_tb = False
-        # sf.set_option('SyzygyPath', '/Users/shiv/chess/tb/syzygy')
+        self.use_tb = True
+        sf.set_option('SyzygyPath', '/Users/shiv/chess/tb/syzygy')
 
         self.book_display = True
         self.database_display = False
@@ -988,7 +988,7 @@ class Chess_app(App):
 
         self.info_grid.add_widget(self.game_score)
 
-        self.engine_score = ScrollableLabel(ENGINE_HEADER, ref_callback=self.add_eng_moves)
+        self.engine_score = ScrollableLabel(ENGINE_HEADER, font_name='img/DroidChess.ttf', font_size=16, ref_callback=self.add_eng_moves)
         self.info_grid.add_widget(self.engine_score)
 
         # book_grid = GridLayout(cols = 2, rows = 1, spacing = 1, size_hint=(0.3, 1))

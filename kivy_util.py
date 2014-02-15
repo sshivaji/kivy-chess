@@ -6,14 +6,14 @@ from kivy.graphics import Color
 from data_grid import DataGrid
 
 class ScrollableLabel(ScrollView):
-    def __init__(self, text, ref_callback=None, *args, **kwargs):
+    def __init__(self, text, ref_callback=None, font_name='DroidSans', *args, **kwargs):
         super(ScrollableLabel, self).__init__(*args, **kwargs)
         with self.canvas.before:
             Color(0.7, .02, 0.91, mode="hsv")
             # Color(.69, .93, .93)
             self.background = Rectangle(size_hint=(1,1))
 
-        self.label = Label(text=text, font_size=13, font_name='DroidSans', size_hint_y=None, pos_hint={'x':0.1, 'y':0.1})
+        self.label = Label(text=text, font_size=13, font_name=font_name, size_hint_y=None, pos_hint={'x':0.1, 'y':0.1})
         self.label.bind(texture_size=self._set_summary_height, on_ref_press=ref_callback)
         # self.label.text=text
         self.label.markup=True
