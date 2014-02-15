@@ -892,8 +892,8 @@ class Chess_app(App):
         # print sf.getOptions()
         sf.set_option('OwnBook','true')
         # Make this an option later
-        self.use_tb = True
-        sf.set_option('SyzygyPath', '/Users/shiv/chess/tb/syzygy')
+        self.use_tb = False
+       # sf.set_option('SyzygyPath', '/Users/shiv/chess/tb/syzygy')
 
         self.book_display = True
         self.database_display = False
