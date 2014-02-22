@@ -122,7 +122,7 @@ class PgnFile(object):
                         print pos
                         print "token:"
                         print token
-                        return
+                        # return
                     else:
                         print pos
                         print token
