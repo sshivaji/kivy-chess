@@ -103,9 +103,9 @@ ENGINE_PLAY_STOP = "play_stop"
 
 ENGINE_PLAY_HINT = "play_hint"
 
-YOURTURN_MENU = "[color=000000][size=24][i]{2}[/i]    [b]{3}[/b][/size]\nYour turn\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint: {0}\nScore: {1} [/ref][/color]"
+YOURTURN_MENU = u"[color=000000][size=24][i]{2}[/i]    [b]{3}[/b][/size]\nYour turn\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint: {0}\nScore: {1} [/ref][/color]"
 
-TRAIN_MENU = "[color=000000][b]{0}    [/b]{1}[b]\n\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref][/b][/color]"
+TRAIN_MENU = u"[color=000000][b]{0}    [/b]{1}[b]\n\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref][/b][/color]"
 
 ENGINE_ANALYSIS = "engine_analysis"
 
@@ -648,7 +648,7 @@ class Chess_app(App):
                     if not self.ponder_move_san and self.ponder_move and self.ponder_move!='(none)':
                         # print self.ponder_move
                         try:
-                            self.ponder_move_san = self.get_san([self.ponder_move])[0]
+                            self.ponder_move_san = self.get_san([self.ponder_move],figurine=True)[0]
                             # print "ponder_move_san: "+self.ponder_move_san
                             # if not self.spoke_hint:
                             #     self.spoke_hint = True
@@ -1590,7 +1590,9 @@ class Chess_app(App):
         move_list = sf.to_san(prev_fen, moves)
         if figurine:
             for i, m in enumerate(move_list):
+                # print m
                 m = self.convert_san_to_figurine(m)
+                # print m
                 move_list[i] = m
         return move_list
 
@@ -1738,7 +1740,9 @@ class Chess_app(App):
                     # print "training_score : {0}".format(score)
                     random_depth = random.randint(3, 10)
                     # print "random_depth : {0}".format(random_depth)
-                    san = self.get_san([best_move])[0]
+                    # print "san :{0}".format(best_move)
+                    san = self.get_san([best_move], figurine=True)[0]
+                    # print san
                     # print "san :{0}".format(san)
                     score = ""
                     if self.train_eng_score.has_key(random_depth):
