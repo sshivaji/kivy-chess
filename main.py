@@ -66,6 +66,7 @@ from libchess import Position
 # from chess.libchess import MoveError
 from libchess import Move
 from chess.game import Game
+from chess.game_node import PIECE_FONT_MAP
 from chess import PgnFile
 #from chess import PgnIndex
 from chess.game_node import GameNode
@@ -112,7 +113,7 @@ ENGINE_TRAINING = "engine_training"
 
 ENGINE_HEADER = '[b][color=000000][ref='+ENGINE_ANALYSIS\
                 +']Analysis[/ref][ref='+ENGINE_PLAY+']\n\n' \
-                'play vs Comp [/ref][ref='+ENGINE_TRAINING+']\n\nTrain[/ref][/color][/b]'
+                'Play vs Comp [/ref][ref='+ENGINE_TRAINING+']\n\nTrain[/ref][/color][/b]'
 
 MOVE_OUT_FORMAT = '[color=000000][b]{0}[/b][/color]'
 
@@ -947,7 +948,7 @@ class Chess_app(App):
         back_bt.bind(on_press=self.back)
         self.b.add_widget(back_bt)
 
-        self.prev_move = Label(markup=True)
+        self.prev_move = Label(markup=True,font_name='img/CAChess.ttf',font_size=16)
         self.b.add_widget(self.prev_move)
 
         fwd_bt = Button(markeup=True)
@@ -984,11 +985,12 @@ class Chess_app(App):
         self.info_grid = GridLayout(cols=1, rows=4, spacing=5, padding=(8, 8), orientation='vertical')
         self.info_grid.add_widget(self.b)
 
-        self.game_score = ScrollableLabel('[color=000000][b]%s[/b][/color]' % GAME_HEADER, ref_callback=self.go_to_move)
+        self.game_score = ScrollableLabel('[color=000000][b]%s[/b][/color]' % GAME_HEADER, font_name='img/CAChess.ttf',
+                                          font_size=17, ref_callback=self.go_to_move)
 
         self.info_grid.add_widget(self.game_score)
 
-        self.engine_score = ScrollableLabel(ENGINE_HEADER, font_name='img/DroidChess.ttf', font_size=16, ref_callback=self.add_eng_moves)
+        self.engine_score = ScrollableLabel(ENGINE_HEADER, font_name='img/CAChess.ttf', font_size=17, ref_callback=self.add_eng_moves)
         self.info_grid.add_widget(self.engine_score)
 
         # book_grid = GridLayout(cols = 2, rows = 1, spacing = 1, size_hint=(0.3, 1))
@@ -1484,12 +1486,10 @@ class Chess_app(App):
         elif value == ENGINE_PLAY_HINT:
             self.show_hint = True
         else:
-            for i, mv in enumerate(self.engine_score.raw):
-                if i >= 1:
-                    break
-                p = Position(self.chessboard.position)
-                move = p.get_move_from_san(mv)
-                self.add_try_variation(move)
+            for i, mv in enumerate(self.engine_score.can_line):
+                # if i >= 1:
+                #     break
+                self.add_try_variation(mv)
 
         self.refresh_board()
 
@@ -1584,15 +1584,21 @@ class Chess_app(App):
                 score = score_type + " " + str(score)
         return depth, score
 
-    def get_san(self, moves):
+    def get_san(self, moves, figurine=False):
         prev_fen = sf.get_fen(self.pyfish_fen,  self.chessboard.get_prev_moves())
-            # print prev_fen
-        return sf.to_san(prev_fen, moves)
 
-    def parse_score(self, line):
+        move_list = sf.to_san(prev_fen, moves)
+        if figurine:
+            for i, m in enumerate(move_list):
+                m = self.convert_san_to_figurine(m)
+                move_list[i] = m
+        return move_list
+
+    def parse_score(self, line, figurine=False):
         # print line
         depth, score = self.get_score(line)
         move_list = []
+        can_move_list = []
         tokens = line.split()
         # print tokens
         first_mv = None
@@ -1602,7 +1608,8 @@ class Chess_app(App):
             # prev_fen = sf.get_fen(self.pyfish_fen,  self.chessboard.get_prev_moves())
             # # print prev_fen
             # move_list = sf.to_san(prev_fen, tokens[line_index+1:])
-            move_list = self.get_san(tokens[line_index+1:])
+            move_list = self.get_san(tokens[line_index+1:], figurine=True)
+            can_move_list = tokens[line_index+1:]
             # print move_list
         except ValueError, e:
             line_index = -1
@@ -1618,7 +1625,7 @@ class Chess_app(App):
             else:
                 score = "[b]{0}[/b]".format(score)
 
-            return first_mv, move_list, "[color=000000]%s     [i][ref=%s]Stop[/ref][/i][/color]\n[color=000000]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
+            return first_mv, can_move_list, move_list, "[color=000000]%s     [i][ref=%s]Stop[/ref][/i][/color]\n[color=000000]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
         # else:
         #     print "no score/var"
         #     print variation
@@ -1662,10 +1669,10 @@ class Chess_app(App):
         if self.use_engine:
             output = self.engine_score
             if self.engine_mode == ENGINE_ANALYSIS:
-                out_score = self.parse_score(line)
+                out_score = self.parse_score(line, figurine=True)
                 #out_score = None
                 if out_score:
-                    first_mv, raw_line, cleaned_line = out_score
+                    first_mv, can_line, raw_line, cleaned_line = out_score
 
                     if self.dgt_connected and self.dgtnix:
                         # Display score on the DGT clock
@@ -1683,6 +1690,8 @@ class Chess_app(App):
                         output.children[0].text = cleaned_line
                     if raw_line:
                         output.raw = raw_line
+                    if can_line:
+                        output.can_line = can_line
             elif self.engine_mode == ENGINE_PLAY:
                 if self.engine_computer_move:
                     best_move, self.ponder_move = self.parse_bestmove(line)
@@ -2162,6 +2171,7 @@ class Chess_app(App):
                     pos = Position(fen)
                     move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
                     san = move_info.san
+
                     # print "color:{0}".format(color)
 
                     if color == "bold":
@@ -2235,6 +2245,11 @@ class Chess_app(App):
             sq.remove_piece()
             # Update game notation
 
+    def convert_san_to_figurine(self, san):
+        for k, v in PIECE_FONT_MAP.iteritems():
+            san = san.replace(k, v)
+        return san
+
     def refresh_board(self, update = True, spoken = False):
         # print "refresh_board"
         # flatten lists into one list of 64 squares
@@ -2252,16 +2267,18 @@ class Chess_app(App):
             # add in a dot if is now white to move
             if self.chessboard.position.turn == 'w':
                 filler = '.'
-            self.prev_move.text = "{0}.{1} {2}".format(self.chessboard.half_move_num/2, filler, self.chessboard.san)
+            san = self.chessboard.san
+            san = self.convert_san_to_figurine(san)
+            self.prev_move.text = u"{0}.{1} {2}".format(self.chessboard.half_move_num/2, filler, san)
 
 
 #        all_moves = self.chessboard.getAllTextMoves()
 #        print self.chessboard_root.game_score()
 
         if update:
-            all_moves = self.chessboard_root.game_score()
+            all_moves = self.chessboard_root.game_score(figurine=True)
             if all_moves:
-                self.game_score.children[0].text="[color=000000]{0}[/color]".format(all_moves)
+                self.game_score.children[0].text=u"[color=000000]{0}[/color]".format(all_moves)
         if self.variation_dropdown:
             self.variation_dropdown.dismiss()
         if len(self.chessboard.variations) > 1:

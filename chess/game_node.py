@@ -19,7 +19,16 @@ from Queue import Queue
 
 import libchess as chess
 import types
-import re
+
+# Chess assistant free ttf map
+PIECE_FONT_MAP = {
+    "K": u'\u00a2',
+    "Q": u'\u00a3',
+    "B": u'\u00a5',
+    "N": u'\u00a4',
+    "R": u'\u00a6',
+    "P": u'\u00a7'
+}
 
 class GameNode(object):
     """A node in the tree of a game.
@@ -338,8 +347,8 @@ class GameNode(object):
         """
         del self.__variations[self.index(variation)]
 
-    def walk_tree_iterative(self, variation, move, format="normal", score=""):
-        score = ""
+    def walk_tree_iterative(self, variation, move, format="normal", score="", figurine=False):
+        score = u''
         q = [variation]
         # tree_depth = 1
 
@@ -364,7 +373,12 @@ class GameNode(object):
                 if move % 2 == 0:
                     score += "{0}. ".format((move + 1)/2,)
                 if el.__san:
-                    score += "{0} ".format(el.__san,)
+                    san = el.__san.encode('utf-8')
+                    if figurine:
+                        for k, v in PIECE_FONT_MAP.iteritems():
+                            san = san.replace(k, v)
+
+                    score += u"{0} ".format(san,)
                 else:
                     score += "{0} ".format(el.move)
 
@@ -454,7 +468,7 @@ class GameNode(object):
         return self.header_score
 
 
-    def game_score(self, format="ref"):
+    def game_score(self, format="ref", figurine=False):
         header = "view"
         if format == "file":
             header = "file"
@@ -463,7 +477,7 @@ class GameNode(object):
         if not result:
             result = '*'
 
-        body = self.walk_tree_iterative(self.__variations, move=0, format=format)
+        body = self.walk_tree_iterative(self.__variations, move=0, format=format, figurine=figurine)
         # if format == "file":
         #     body = re.sub("(.{80})", "\\1\n", body, 0, re.DOTALL)
 
