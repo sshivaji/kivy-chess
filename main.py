@@ -743,7 +743,7 @@ class Chess_app(App):
             #     db_index = self.ref_db_index_book
 
             self.load_game_from_index(int(game_index))
-            self.go_to_move(None, current_pos_hash)
+            self.go_to_move(None, str(current_pos_hash))
             # self.db_sort_criteria = db_sort_criteria
             # print args[0].selection[0].text
         # self.selected_item = args[0].selection[0].text
@@ -1227,7 +1227,10 @@ class Chess_app(App):
         self.root.current='settings'
 
     def go_to_move(self, label, pos_hash):
+        # print pos_hash
+        # print "finding move"
         if GameNode.positions.has_key(pos_hash):
+            # print "Move found!"
             self.chessboard = GameNode.positions[pos_hash]
             self.refresh_board()
 
