@@ -83,7 +83,6 @@ import leveldb
 
 INDEX_TOTAL_GAME_COUNT = "total_game_count"
 
-INDEX_FILE_POS = "last_pos"
 
 DELETE_FROM_USER_BOOK = "delete_from_user_book"
 
@@ -182,6 +181,8 @@ LIGHT_SQUARE = "img/board/light/"
 MERIDA = "img/pieces/Merida-shadow/"
 
 INITIAL_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+INDEX_FILE_POS = "last_pos"
+
 DB_HEADER_MAP = {"White": 0, "WhiteElo": 1, "Black": 2,
                  "BlackElo": 3, "Result": 4, "Date": 5, "Event": 6, "Site": 7,
                  "ECO": 8, INDEX_FILE_POS:9, "FEN":10}
@@ -741,7 +742,7 @@ class Chess_app(App):
             # db_index = self.db_index_book
             # if self.use_ref_db:
             #     db_index = self.ref_db_index_book
-
+            # print "game_index: {0}".format(game_index)
             self.load_game_from_index(int(game_index))
             self.go_to_move(None, str(current_pos_hash))
             # self.db_sort_criteria = db_sort_criteria
@@ -1321,7 +1322,6 @@ class Chess_app(App):
 
         return ref_tags
 
-
     def get_grid_click_input(self, mv, ref_move):
         if ref_move:
             mv = ref_move
@@ -1343,24 +1343,18 @@ class Chess_app(App):
         rand_game_num = random.randint(0, total_games)
         self.load_game_from_index(rand_game_num)
 
-
-    def load_game_from_index(self, game_num):
-        db_index = self.db_index_book
+    def get_game(self, db_index, game_num):
         if self.use_ref_db:
             db_index = self.ref_db_index_book
-
         first = db_index.Get("game_{0}_data".format(game_num)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
-
-#        if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
-#            second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
-
-#        second = self.pgn_index["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
+        #        if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
+        #            second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
+        #        second = self.pgn_index["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
         try:
-            second = db_index.Get("game_{0}_data".format(game_num+1)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
+            second = db_index.Get("game_{0}_data".format(game_num + 1)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
             second = int(second)
         except KeyError:
             second = None
-
         with open(db_index.Get("pgn_filename")) as f:
             first = int(first)
 
@@ -1377,6 +1371,11 @@ class Chess_app(App):
         # f.close()
         # print lines
         games = PgnFile.open_text(lines)
+        return games
+
+    def load_game_from_index(self, game_num):
+        db_index = self.db_index_book
+        games = self.get_game(db_index, game_num)
         # print games[0].'White'
         self.chessboard = games[0]
         # print self.chessboard.headers.headers

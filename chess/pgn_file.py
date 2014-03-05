@@ -22,7 +22,7 @@ import re
 tag_regex = re.compile(r"\[([A-Za-z0-9]+)\s+\"(.*)\"\]")
 movetext_regex = re.compile(r"""
     (\;.*?[\n\r])
-    |(\{.*?[^\\]\})
+    |(\{.*?[^\\]?\})
     |(\$[0-9]+)
     |(\()
     |(\))
@@ -69,14 +69,18 @@ class PgnFile(object):
         variation_stack = [game]
         in_variation = False
         start_comment = ""
+        # print "movetext:"
+        # print movetext
         for match in movetext_regex.finditer(movetext):
             token = match.group(0)
+            # print "token: {0}".format(token)
             if token in ["1-0", "0-1", "1/2-1/2", "*"] and len(variation_stack) == 1:
                 game.headers["Result"] = token
             elif token.startswith("%"):
                 # Ignore rest of line comments.
                 pass
             elif token.startswith("{"):
+                # print "token: {0}".format(token)
                 if in_variation:
                     variation_stack[-1].comment += token[1:-1].strip()
                 elif len(variation_stack) == 1:
@@ -126,7 +130,7 @@ class PgnFile(object):
                     else:
                         print pos
                         print token
-                        raise
+                        # raise
 
 
 #                     pass
