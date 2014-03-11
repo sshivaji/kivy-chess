@@ -314,6 +314,26 @@ class ChessBoardWidget(Widget):
         self._draw_pieces(skip=self._moving_piece_from)
         self._draw_piece(self._moving_piece, pos)
 
+    def mouse_callback(self, instance, value):
+        touch = Touch(value[0],value[1])
+        square = self._to_square(touch)
+        # print "square: {0}".format(square)
+        if 0 <= square <= 63:
+            # move = self.square_name(self._moving_piece_from) + self.square_name(square)
+            # print move
+            legal_move_list = sf.legal_moves(self.fen)
+            to_square_list = []
+            for m in legal_move_list:
+                if m.startswith(self.square_name(square)):
+                    to_square_name = m[-2:]
+                    to_square_list.append(self.square_number(to_square_name))
+
+
+            self._draw_board()
+            self._draw_pieces()
+            for sq in to_square_list:
+                self._highlight_square(sq)
+
     def __init__(self, app, **kwargs):
         super(ChessBoardWidget, self).__init__(**kwargs)
         self.app = app
@@ -331,6 +351,8 @@ class ChessBoardWidget(Widget):
         self._background_textures = { 'K':'k', 'Q':'l', 'R':'m', 'B':'n', 'N':'o', 'P':'p', 'k':'q', 'q':'r', 'r':'s', 'b':'t', 'n':'u', 'p':'v'}
         self._front_textures = { 'K':'H', 'Q':'I', 'R':'J', 'B':'K', 'N':'L', 'P':'M', 'k':'N', 'q':'O', 'r':'P', 'b':'Q', 'n':'R', 'p':'S'}
         self.bind(_moving_piece_pos=self._animate_piece)
+        Window.bind(mouse_pos=self.mouse_callback)
+
 
     @property
     def game(self):
@@ -369,15 +391,24 @@ class ChessBoardWidget(Widget):
         else:
             self._animate_from_origin = False
 
+
+        tomove = self.fen.split()[1]
         if square == -1:
             self._moving_piece = '.'
             return
         else:
-            self._moving_piece = self.position[square]
+            if tomove == "w":
+                if self.position[square].isupper():
+                    self._moving_piece = self.position[square]
+            else:
+                if self.position[square].islower():
+                    self._moving_piece = self.position[square]
         self._moving_piece_from = square
         self._draw_board()
         self._draw_pieces()
         self._highlight_square(square)
+        # sf.go(self.fen, [], movestogo = ['e2e3','e2e4'], depth=1)
+
 
         touch.pop()
         return ret
@@ -404,18 +435,23 @@ class ChessBoardWidget(Widget):
 
     def on_touch_up(self, touch):
         square = self._to_square(touch)
-        if square == -1 or self._moving_piece == '.' or square == self._moving_piece_from or not self.collide_point(*touch.pos):
+        # square == self._moving_piece_from or square == -1
+        if square == -1 or self._moving_piece == '.' or not self.collide_point(*touch.pos):
             return
         move = self.square_name(self._moving_piece_from) + self.square_name(square)
+        # print move
         if move in sf.legal_moves(self.fen):
+            # print "legal check"
             self._moving_piece_pos[0], self._moving_piece_pos[1] = self._to_coordinates(
                 self._moving_piece_from) if self._animate_from_origin else (touch.x - self.square_size / 2, touch.y - self.square_size / 2)
             animation = Animation(_moving_piece_pos=self._to_coordinates(square), duration=0.1, t='in_out_sine')
             animation.move = move
             animation.bind(on_complete=self._update_after_animation)
             animation.start(self)
+
             # print('MOVE : ' + move)
         else:
+            # print "illegal move"
             if (self._moving_piece == 'P' and square < 8) or (self._moving_piece == 'p' and square > 55):
                 #Show a popup for promotions
                 layout = GridLayout(cols=2)
@@ -449,6 +485,12 @@ class ChessBoardWidget(Widget):
 
         touch.ungrab(self)
         return True
+
+class Touch(object):
+    def __init__(self, x, y, **kwargs):
+        self.x = x
+        self.y = y
+
 
 class DBGame(object):
     def __init__(self, id, **kwargs):
@@ -1932,6 +1974,8 @@ class Chess_app(App):
         # if not self.uci_engine:
             # self.start_engine()
         # # while True:
+        # print line
+        # print "got line"
         # print line
         if self.use_engine:
             output = self.engine_score
