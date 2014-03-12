@@ -231,10 +231,13 @@ class ChessBoardWidget(Widget):
             animation.fen=g.current_fen()
             animation.bind(on_complete=self._update_after_animation)
             animation.start(self)
+            self.app.hint_move = None
+
         else:
             self.set_position(g.current_fen())
             self._draw_board()
             self._draw_pieces()
+            self.app.hint_move = None
         #print "END UPDATE"
         #print "END UPDATE"
 
@@ -340,8 +343,8 @@ class ChessBoardWidget(Widget):
                         sf.go(self.fen, [], searchmoves=relevant_moves, depth=1)
                     else:
                         self.app.hint_move = None
-                    self._draw_board()
-                    self._draw_pieces()
+                    # self._draw_board()
+                    # self._draw_pieces()
         else:
             if not self.app.use_engine:
                 self._draw_board()
@@ -466,13 +469,17 @@ class ChessBoardWidget(Widget):
         move = self.square_name(self._moving_piece_from) + self.square_name(square)
         # print "empty_piece move"
         # print move
+        # print "to_sqaures:"
+        # print self.square_name(square)
+
+
         if self._moving_piece == '.':
             # print "."
             # print move
             if move[:2] == 'h9':
                 # Not legal square
                 # print "not legal square"
-                if not self.app.use_engine:
+                if not self.app.use_engine and self.app.hint_move:
                     if self.square_name(square) in self.app.hint_move:
                         move = self.app.hint_move
                 else:
@@ -483,18 +490,20 @@ class ChessBoardWidget(Widget):
                     return
             else:
                 move = move[-2:] + move[:2]
-
+        # print "move_after_some-processing: {0}".format(move)
         if self.square_name(self._moving_piece_from) == self.square_name(square):
             if not self.app.use_engine:
-                if self.square_name(square) in self.app.hint_move:
+                if self.app.hint_move and self.square_name(square) in self.app.hint_move:
                     move = self.app.hint_move
             else:
                 if self.square_name(square) in self.app.engine_highlight_move:
                     move = self.app.engine_highlight_move
+        # print "move after hint : {0}".format(move)
         if move:
             if move[:2] != self.square_name(square) and move[-2:] != self.square_name(square):
+                # print "hint move not applicable"
                 return
-            if self.square_name(self._moving_piece_from) == self.square_name(square):
+            if move[:2] == move[-2:]:
                 return
 
         else:
@@ -508,6 +517,8 @@ class ChessBoardWidget(Widget):
             animation.move = move
             animation.bind(on_complete=self._update_after_animation)
             animation.start(self)
+            self.app.hint_move = None
+
 
             # print('MOVE : ' + move)
         else:
@@ -523,6 +534,7 @@ class ChessBoardWidget(Widget):
                         # print "Promotion move"
                         # print move
                         self.app.process_move(move)
+                        self.app.hint_move = None
                         # self._game.moves.append(move)
                     else:
                         self._draw_board()
@@ -2043,8 +2055,12 @@ class Chess_app(App):
             # parse best move
             self.hint_move, self.ponder_move = self.parse_bestmove(line)
             # self.grid._update_position(None, self.chessboard.position.fen)
-            self.grid._highlight_square_name(self.hint_move[-2:])
-            self.grid._highlight_square_name(self.hint_move[:2])
+            if self.hint_move:
+                # print "hint_move : {0}".format(self.hint_move)
+                self.grid._draw_board()
+                self.grid._draw_pieces()
+                self.grid._highlight_square_name(self.hint_move[-2:])
+                self.grid._highlight_square_name(self.hint_move[:2])
 
         # print line
 
@@ -2055,12 +2071,12 @@ class Chess_app(App):
                 #out_score = None
                 if out_score:
                     first_mv, can_line, raw_line, cleaned_line = out_score
-                    self.grid._draw_board()
-                    self.grid._draw_pieces()
-
-                    self.grid._highlight_square_name(first_mv[-2:])
-                    self.grid._highlight_square_name(first_mv[:2])
-                    self.engine_highlight_move = first_mv
+                    if first_mv:
+                        self.grid._draw_board()
+                        self.grid._draw_pieces()
+                        self.grid._highlight_square_name(first_mv[-2:])
+                        self.grid._highlight_square_name(first_mv[:2])
+                        self.engine_highlight_move = first_mv
 
                     if self.dgt_connected and self.dgtnix:
                         # Display score on the DGT clock
