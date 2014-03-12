@@ -463,7 +463,7 @@ class ChessBoardWidget(Widget):
 
         move = self.square_name(self._moving_piece_from) + self.square_name(square)
         # print "empty_piece move"
-        print move
+        # print move
         if self._moving_piece == '.':
             # print "."
             # print move
@@ -497,10 +497,6 @@ class ChessBoardWidget(Widget):
             else:
                 if self.square_name(square) in self.app.engine_highlight_move:
                     move = self.app.engine_highlight_move
-
-
-        # print "move:"
-        # print move
 
         if move:
             if move[:2] != self.square_name(square) and move[-2:] != self.square_name(square):
@@ -553,6 +549,7 @@ class ChessBoardWidget(Widget):
 
         touch.ungrab(self)
         return True
+
 
 class Touch(object):
     def __init__(self, x, y, **kwargs):
