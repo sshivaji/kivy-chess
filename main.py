@@ -255,6 +255,10 @@ class ChessBoardWidget(Widget):
     def _to_coordinates(self, square):
         return (square % 8) * self.square_size + self.bottom_left[0], (7 - (square / 8)) * self.square_size + self.bottom_left[1]
 
+    def _highlight_square_name(self, square_name):
+        square = self.square_number(square_name)
+        self._highlight_square(square)
+
     def _highlight_square(self, square):
         with self.canvas:
             Color(*self.highlight_color)
@@ -319,20 +323,32 @@ class ChessBoardWidget(Widget):
         square = self._to_square(touch)
         # print "square: {0}".format(square)
         if 0 <= square <= 63:
-            # move = self.square_name(self._moving_piece_from) + self.square_name(square)
-            # print move
-            legal_move_list = sf.legal_moves(self.fen)
-            to_square_list = []
-            for m in legal_move_list:
-                if m.startswith(self.square_name(square)):
-                    to_square_name = m[-2:]
-                    to_square_list.append(self.square_number(to_square_name))
-
-
-            self._draw_board()
-            self._draw_pieces()
-            for sq in to_square_list:
-                self._highlight_square(sq)
+            if not self.app.use_engine:
+                hint_move = self.app.hint_move
+                if not hint_move or self.square_name(square) not in hint_move:
+                    legal_move_list = sf.legal_moves(self.fen)
+                    relevant_moves = []
+                    for m in legal_move_list:
+                        # print "legal_move:"
+                        # print m
+                        if m.endswith(self.square_name(square)) or m.startswith(self.square_name(square)):
+                                relevant_moves.append(m)
+                    # print "relevant_moves:"
+                    # print relevant_moves
+                    if len(relevant_moves) > 0:
+                        # print "Starting search"
+                        sf.go(self.fen, [], searchmoves=relevant_moves, depth=1)
+                    else:
+                        self.app.hint_move = None
+                    self._draw_board()
+                    self._draw_pieces()
+        else:
+            if not self.app.use_engine:
+                self._draw_board()
+                self._draw_pieces()
+                self.app.hint_move = None
+            # for sq in to_square_list:
+            #     self._highlight_square(sq)
 
     def __init__(self, app, **kwargs):
         super(ChessBoardWidget, self).__init__(**kwargs)
@@ -407,8 +423,12 @@ class ChessBoardWidget(Widget):
         self._draw_board()
         self._draw_pieces()
         self._highlight_square(square)
-        # sf.go(self.fen, [], movestogo = ['e2e3','e2e4'], depth=1)
 
+        if self.app.hint_move:
+            if self.position[square]=='.':
+                self._highlight_square(self.square_number(self.app.hint_move[:2]))
+            else:
+                self._highlight_square(self.square_number(self.app.hint_move[-2:]))
 
         touch.pop()
         return ret
@@ -418,10 +438,10 @@ class ChessBoardWidget(Widget):
             return
         self._draw_board()
         self._draw_pieces(skip=self._moving_piece_from)
-        self._highlight_square(self._moving_piece_from)
         # self._highlight_square(self._moving_piece_to)
 
         self._draw_piece(self._moving_piece, (touch.x - self.square_size / 2, touch.y - self.square_size / 2))
+        self._highlight_square(self._moving_piece_from)
 
         return super(ChessBoardWidget, self).on_touch_move(touch)
 
@@ -435,11 +455,47 @@ class ChessBoardWidget(Widget):
 
     def on_touch_up(self, touch):
         square = self._to_square(touch)
-        # square == self._moving_piece_from or square == -1
-        if square == -1 or self._moving_piece == '.' or not self.collide_point(*touch.pos):
+        if square == -1 or not self.collide_point(*touch.pos):
             return
+
+        # if self.app.use_engine and self._moving_piece == '.':
+        #     return
+
         move = self.square_name(self._moving_piece_from) + self.square_name(square)
+        # print "empty_piece move"
         # print move
+        if self._moving_piece == '.':
+            # print "."
+            # print move
+            if move[:2] == 'h9':
+                # Not legal square
+                # print "not legal square"
+                if not self.app.use_engine:
+                    if self.square_name(self._moving_piece_from) or self.square_name(square) in self.app.hint_move:
+                        move = self.app.hint_move
+                if move[:2] == 'h9':
+                    return
+            else:
+                move = move[-2:] + move[:2]
+            # print ". piece"
+            # print move
+        # print "pre_move:"
+        # print move
+        if self.square_name(self._moving_piece_from) == self.square_name(square):
+            if not self.app.use_engine:
+                if self.square_name(self._moving_piece_from) or self.square_name(square) in self.app.hint_move:
+                    move = self.app.hint_move
+
+
+        # print "move:"
+        # print move
+
+        if move:
+            if move[:2] != self.square_name(square) and move[-2:] != self.square_name(square):
+                return
+        else:
+            return
+
         if move in sf.legal_moves(self.fen):
             # print "legal check"
             self._moving_piece_pos[0], self._moving_piece_pos[1] = self._to_coordinates(
@@ -1175,6 +1231,8 @@ class Chess_app(App):
         self.chessboard = Game()
         self.chessboard_root = self.chessboard
         self.ponder_move = None
+        self.hint_move = None
+
         self.ponder_move_san = None
         self.eng_eval = None
 
@@ -1723,6 +1781,7 @@ class Chess_app(App):
         # sleep(1)
 
         self.use_engine = False
+        self.hint_move = None
         self.engine_score.children[0].text = ENGINE_HEADER
         # self.refresh_board()
         # print "Stopping engine"
@@ -1771,6 +1830,7 @@ class Chess_app(App):
                 self.stop_engine()
             else:
                 self.use_engine = True
+                self.hint_move = None
                 self.engine_mode = value
                 if value == ENGINE_PLAY:
                     self.engine_computer_move = True
@@ -1788,14 +1848,15 @@ class Chess_app(App):
                 self.engine_mode = None
                 # print "Stopping train"
                 self.use_engine = False
+                self.hint_move = None
                 self.engine_score.children[0].text = ENGINE_HEADER
             # self.refresh_board()
         elif value == ENGINE_PLAY_HINT:
             self.show_hint = True
         else:
             for i, mv in enumerate(self.engine_score.can_line):
-                # if i >= 1:
-                #     break
+                if i >= 1:
+                    break
                 self.add_try_variation(mv)
 
         self.refresh_board()
@@ -1971,12 +2032,16 @@ class Chess_app(App):
             # os.system("say " + spoken_san)
 
     def update_engine_output(self, line):
-        # if not self.uci_engine:
-            # self.start_engine()
-        # # while True:
+        if not self.use_engine:
+            # print line
+            # parse best move
+            self.hint_move, self.ponder_move = self.parse_bestmove(line)
+            # self.grid._update_position(None, self.chessboard.position.fen)
+            self.grid._highlight_square_name(self.hint_move[-2:])
+            self.grid._highlight_square_name(self.hint_move[:2])
+
         # print line
-        # print "got line"
-        # print line
+
         if self.use_engine:
             output = self.engine_score
             if self.engine_mode == ENGINE_ANALYSIS:
@@ -1984,6 +2049,10 @@ class Chess_app(App):
                 #out_score = None
                 if out_score:
                     first_mv, can_line, raw_line, cleaned_line = out_score
+                    self.grid._draw_board()
+                    self.grid._draw_pieces()
+                    self.grid._highlight_square_name(first_mv[-2:])
+                    self.grid._highlight_square_name(first_mv[:2])
 
                     if self.dgt_connected and self.dgtnix:
                         # Display score on the DGT clock
