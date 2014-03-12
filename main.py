@@ -491,10 +491,12 @@ class ChessBoardWidget(Widget):
             else:
                 if self.square_name(square) in self.app.engine_highlight_move:
                     move = self.app.engine_highlight_move
-
         if move:
             if move[:2] != self.square_name(square) and move[-2:] != self.square_name(square):
                 return
+            if self.square_name(self._moving_piece_from) == self.square_name(square):
+                return
+
         else:
             return
 
