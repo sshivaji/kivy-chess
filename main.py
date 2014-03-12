@@ -463,7 +463,7 @@ class ChessBoardWidget(Widget):
 
         move = self.square_name(self._moving_piece_from) + self.square_name(square)
         # print "empty_piece move"
-        # print move
+        print move
         if self._moving_piece == '.':
             # print "."
             # print move
@@ -471,8 +471,12 @@ class ChessBoardWidget(Widget):
                 # Not legal square
                 # print "not legal square"
                 if not self.app.use_engine:
-                    if self.square_name(self._moving_piece_from) or self.square_name(square) in self.app.hint_move:
+                    if self.square_name(square) in self.app.hint_move:
                         move = self.app.hint_move
+                else:
+                    if self.square_name(square) in self.app.engine_highlight_move:
+                        move = self.app.engine_highlight_move
+
                 if move[:2] == 'h9':
                     return
             else:
@@ -481,10 +485,18 @@ class ChessBoardWidget(Widget):
             # print move
         # print "pre_move:"
         # print move
+        # print "from_sq_name: "
+        # print self.square_name(self._moving_piece_from)
+        # print "square_name:"
+        # print self.square_name(square)
+
         if self.square_name(self._moving_piece_from) == self.square_name(square):
             if not self.app.use_engine:
-                if self.square_name(self._moving_piece_from) or self.square_name(square) in self.app.hint_move:
+                if self.square_name(square) in self.app.hint_move:
                     move = self.app.hint_move
+            else:
+                if self.square_name(square) in self.app.engine_highlight_move:
+                    move = self.app.engine_highlight_move
 
 
         # print "move:"
@@ -1232,6 +1244,7 @@ class Chess_app(App):
         self.chessboard_root = self.chessboard
         self.ponder_move = None
         self.hint_move = None
+        self.engine_highlight_move = None
 
         self.ponder_move_san = None
         self.eng_eval = None
@@ -2051,8 +2064,10 @@ class Chess_app(App):
                     first_mv, can_line, raw_line, cleaned_line = out_score
                     self.grid._draw_board()
                     self.grid._draw_pieces()
+
                     self.grid._highlight_square_name(first_mv[-2:])
                     self.grid._highlight_square_name(first_mv[:2])
+                    self.engine_highlight_move = first_mv
 
                     if self.dgt_connected and self.dgtnix:
                         # Display score on the DGT clock
