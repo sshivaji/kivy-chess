@@ -424,11 +424,12 @@ class ChessBoardWidget(Widget):
         self._draw_pieces()
         self._highlight_square(square)
 
-        if self.app.hint_move:
-            if self.position[square]=='.':
-                self._highlight_square(self.square_number(self.app.hint_move[:2]))
-            else:
-                self._highlight_square(self.square_number(self.app.hint_move[-2:]))
+        if self.app.use_engine:
+            if self.app.hint_move:
+                if self.position[square] == '.':
+                    self._highlight_square(self.square_number(self.app.hint_move[:2]))
+                else:
+                    self._highlight_square(self.square_number(self.app.hint_move[-2:]))
 
         touch.pop()
         return ret
@@ -442,6 +443,7 @@ class ChessBoardWidget(Widget):
 
         self._draw_piece(self._moving_piece, (touch.x - self.square_size / 2, touch.y - self.square_size / 2))
         self._highlight_square(self._moving_piece_from)
+        # print touch
 
         return super(ChessBoardWidget, self).on_touch_move(touch)
 
@@ -481,14 +483,6 @@ class ChessBoardWidget(Widget):
                     return
             else:
                 move = move[-2:] + move[:2]
-            # print ". piece"
-            # print move
-        # print "pre_move:"
-        # print move
-        # print "from_sq_name: "
-        # print self.square_name(self._moving_piece_from)
-        # print "square_name:"
-        # print self.square_name(square)
 
         if self.square_name(self._moving_piece_from) == self.square_name(square):
             if not self.app.use_engine:
