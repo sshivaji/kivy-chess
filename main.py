@@ -508,20 +508,9 @@ class ChessBoardWidget(Widget):
         square = self._to_square(touch)
         if square == -1 or not self.collide_point(*touch.pos):
             return
-
-        # if self.app.use_engine and self._moving_piece == '.':
-        #     return
-
         move = self.square_name(self._moving_piece_from) + self.square_name(square)
-        # print "empty_piece move"
-        # print move
-        # print "to_sqaures:"
-        # print self.square_name(square)
-
 
         if self._moving_piece == '.':
-            # print "."
-            # print move
             if move[:2] == 'h9':
                 # Not legal square
                 # print "not legal square"
@@ -531,7 +520,6 @@ class ChessBoardWidget(Widget):
                 else:
                     if self.square_name(square) in self.app.engine_highlight_move:
                         move = self.app.engine_highlight_move
-
                 if move[:2] == 'h9':
                     return
             else:
@@ -542,7 +530,7 @@ class ChessBoardWidget(Widget):
                 if self.app.hint_move and self.square_name(square) in self.app.hint_move:
                     move = self.app.hint_move
             else:
-                if self.square_name(square) in self.app.engine_highlight_move:
+                if self.app.engine_highlight_move and self.square_name(square) in self.app.engine_highlight_move:
                     move = self.app.engine_highlight_move
         # print "move after hint : {0}".format(move)
         if move:
@@ -551,7 +539,6 @@ class ChessBoardWidget(Widget):
                 return
             if move[:2] == move[-2:]:
                 return
-
         else:
             return
 
@@ -564,8 +551,6 @@ class ChessBoardWidget(Widget):
             animation.bind(on_complete=self._update_after_animation)
             animation.start(self)
             self.app.hint_move = None
-
-
             # print('MOVE : ' + move)
         else:
             # print "illegal move"
@@ -889,7 +874,6 @@ class Chess_app(App):
                     # Arduino(serial_connection('/dev/tty.usbmodem411')).digitalRead(13)
 
                     # time.sleep(3)
-                    self.lcd_lock = RLock()
                     self.lcd = Lcd([8, 9, 4, 5, 6, 7 ], [16, 2], connection=connection)
                     self.lcd.printString('Kivy Chess')
 
@@ -1343,6 +1327,8 @@ class Chess_app(App):
         self.ponder_move = None
         self.hint_move = None
         self.engine_highlight_move = None
+        self.lcd_lock = RLock()
+        self.lcd = None
 
         self.ponder_move_san = None
         self.eng_eval = None
@@ -2144,14 +2130,14 @@ class Chess_app(App):
         return fmt_time_a+" "*num_spaces+fmt_time_b
 
 
-    def speak_move(self, best_move, immediate=False):
+    def speak_move(self, san, immediate=False):
         if self.is_mac():
             # print "best_move:{0}".format(best_move)
             # print sf.position()
-            try:
-                san = self.get_san([best_move])[0]
-            except IndexError:
-                return
+            # try:
+            #     san = self.get_san([best_move])[0]
+            # except IndexError:
+            #     return
             # print san
             spoken_san = san
             spoken_san = spoken_san.replace('O-O-O', ' castles long ')
@@ -2519,8 +2505,9 @@ class Chess_app(App):
                 else:
                     self.engine_computer_move = False
             if self.engine_mode == ENGINE_PLAY:
-                self.speak_move(move)
+                san = self.get_san([move])[0]
                 self.add_try_variation(move)
+                self.speak_move(san)
                 self.refresh_board(spoken=True)
             else:
                 self.add_try_variation(move)
