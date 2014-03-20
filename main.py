@@ -1,4 +1,6 @@
+from threading import Thread, RLock
 import traceback
+import sys
 import random
 
 import kivy
@@ -77,10 +79,11 @@ from chess.game_header_bag import GameHeaderBag
 import stockfish as sf
 
 # DGT
-from dgt.dgtnix import *
 import os
 import datetime
 import leveldb
+from pydgt import DGTBoard
+from pydgt import FEN
 
 INDEX_TOTAL_GAME_COUNT = "total_game_count"
 
@@ -187,7 +190,50 @@ INDEX_FILE_POS = "last_pos"
 DB_HEADER_MAP = {"White": 0, "WhiteElo": 1, "Black": 2,
                  "BlackElo": 3, "Result": 4, "Date": 5, "Event": 6, "Site": 7,
                  "ECO": 8, INDEX_FILE_POS:9, "FEN":10}
+
+arduino = False
+try:
+    import nanpy
+    arduino = True
+except ImportError:
+    arduino = False
+
 config = ConfigParser()
+
+class KThread(Thread):
+    """A subclass of threading.Thread, with a kill()
+  method."""
+    def __init__(self, *args, **keywords):
+        Thread.__init__(self, *args, **keywords)
+        self.killed = False
+
+    def start(self):
+        """Start the thread."""
+        self.__run_backup = self.run
+        self.run = self.__run      # Force the Thread to install our trace.
+        Thread.start(self)
+
+    def __run(self):
+        """Hacked run function, which installs the
+    trace."""
+        sys.settrace(self.globaltrace)
+        self.__run_backup()
+        self.run = self.__run_backup
+
+    def globaltrace(self, frame, why, arg):
+        if why == 'call':
+            return self.localtrace
+        else:
+            return None
+
+    def localtrace(self, frame, why, arg):
+        if self.killed:
+            if why == 'line':
+                raise SystemExit()
+        return self.localtrace
+
+    def kill(self):
+        self.killed = True
 
 class ChessBoardWidget(Widget):
     _moving_piece_pos = ListProperty([0, 0])
@@ -799,7 +845,6 @@ class Chess_app(App):
         self.open_db_popup()
 
     def generate_settings(self):
-
         def go_to_setup_board(value):
             self.root.current = 'setup_board'
 
@@ -812,6 +857,11 @@ class Chess_app(App):
         def on_dgt_sound(instance, value):
             self.dgt_clock_sound = value
 
+        def poll_dgt():
+            self.dgt_thread = KThread(target=self.dgtnix.poll)
+            self.dgt_thread.daemon = True
+            self.dgt_thread.start()
+
         def on_dgt_connect(instance, value):
         #            print "bind"
         #            print instance
@@ -819,24 +869,51 @@ class Chess_app(App):
         #            print self.dgt_dev_input.text
         # Load the library
             if not value:
-                if self.dgtnix:
-                    self.dgtnix.Close()
+                # if self.dgtnix:
+                #     self.dgtnix.Close()
                 self.dgt_connected = False
+                self.dgt_thread.kill()
+                # if self.dgt_thread.isAlive():
+                #     self.dgt_thread._Thread__stop()
 
             else:
-                try:
-                    self.dgtnix = dgtnix("dgt/libdgtnix.so")
-                    self.dgtnix.SetOption(dgtnix.DGTNIX_DEBUG, dgtnix.DGTNIX_DEBUG_ON)
-                    # Initialize the driver with port argv[1]
-                    result=self.dgtnix.Init(self.dgt_dev_input.text)
-                    if result < 0:
-                        print "Unable to connect to the device on {0}".format(self.dgt_dev_input.text)
-                    else:
-                        print "The board was found"
-                        self.dgtnix.update()
-                        self.dgt_connected = True
-                except DgtnixError, e:
-                    print "unable to load the library : %s " % e
+                self.dgtnix = DGTBoard(self.dgt_dev_input.text, send_board=False)
+                self.dgtnix.subscribe(self.dgt_probe)
+                poll_dgt()
+                if arduino:
+                    from nanpy import SerialManager
+                    from nanpy.lcd import Lcd
+                    from nanpy import Arduino
+                    from nanpy import serial_manager
+                    connection = SerialManager(device='/dev/cu.usbmodem411')
+                    # Arduino(serial_connection('/dev/tty.usbmodem411')).digitalRead(13)
+
+                    # time.sleep(3)
+                    self.lcd_lock = RLock()
+                    self.lcd = Lcd([8, 9, 4, 5, 6, 7 ], [16, 2], connection=connection)
+                    self.lcd.printString('Kivy Chess')
+
+
+                # poll_dgt(board)
+                # board.send_message_to_clock(['a','y',' ','d','g', 't'], False, False)
+                # board.poll()
+
+                # self.dgtnix = dgtnix("dgt/libdgtnix.so")
+                # self.dgtnix.SetOption(dgtnix.DGTNIX_DEBUG, dgtnix.DGTNIX_DEBUG_ON)
+                # # Initialize the driver with port argv[1]
+                # result=self.dgtnix.Init(self.dgt_dev_input.text)
+                # if result < 0:
+                #     print "Unable to connect to the device on {0}".format(self.dgt_dev_input.text)
+                # else:
+                #     print "The board was found"
+                #     self.dgtnix.update()
+                #     self.dgt_connected = True
+                if not self.dgtnix:
+                    print "Unable to connect to the device on {0}".format(self.device)
+                else:
+                    print "The board was found"
+                    self.dgt_connected = True
+
 
         settings_panel = Settings() #create instance of Settings
 
@@ -998,24 +1075,40 @@ class Chess_app(App):
 
         return grid
 
+    # def try_dgt_legal_moves(self, from_fen, to_fen):
+    #     dgt_first_tok = to_fen.split()[0]
+    #     for m in Position(from_fen).get_legal_moves():
+    #         pos = Position(from_fen)
+    #         mi = pos.make_move(m)
+    #         cur_first_tok = str(pos).split()[0]
+    #         if cur_first_tok == dgt_first_tok:
+    #             self.dgt_fen = to_fen
+    #             self.process_move(move=str(m))
+    #
+    #             return True
+
     def try_dgt_legal_moves(self, from_fen, to_fen):
-        dgt_first_tok = to_fen.split()[0]
-        for m in Position(from_fen).get_legal_moves():
-            pos = Position(from_fen)
-            mi = pos.make_move(m)
-            cur_first_tok = str(pos).split()[0]
-            if cur_first_tok == dgt_first_tok:
+        to_fen_first_tok = to_fen.split()[0]
+        for m in sf.legal_moves(from_fen):
+            cur_fen = sf.get_fen(from_fen,[m])
+            cur_fen_first_tok = str(cur_fen).split()[0]
+#            print "cur_token:{0}".format(cur_fen_first_tok)
+#            print "to_token:{0}".format(to_fen_first_tok)
+            if cur_fen_first_tok == to_fen_first_tok:
                 self.dgt_fen = to_fen
                 self.process_move(move=str(m))
-
                 return True
 
 
     def update_clocks(self, *args):
         if self.engine_mode == ENGINE_PLAY:
+            if self.lcd and self.computer_move_FEN_reached:
+                self.write_to_lcd(self.format_time_strs(self.time_white, self.time_black),
+                    clear = True)
             if self.engine_computer_move:
                 self.update_time(color=self.engine_comp_color)
                 self.engine_score.children[0].text = THINKING_TIME.format(self.format_time_str(self.time_white), self.format_time_str(self.time_black))
+
             else:
                 self.update_player_time()
                 if self.show_hint:
@@ -1039,37 +1132,35 @@ class Chess_app(App):
                 else:
                     self.engine_score.children[0].text = YOURTURN_MENU.format("hidden", "hidden", self.format_time_str(self.time_white), self.format_time_str(self.time_black))
 
+                # Print engine move on DGT XL clock
 
-    def dgt_probe(self, *args):
-        if self.dgt_connected and self.dgtnix:
-            try:
-                new_dgt_fen = self.dgtnix.GetFen()
-    #            print "length of new dgt fen: {0}".format(len(new_dgt_fen))
-    #            print "new_dgt_fen just obtained: {0}".format(new_dgt_fen)
-                if self.dgt_fen and new_dgt_fen:
-                    if new_dgt_fen!=self.dgt_fen:
-                        if not self.try_dgt_legal_moves(self.chessboard.position.fen, new_dgt_fen):
-                            if self.chessboard.previous_node:
-    #                            print new_dgt_fen
-    #                            print self.chessboard.previous_node.position.fen
-                                dgt_fen_start = new_dgt_fen.split()[0]
-                                prev_fen_start = self.chessboard.previous_node.position.fen.split()[0]
-                                if dgt_fen_start == prev_fen_start:
-                                    self.back('dgt')
-                        if self.engine_mode != ENGINE_PLAY and self.engine_mode != ENGINE_ANALYSIS:
-                            if len(self.chessboard.variations)>0:
-                                self.dgtnix.SendToClock(self.format_move_for_dgt(str(self.chessboard.variations[0].move)), self.dgt_clock_sound, False)
+    def dgt_probe(self, attr, *args):
+        if attr.type == FEN:
+            new_dgt_fen = attr.message
+#            print "length of new dgt fen: {0}".format(len(new_dgt_fen))
+#            print "new_dgt_fen just obtained: {0}".format(new_dgt_fen)
+            if self.dgt_fen and new_dgt_fen:
+                if new_dgt_fen != self.dgt_fen:
+                    if self.engine_mode == ENGINE_PLAY:
+                        self.computer_move_FEN_reached = False
 
-                elif new_dgt_fen:
-                    self.dgt_fen = new_dgt_fen
-                if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
-                    # Print engine move on DGT XL clock
-                    self.dgtnix.SendToClock(self.format_str_for_dgt(self.format_time_str(self.time_white,separator='')+self.format_time_str(self.time_black, separator='')), False, True)
+                    if not self.try_dgt_legal_moves(self.chessboard.position.fen, new_dgt_fen):
+                        dgt_fen_start = new_dgt_fen.split()[0]
+                        curr_fen_start = self.chessboard.position.fen.split()[0]
+                        if curr_fen_start == dgt_fen_start and self.engine_mode == ENGINE_PLAY:
+                            self.computer_move_FEN_reached = True
 
-            except Exception:
-                    self.dgt_connected = False
-                    self.dgtnix=None
-                    print traceback.format_exc()
+                        if self.chessboard.previous_node:
+                            prev_fen_start = self.chessboard.previous_node.position.fen.split()[0]
+                            if dgt_fen_start == prev_fen_start:
+                                self.back('dgt')
+                    if self.engine_mode != ENGINE_PLAY and self.engine_mode != ENGINE_ANALYSIS:
+                        if len(self.chessboard.variations)>0:
+                            if self.lcd:
+                                self.write_to_lcd(str(self.chessboard.variations[0].san),clear=True)
+
+            elif new_dgt_fen:
+                self.dgt_fen = new_dgt_fen
 
     def update_grid_border(self, instance, width, height):
         with self.grid.canvas.before:
@@ -1208,6 +1299,8 @@ class Chess_app(App):
         self.start_pos_changed = False
         self.engine_mode = None
         self.engine_computer_move = True
+        self.computer_move_FEN_reached = False
+
         self.engine_comp_color = 'b'
         self.engine_level = '20'
         self.time_last = None
@@ -1306,7 +1399,7 @@ class Chess_app(App):
 #            self.pgn_index = None
             print "cannot import leveldb userbook"
 
-        Clock.schedule_interval(self.dgt_probe, 1)
+        # Clock.schedule_interval(self.dgt_probe, 1)
         Clock.schedule_interval(self.update_clocks, 1)
 
         grandparent = GridLayout(size_hint=(1,1), cols=1, orientation = 'vertical')
@@ -1846,6 +1939,7 @@ class Chess_app(App):
 #            print "Bringing up engine menu"
             if self.use_engine:
                 self.stop_engine()
+                self.engine_mode = None
             else:
                 self.use_engine = True
                 self.hint_move = None
@@ -1996,7 +2090,7 @@ class Chess_app(App):
             # prev_fen = sf.get_fen(self.pyfish_fen,  self.chessboard.get_prev_moves())
             # # print prev_fen
             # move_list = sf.to_san(prev_fen, tokens[line_index+1:])
-            move_list = self.get_san(tokens[line_index+1:], figurine=True)
+            move_list = self.get_san(tokens[line_index+1:], figurine=figurine)
             can_move_list = tokens[line_index+1:]
             # print move_list
         except ValueError, e:
@@ -2020,8 +2114,34 @@ class Chess_app(App):
         #     print score
 
 
-    def format_time_str(self,time_a, separator='.'):
-        return "%d%s%02d" % (int(time_a/60), separator, int(time_a%60))
+    # def format_time_str(self,time_a, separator='.'):
+    #     return "%d%s%02d" % (int(time_a/60), separator, int(time_a%60))
+    #
+    def format_time_str(self, time_a):
+
+        seconds = time_a
+        # print "seconds: {0}".format(seconds)
+        m, s = divmod(seconds, 60)
+        # print "m : {0}".format(m)
+        # print "s : {0}".format(s)
+
+        if m >=60:
+            h, m = divmod(m, 60)
+            return "%d:%02d:%02d" % (h, m, s)
+        else:
+            # print "%02d:%02d" % (m, s)
+            return "%02d:%02d" % (m, s)
+
+    def format_time_strs(self, time_a, time_b, disp_length=16):
+        fmt_time_a = self.format_time_str(time_a)
+        fmt_time_b = self.format_time_str(time_b)
+
+        head_len = len(fmt_time_a)
+        tail_len = len(fmt_time_b)
+
+        num_spaces = disp_length - head_len - tail_len
+
+        return fmt_time_a+" "*num_spaces+fmt_time_b
 
 
     def speak_move(self, best_move, immediate=False):
@@ -2051,6 +2171,7 @@ class Chess_app(App):
 
     def update_engine_output(self, line):
         if not self.use_engine:
+            # print "not using engine"
             # print line
             # parse best move
             self.hint_move, self.ponder_move = self.parse_bestmove(line)
@@ -2077,25 +2198,58 @@ class Chess_app(App):
                         self.grid._highlight_square_name(first_mv[-2:])
                         self.grid._highlight_square_name(first_mv[:2])
                         self.engine_highlight_move = first_mv
+                        if cleaned_line:
+                            # print "Cleaned line"
+                            # print cleaned_line
+                            output.children[0].text = cleaned_line
+                        if raw_line:
+                            output.raw = raw_line
+                        if can_line:
+                            output.can_line = can_line
 
-                    if self.dgt_connected and self.dgtnix:
-                        # Display score on the DGT clock
-                        depth, score = str(self.get_score(line))
-                        if score.startswith("mate"):
-                            score = score[4:]
-                            score = "m "+score
-                        score = score.replace("-", "n")
-                        self.dgtnix.SendToClock(self.format_str_for_dgt(score), False, True)
-                        if first_mv:
-                            sleep(1)
-                            self.dgtnix.SendToClock(self.format_move_for_dgt(first_mv), False, False)
+                        if self.dgt_connected and self.dgtnix:
+                            tokens = line.split()
 
-                    if cleaned_line:
-                        output.children[0].text = cleaned_line
-                    if raw_line:
-                        output.raw = raw_line
-                    if can_line:
-                        output.can_line = can_line
+                            line_index = tokens.index('pv')
+                            if line_index > -1:
+                                pv = self.get_san(tokens[line_index+1:])
+                                # print "pv : {0}".format(pv)
+
+                                if len(pv)>0:
+
+                                        # first_mv = pv[0]
+                                    # if self.use_tb and score == 151:
+                                    #     score = 'TB: 1-0'
+                                    # if self.use_tb and score == -151:
+                                    #     score = 'TB: 0-1'
+                                        # separator = ".." if self.turn == BLACK else ""
+                                        # print self.generate_move_list(pv, eval=score, start_move_num=len(self.move_list)+1)
+
+                        # output = self.generate_move_list(pv, eval=score, start_move_num=len(self.move_list)+1)
+                                    depth, score = self.get_score(line)
+
+                                    output = self.generate_move_list(pv, eval=score, start_move_num=self.chessboard.half_move_num)
+                                    self.write_to_lcd(output, clear=True)
+
+                                    # print "Using DGT"
+                                    # Display score on the DGT clock
+                                    # print line
+                                    # depth, score = self.get_score(line)
+                                    # print "depth:{0}".format(depth)
+                                    #
+                                    # print "score:{0}".format(score)
+
+                            # if score.startswith("mate"):
+                            #     score = score[4:]
+                            #     score = "m "+score
+                            # score = score.replace("-", "n")
+                            # self.dgtnix.SendToClock(self.format_str_for_dgt(score), False, True)
+                                # sleep(1)
+                            # output = self.generate_move_list(raw_line, eval=score, start_move_num=self.chessboard.half_move_num)
+                                # print output
+                                # self.dgtnix.SendToClock(self.format_move_for_dgt(first_mv), False, False)
+                    # print "Before cleaned line"
+
             elif self.engine_mode == ENGINE_PLAY:
                 if self.engine_computer_move:
                     best_move, self.ponder_move = self.parse_bestmove(line)
@@ -2106,20 +2260,13 @@ class Chess_app(App):
                         self.eng_eval = score
                     # self.update_time(color=self.engine_comp_color)
                     if best_move:
-                        # print "comp best_move:{0}".format(best_move)
-                        # self.speak_move(best_move)
-
-                        # self.chessboard = self.chessboard.add_variation(Move.from_uci(best_move))
-
-                        self.process_move(best_move)
-                        # self.engine_computer_move = False
-                        # self.engine_running = False
-
-                        # self.refresh_board(spoken=True)
-                        self.time_add_increment(color=self.engine_comp_color)
                         if self.dgt_connected and self.dgtnix:
-                            # Print engine move on DGT XL clock
-                            self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), self.dgt_clock_sound, False)
+                            san_move = self.get_san([best_move])[0]
+                            self.write_to_lcd(san_move, clear=True)
+                        self.process_move(best_move)
+                        self.time_add_increment(color=self.engine_comp_color)
+
+                            # self.dgtnix.SendToClock(self.format_move_for_dgt(best_move), self.dgt_clock_sound, False)
                         self.show_hint = False
                         self.spoke_hint = False
                         self.ponder_move_san = None
@@ -2153,11 +2300,29 @@ class Chess_app(App):
                     self.train_eng_score = {}
 
 
-        # else:
-        #     print line
-        #     best_move, self.ponder_move = self.parse_bestmove(line)
-        #     if best_move:
-        #         self.engine_running = False
+    def write_to_lcd(self, message, clear = False):
+        with self.lcd_lock:
+            if len(message) > 32:
+                message = message[:32]
+            if len(message) > 16 and "\n" not in message:
+                # Append "\n"
+                message = message[:16]+"\n"+message[16:]
+            # lcd.printString("                ", 0, 0)
+            # lcd.printString("                ", 1, 0)
+            if clear:
+                self.lcd.printString("                ", 0, 0)
+                self.lcd.printString("                ", 0, 1)
+
+                # lcd.printString("      ",0,1)
+            if "\n" in message:
+                first, second = message.split("\n")
+                # print first
+                # print second
+                self.lcd.printString(first, 0, 0)
+                self.lcd.printString(second, 0, 1)
+            else:
+                self.lcd.printString(message, 0, 0)
+            sleep(0.1)
 
     def format_str_for_dgt(self, s):
         while len(s)>6:
@@ -2365,24 +2530,47 @@ class Chess_app(App):
             raise
             # TODO: log error
 
-    def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
+    def generate_move_list(self, all_moves, eval = None, start_move_num = 1):
         score = ""
-        if raw:
-             return " ".join(all_moves)
-        for i, mv in it.izip(it.count(start_move_num), all_moves):
-            move = "b"
-            if i % 2 == 1:
-                score += " %d. " % ((i + 1) / 2)
-                move = "w"
+        if start_move_num % 2 == 0:
+            turn_sep = '..'
+        else:
+            turn_sep = ''
+        if eval is not None:
+            score = str(eval) + " " + turn_sep
 
+        for i, mv in it.izip(it.count(start_move_num), all_moves):
+            # move = "b"
+            if i % 2 == 1:
+                score += "%d." % ((i + 1) / 2)
+                # move = "w"
             if mv:
-                if raw:
-                    score += " % s" % mv
-                    if i % 5 == 0:
-                        score += "\n"
-                else:
-                    score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
+            #                if raw:
+                score += "%s " % mv
+                # if i % 6 == 0:
+                #     score += "\n"
+                #                else:
+                #                    score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
         return score
+
+    # def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
+    #     score = ""
+    #     if raw:
+    #          return " ".join(all_moves)
+    #     for i, mv in it.izip(it.count(start_move_num), all_moves):
+    #         move = "b"
+    #         if i % 2 == 1:
+    #             score += " %d. " % ((i + 1) / 2)
+    #             move = "w"
+    #
+    #         if mv:
+    #             if raw:
+    #                 score += " % s" % mv
+    #                 if i % 5 == 0:
+    #                     score += "\n"
+    #             else:
+    #                 score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
+    #     return score
 
 
     def database_action(self):
