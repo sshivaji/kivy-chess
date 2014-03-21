@@ -468,6 +468,11 @@ class ChessBoardWidget(Widget):
             else:
                 if self.position[square].islower():
                     self._moving_piece = self.position[square]
+
+        if self._moving_piece == '.':
+            return
+        # print "moving_piece:"
+        # print self._moving_piece
         self._moving_piece_from = square
         self._draw_board()
         self._draw_pieces()
@@ -509,7 +514,7 @@ class ChessBoardWidget(Widget):
         if square == -1 or not self.collide_point(*touch.pos):
             return
         move = self.square_name(self._moving_piece_from) + self.square_name(square)
-
+        # print "move : {0}".format(move)
         if self._moving_piece == '.':
             if move[:2] == 'h9':
                 # Not legal square
@@ -518,7 +523,7 @@ class ChessBoardWidget(Widget):
                     if self.square_name(square) in self.app.hint_move:
                         move = self.app.hint_move
                 else:
-                    if self.square_name(square) in self.app.engine_highlight_move:
+                    if self.app.engine_highlight_move and self.square_name(square) in self.app.engine_highlight_move:
                         move = self.app.engine_highlight_move
                 if move[:2] == 'h9':
                     return
@@ -535,7 +540,7 @@ class ChessBoardWidget(Widget):
         # print "move after hint : {0}".format(move)
         if move:
             if move[:2] != self.square_name(square) and move[-2:] != self.square_name(square):
-                # print "hint move not applicable"
+                print "hint move not applicable"
                 return
             if move[:2] == move[-2:]:
                 return
@@ -553,7 +558,6 @@ class ChessBoardWidget(Widget):
             self.app.hint_move = None
             # print('MOVE : ' + move)
         else:
-            # print "illegal move"
             if (self._moving_piece == 'P' and square < 8) or (self._moving_piece == 'p' and square > 55):
                 #Show a popup for promotions
                 layout = GridLayout(cols=2)
@@ -579,6 +583,7 @@ class ChessBoardWidget(Widget):
                 popup = Popup(title='Promote to', content=layout, size_hint=(.5, .5))
                 popup.open()
             else:  # Illegal move
+                # print "illegal move sine wave"
                 self._moving_piece_pos[0] = touch.x - self.square_size / 2
                 self._moving_piece_pos[1] = touch.y - self.square_size / 2
                 animation = Animation(_moving_piece_pos=self._to_coordinates(self._moving_piece_from), duration=0.3,
