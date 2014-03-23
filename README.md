@@ -13,9 +13,17 @@ To Build
    7. Finally, Execute "kivy main.py"
 
 To load large databases
+   
+   1. Open via the UI in settings and select open reference database
+   
+To save large database location
+
    1. Go to the github.com/sshivaji/polyglot project.
-   2. Execute "sudo make install"
-   3. Copy/move polyglot leveldb index folder to kivy-chess/book/ 
+   2. Execute ``sudo make install``
+   3. Copy/move polyglot leveldb index folder to kivy-chess/book/
+ 
+    
+
    
 To use DGT support
    1. Go to the DGT folder.
