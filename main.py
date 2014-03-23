@@ -834,6 +834,52 @@ class Chess_app(App):
 
         self.open_db_popup()
 
+
+    def get_arduino_button(self):
+        if not self.arduino:
+            return False
+        try:
+            val = 1023
+            val = self.arduino.analogRead(0)
+        except nanpy.serialmanager.SerialManagerError:
+            pass
+
+        if val == 1023:
+            return "NONE"
+        elif -1 < val < 50:
+            return "RIGHT"
+        elif val < 100:
+            return "UP"
+        # elif val < 200:
+        #     return "UP"
+        elif val < 400:
+            return "DOWN"
+        elif val < 600:
+            return "LEFT"
+        elif val < 800:
+            return "SEL"
+        else:
+            return "KBD_FAULT"
+
+
+    def process_arduino_button(self, *args):
+        button_val = self.get_arduino_button()
+        if not button_val:
+            return False
+        if button_val == "RIGHT":
+            if len(self.chessboard.variations)>0:
+                self.write_to_lcd(str(self.chessboard.variations[0].san),clear=True)
+        elif button_val == "LEFT":
+            self.write_lcd_prev_move()
+        elif button_val == "UP":
+            self.add_eng_moves(None, ENGINE_ANALYSIS)
+            if not self.use_engine:
+                self.write_to_lcd("Engine stopped", clear=True)
+        # elif button_val == "DOWN":
+        #     self.add_eng_moves(None, ENGINE_ANALYSIS)
+
+
+
     def generate_settings(self):
         def go_to_setup_board(value):
             self.root.current = 'setup_board'
@@ -871,32 +917,17 @@ class Chess_app(App):
                 self.dgtnix.subscribe(self.dgt_probe)
                 poll_dgt()
                 if arduino:
-                    from nanpy import SerialManager
                     from nanpy.lcd import Lcd
-                    from nanpy import Arduino
-                    from nanpy import serial_manager
+                    from nanpy import SerialManager
+                    from nanpy import ArduinoApi
                     connection = SerialManager(device='/dev/cu.usbmodem411')
-                    # Arduino(serial_connection('/dev/tty.usbmodem411')).digitalRead(13)
+                    self.arduino = ArduinoApi(connection=connection)
+                    Clock.schedule_interval(self.process_arduino_button, 1)
 
                     # time.sleep(3)
                     self.lcd = Lcd([8, 9, 4, 5, 6, 7 ], [16, 2], connection=connection)
                     self.lcd.printString('Kivy Chess')
 
-
-                # poll_dgt(board)
-                # board.send_message_to_clock(['a','y',' ','d','g', 't'], False, False)
-                # board.poll()
-
-                # self.dgtnix = dgtnix("dgt/libdgtnix.so")
-                # self.dgtnix.SetOption(dgtnix.DGTNIX_DEBUG, dgtnix.DGTNIX_DEBUG_ON)
-                # # Initialize the driver with port argv[1]
-                # result=self.dgtnix.Init(self.dgt_dev_input.text)
-                # if result < 0:
-                #     print "Unable to connect to the device on {0}".format(self.dgt_dev_input.text)
-                # else:
-                #     print "The board was found"
-                #     self.dgtnix.update()
-                #     self.dgt_connected = True
                 if not self.dgtnix:
                     print "Unable to connect to the device on {0}".format(self.device)
                 else:
@@ -1123,6 +1154,20 @@ class Chess_app(App):
 
                 # Print engine move on DGT XL clock
 
+    def write_lcd_prev_move(self):
+        if self.chessboard.san:
+            if len(self.chessboard.variations) > 0:
+                message = " (Game)"
+            else:
+                message = " (New)"
+            self.write_to_lcd(self.get_prev_move(figurine=False) + message, clear=True)
+
+            # if self.chessboard.previous_node:
+            #     self.write_to_lcd(self.chessboard.san, clear=True)
+            # if len(self.chessboard.variations)>0:
+            #     if self.lcd:
+            #         self.write_to_lcd(str(self.chessboard.variations[0].san),clear=True)
+
     def dgt_probe(self, attr, *args):
         if attr.type == FEN:
             new_dgt_fen = attr.message
@@ -1144,9 +1189,8 @@ class Chess_app(App):
                             if dgt_fen_start == prev_fen_start:
                                 self.back('dgt')
                     if self.engine_mode != ENGINE_PLAY and self.engine_mode != ENGINE_ANALYSIS:
-                        if len(self.chessboard.variations)>0:
-                            if self.lcd:
-                                self.write_to_lcd(str(self.chessboard.variations[0].san),clear=True)
+                        if self.lcd:
+                            self.write_lcd_prev_move()
 
             elif new_dgt_fen:
                 self.dgt_fen = new_dgt_fen
@@ -1334,6 +1378,7 @@ class Chess_app(App):
         self.engine_highlight_move = None
         self.lcd_lock = RLock()
         self.lcd = None
+        self.arduino = None
 
         self.ponder_move_san = None
         self.eng_eval = None
@@ -2836,6 +2881,17 @@ class Chess_app(App):
             san = san.replace(k, v)
         return san
 
+    def get_prev_move(self, figurine = True):
+        filler = ''
+        # current turn is toggle from previous
+        # add in a dot if is now white to move
+        if self.chessboard.position.turn == 'w':
+            filler = '.'
+        san = self.chessboard.san
+        if figurine:
+            san = self.convert_san_to_figurine(san)
+        return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
+
     def refresh_board(self, update = True, spoken = False):
         # print "refresh_board"
         # flatten lists into one list of 64 squares
@@ -2852,14 +2908,7 @@ class Chess_app(App):
         # self.grid._update_position(self.chessboard.position.fen, "")
 
         if self.chessboard.san:
-            filler = ''
-            # current turn is toggle from previous
-            # add in a dot if is now white to move
-            if self.chessboard.position.turn == 'w':
-                filler = '.'
-            san = self.chessboard.san
-            san = self.convert_san_to_figurine(san)
-            self.prev_move.text = u"{0}.{1} {2}".format(self.chessboard.half_move_num/2, filler, san)
+            self.prev_move.text = self.get_prev_move()
 
 
 #        all_moves = self.chessboard.getAllTextMoves()
@@ -2896,7 +2945,6 @@ class Chess_app(App):
         if self.engine_mode != ENGINE_PLAY:
             sf.stop()
             sleep(0.05)
-            # print self.chessboard_root.game_score()
 
         if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
             self.custom_fen = self.chessboard_root.headers.headers['FEN']
@@ -2913,16 +2961,6 @@ class Chess_app(App):
                 # self.uci_engine.sendFen(self.custom_fen)
                 self.start_pos_changed = False
 
-            # if self.engine_running:
-            #     # sf.stop()
-            #         # sleep(1)
-            #     self.stop_engine()
-            #     while self.engine_running:
-            #         pass
-            #     self.use_engine = True
-
-            # print "self.engine_mode: "
-            # print self.engine_mode
             if self.engine_mode == ENGINE_ANALYSIS:
                 # if self.engine_running:
                 sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), infinite=True)
