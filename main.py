@@ -2332,7 +2332,7 @@ class Chess_app(App):
                     score = ""
                     if self.train_eng_score.has_key(random_depth):
                         score = self.train_eng_score[random_depth]
-                    output.children[0].text = TRAIN_MENU.format(san, score)
+                    output.children[0].text = TRAIN_MENU.format("", score)
                     self.train_eng_score = {}
 
 
