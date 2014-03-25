@@ -2312,7 +2312,7 @@ class Chess_app(App):
                 output.children[0].text = THINKING
                 best_move, self.ponder_move = self.parse_bestmove(line)
     #                            print "best_move:{0}".format(best_move)
-    #                            print "ponder_move:{0}".format(self.ponder_move)
+    #             print "ponder_move:{0}".format(self.ponder_move)
 
                 depth, score = self.get_score(line)
                 # print score
@@ -2332,7 +2332,11 @@ class Chess_app(App):
                     score = ""
                     if self.train_eng_score.has_key(random_depth):
                         score = self.train_eng_score[random_depth]
-                    output.children[0].text = TRAIN_MENU.format("", score)
+                    if self.ponder_move != "(none)":
+                        output.children[0].text = TRAIN_MENU.format(score, "Hidden")
+                    else:
+                        output.children[0].text = TRAIN_MENU.format(san, score)
+
                     self.train_eng_score = {}
 
 
