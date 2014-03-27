@@ -392,7 +392,7 @@ class ChessBoardWidget(Widget):
                     # self._draw_board()
                     # self._draw_pieces()
         else:
-            if not self.app.use_engine:
+            if not self.app.use_engine and self.app.hint_move:
                 self._draw_board()
                 self._draw_pieces()
                 self.app.hint_move = None
