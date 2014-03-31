@@ -820,34 +820,14 @@ class Chess_app(App):
             self.ref_db_index_book = leveldb.LevelDB(leveldb_path)
 
     def start_uci_engine_thread(self):
-        t = Thread(target=self.update_engine_output, args=(None,))
-        t.daemon = True # thread dies with the program
-        t.start()
-
-    def start_uci_engine(self, exe):
-#        self.use_engine = False
-        uci_engine = UCIEngine(exe)
-        uci_engine.start()
-        uci_engine.configure({})
-
-        # uci_engine.configure({'Threads': '1'})
-        # uci_engine.configure({'OwnBook': 'true'})
-        # uci_engine.configure({'Book File': 'gm1950.bin'})
-
-        #uci_engine.configure({'Use Sleeping Threads': 'false'})
-
-        # Wait until the uci connection is setup
-        while not uci_engine.ready:
-            uci_engine.registerIncomingData()
-
-        uci_engine.startGame()
-        # uci_engine.requestMove()
-        self.uci_engine=uci_engine
+        self.uci_engine_thread = KThread(target=self.update_external_engine_output, args=(None,))
+        self.uci_engine_thread.daemon = True # thread dies with the program
+        self.uci_engine_thread.start()
 
     def load_uci_engine(self, obj, f, mevent):
-
         if self.uci_engine:
             self.uci_engine.stop()
+
             self.other_engine_panel.clear_widgets()
             self.add_load_uci_engine_setting(self.other_engine_panel)
 
@@ -858,14 +838,13 @@ class Chess_app(App):
         # Wait until the uci connection is setup
         while not uci_engine.ready:
             uci_engine.registerIncomingData()
-        # print uci_engine.get_options()'
-        # try:
-        #     self.other_engine_panel.title = uci_engine.engine_info['name']
-        # except ValueError:
-        #     print "No engine name detected"
+        self.uci_engine=uci_engine
+        if self.uci_engine_thread:
+            self.uci_engine_thread.kill()
+
+        self.start_uci_engine_thread()
         uci_engine.startGame()
         # uci_engine.requestMove()
-        self.uci_engine=uci_engine
         # return
         self.gen_uci_menu_item("Name", uci_engine.engine_info['name'], self.other_engine_panel, internal = False)
 
@@ -1131,19 +1110,16 @@ class Chess_app(App):
         for k,v in sf.get_options().iteritems():
             self.gen_uci_menu_item(k, v, engine_panel)
 
-        # level_current = SettingItem(panel=engine_panel, title="Selected Level") #create instance of one item in left side panel
-        # uci_item_slider.add_widget(uci_item_label)
-
         board_panel.add_widget(setup_pos_item) # add item1 to left side panel
         board_panel.add_widget(setup_board_item)
 
         # engine_panel.add_widget(uci_item_label) # add item2 to left side panel
-
-        settings_panel.add_widget(board_panel)
-        settings_panel.add_widget(database_panel)
-        settings_panel.add_widget(dgt_panel)
-        settings_panel.add_widget(engine_panel) #add left side panel itself to the settings menu
-        settings_panel.add_widget(self.other_engine_panel) #add left side panel itself to the settings menu
+        if settings_panel.interface is not None:
+            settings_panel.interface.add_panel(board_panel, 'Board', 1)
+            settings_panel.interface.add_panel(database_panel, 'Database', 2)
+            settings_panel.interface.add_panel(dgt_panel, 'DGT', 3)
+            settings_panel.interface.add_panel(engine_panel, 'Engine', 4)
+            settings_panel.interface.add_panel(self.other_engine_panel, 'Other Engine', 5)
 
         def go_back():
             self.root.current = 'main'
@@ -1524,7 +1500,7 @@ class Chess_app(App):
 
         self.use_uci_engine = False
         self.uci_engine = None
-
+        self.uci_engine_thread = None
         self.use_ref_db = False
         self.stop_called = False
         # self.engine_running = False
@@ -2421,6 +2397,14 @@ class Chess_app(App):
                     self.speak_move_queue.append(spoken_san)
             # os.system("say " + spoken_san)
 
+
+    def update_external_engine_output(self, callback):
+        while True:
+            if self.uci_engine:
+                # Using external engine
+                print "External:  "
+                print self.uci_engine.getOutput()
+
     def update_engine_output(self, line):
         if not self.use_internal_engine:
             # print "not using engine"
@@ -2434,7 +2418,6 @@ class Chess_app(App):
                 self.grid._draw_pieces()
                 self.grid._highlight_square_name(self.hint_move[-2:])
                 self.grid._highlight_square_name(self.hint_move[:2])
-
 
         if self.use_internal_engine:
             # print line
@@ -3198,9 +3181,7 @@ class Chess_app(App):
             # sf.position('startpos', self.chessboard.get_prev_moves())
 
         if self.use_internal_engine:
-            if self.start_pos_changed:
-                # self.uci_engine.sendFen(self.custom_fen)
-                self.start_pos_changed = False
+
 
             if self.engine_mode == ENGINE_ANALYSIS:
                 # if self.engine_running:
@@ -3222,6 +3203,20 @@ class Chess_app(App):
 
                     # self.uci_engine.requestMove(wtime=self.time_white, btime=self.time_black,
                     #     winc=self.time_inc_white, binc=self.time_inc_black)
+
+        if self.uci_engine:
+            self.uci_engine.stop()
+            self.uci_engine.reportMoves(self.chessboard.get_prev_moves())
+            if self.start_pos_changed:
+                self.uci_engine.sendFen(self.pyfish_fen)
+                # self.start_pos_changed = False
+
+            if self.engine_mode == ENGINE_ANALYSIS:
+                self.uci_engine.requestAnalysis()
+
+        if self.start_pos_changed:
+            # self.uci_engine.sendFen(self.custom_fen)
+            self.start_pos_changed = False
 
         self.update_book_panel()
         # print self.speak_move_queue
