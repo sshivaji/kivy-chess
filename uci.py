@@ -21,7 +21,7 @@ class UCIOption:
 
 
 class UCIEngine:
-    def __init__(self):
+    def __init__(self, exe):
         """Constructor for an AI player.
 
         'name' is the name of the player (string).
@@ -45,10 +45,14 @@ class UCIEngine:
         self.STATE_CONNECTING = 'CONNECTING'
 
         self.options = {}
+        # self.set_options = ()
+        self.available_options = {}
+        self.engine_info = {}
         self.__queuedCommands = []
         self.eng_process = None
+        # "engines/stockfish4-mac-64"
         try:
-            self.eng_process = subprocess.Popen("engines/stockfish4-mac-64", stdout=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0)
+            self.eng_process = subprocess.Popen(exe, stdout=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0)
             self.buffer = Queue()
             t = Thread(target=self.enqueue_output, args=(self.eng_process, self.buffer))
             t.daemon = True # thread dies with the program
@@ -87,7 +91,7 @@ class UCIEngine:
         self.__inCallback = True
         buffer = ''
         try:
-            line = self.buffer.get(timeout=0.3) # or q.get(timeout=.1)
+            line = self.buffer.get() # or q.get(timeout=.1)
         except Empty:
             pass
         else: # got line
@@ -136,6 +140,16 @@ class UCIEngine:
         self.__sendCommand('ucinewgame')
         self.__sendCommand(self.__positionCommand)
 
+    def set_option(self, option, value):
+        self.configure({option : value})
+        self.available_options[option][0] = value
+
+    def get_option(self, option):
+        return self.available_options[option]
+
+    def get_options(self):
+        return self.available_options
+
     def configure(self, options):
         """ Options should be a dictionary
         """
@@ -149,7 +163,7 @@ class UCIEngine:
             #     continue
             # if option.value == '':
             #     continue
-            self.onOutgoingData('setoption name ' + k + ' value ' + v + '\n')
+            self.onOutgoingData('setoption name {0} value {1}\n'.format(k,v))
         self.onOutgoingData('isready\n')
 
     def requestAnalysis(self, whiteTime=30000, blackTime=30000):
@@ -161,7 +175,7 @@ class UCIEngine:
 #        self.__sendCommand('go wtime %d btime %d' % (whiteTime, blackTime))
         self.__sendCommand('go infinite')
 
-    def requestMove(self, movetime=None, wtime=30000, btime=30000, winc=None, binc=None):
+    def requestMove(self, movetime=None, wtime=5, btime=5, winc=0, binc=0):
         """
         """
         if movetime:
@@ -211,6 +225,10 @@ class UCIEngine:
                 return
 
             style = self.parseCommand(words[0], words[1:])
+            # print "line: "
+            # print line
+            # print "style: "
+            # print style
             if style is not None:
                 self.logText(line + '\n', style)
                 return
@@ -222,6 +240,14 @@ class UCIEngine:
         """
         """
         if command == 'id':
+            # e.g. id name Komodo64 3
+            try:
+                if args[0] not in self.engine_info:
+                    self.engine_info[args[0]] = " ".join(args[1:])
+
+            except ValueError:
+                print 'WARNING: Arguments on id: ' + str(args)
+                pass
             return 'info'
 
         elif command == 'uciok':
@@ -250,6 +276,37 @@ class UCIEngine:
             return 'info'
 
         elif command == 'option':
+            # print args
+            try:
+                name_idx = args.index("name")
+                type_idx = args.index("type")
+                name = " ".join(args[name_idx+1:type_idx])
+                # print "name : {0}".format(name)
+                type = args[type_idx+1]
+                # print "type: {0}".format(args[type_idx+1])
+                default_idx = args.index("default")
+                default = args[default_idx+1]
+                # print "default: {0}".format(args[default_idx+1])
+
+                if type == 'spin':
+                    min_idx = args.index("min")
+                    min = int(args[min_idx+1])
+                    max_idx = args.index("max")
+                    max = int(args[max_idx+1])
+                    # print "min : {0}".format(min)
+                    # print "max : {0}".format(max)
+                    if name not in self.available_options:
+                        self.available_options[name] = [default, 'spin', default, min, max]
+                else:
+                    if name not in self.available_options:
+                        self.available_options[name] = [default, type, default]
+
+                 # 'Ponder': ('true', 'check', 'true')
+                 # 'Space': ('100', 'spin', '100', 0, 200)
+                 # 'Search Log Filename': ('SearchLog.txt', 'string', 'SearchLog.txt')
+
+            except ValueError:
+                print 'WARNING: Arguments on option: ' + str(args)
             return 'info'
 
         return None
@@ -262,9 +319,9 @@ class UCIEngine:
             pass
 
 if __name__=="__main__":
-    uci_engine = UCIEngine()
+    uci_engine = UCIEngine("engines/stockfish4-mac-64")
     uci_engine.start()
-    uci_engine.configure()
+    uci_engine.configure({})
 
     # Wait until the uci connection is setup
     while not uci_engine.ready:

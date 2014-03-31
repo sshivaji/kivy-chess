@@ -9,6 +9,7 @@ from kivy.config import ConfigParser
 # from kivy.config import Config
 # Config.set('graphics', 'fullscreen', 0)
 # Config.write()
+from kivy.uix.checkbox import CheckBox
 
 from kivy_util import ScrollableLabel
 from kivy_util import ScrollableGrid
@@ -22,7 +23,7 @@ from kivy.core.window import Window
 from kivy.clock import Clock
 from kivy.uix.textinput import TextInput
 
-from kivy.properties import BooleanProperty, ObjectProperty, NumericProperty
+from kivy.properties import BooleanProperty, ObjectProperty, NumericProperty, StringProperty
 
 from kivy.uix.image import Image
 from kivy.uix.scatter import Scatter
@@ -55,6 +56,7 @@ import itertools as it
 from operator import attrgetter
 from time import sleep
 from chess import polyglot_opening_book
+from uci import UCIEngine
 
 THINKING_TIME = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]"
 THINKING = "[color=000000][b][size=16]Thinking..[/size][/b][/color]"
@@ -372,7 +374,7 @@ class ChessBoardWidget(Widget):
         square = self._to_square(touch)
         # print "square: {0}".format(square)
         if 0 <= square <= 63:
-            if not self.app.use_engine:
+            if not self.app.use_internal_engine:
                 hint_move = self.app.hint_move
                 if not hint_move or self.square_name(square) not in hint_move:
                     legal_move_list = sf.legal_moves(self.fen)
@@ -392,7 +394,7 @@ class ChessBoardWidget(Widget):
                     # self._draw_board()
                     # self._draw_pieces()
         else:
-            if not self.app.use_engine and self.app.hint_move:
+            if not self.app.use_internal_engine:
                 self._draw_board()
                 self._draw_pieces()
                 self.app.hint_move = None
@@ -478,7 +480,7 @@ class ChessBoardWidget(Widget):
         self._draw_pieces()
         self._highlight_square(square)
 
-        if self.app.use_engine:
+        if self.app.use_internal_engine:
             if self.app.hint_move:
                 if self.position[square] == '.':
                     self._highlight_square(self.square_number(self.app.hint_move[:2]))
@@ -519,7 +521,7 @@ class ChessBoardWidget(Widget):
             if move[:2] == 'h9':
                 # Not legal square
                 # print "not legal square"
-                if not self.app.use_engine and self.app.hint_move:
+                if not self.app.use_internal_engine and self.app.hint_move:
                     if self.square_name(square) in self.app.hint_move:
                         move = self.app.hint_move
                 else:
@@ -531,7 +533,7 @@ class ChessBoardWidget(Widget):
                 move = move[-2:] + move[:2]
         # print "move_after_some-processing: {0}".format(move)
         if self.square_name(self._moving_piece_from) == self.square_name(square):
-            if not self.app.use_engine:
+            if not self.app.use_internal_engine:
                 if self.app.hint_move and self.square_name(square) in self.app.hint_move:
                     move = self.app.hint_move
             else:
@@ -628,11 +630,13 @@ class DBSortCriteria(object):
         self.rank = rank
         self.asc = asc
 
+
 class DBHeaderButton(Button):
     def __init__(self, field, **kwargs):
         # self.bind(height = self._resize)
         super(DBHeaderButton, self).__init__(**kwargs)
         self.field = field
+
 
 class CustomListItemButton(ListItemButton):
     def __init__(self, **kwargs):
@@ -815,6 +819,59 @@ class Chess_app(App):
             self.db_popup.dismiss()
             self.ref_db_index_book = leveldb.LevelDB(leveldb_path)
 
+    def start_uci_engine_thread(self):
+        t = Thread(target=self.update_engine_output, args=(None,))
+        t.daemon = True # thread dies with the program
+        t.start()
+
+    def start_uci_engine(self, exe):
+#        self.use_engine = False
+        uci_engine = UCIEngine(exe)
+        uci_engine.start()
+        uci_engine.configure({})
+
+        # uci_engine.configure({'Threads': '1'})
+        # uci_engine.configure({'OwnBook': 'true'})
+        # uci_engine.configure({'Book File': 'gm1950.bin'})
+
+        #uci_engine.configure({'Use Sleeping Threads': 'false'})
+
+        # Wait until the uci connection is setup
+        while not uci_engine.ready:
+            uci_engine.registerIncomingData()
+
+        uci_engine.startGame()
+        # uci_engine.requestMove()
+        self.uci_engine=uci_engine
+
+    def load_uci_engine(self, obj, f, mevent):
+
+        if self.uci_engine:
+            self.uci_engine.stop()
+            self.other_engine_panel.clear_widgets()
+            self.add_load_uci_engine_setting(self.other_engine_panel)
+
+        uci_engine = UCIEngine(f)
+        uci_engine.start()
+        uci_engine.configure({})
+
+        # Wait until the uci connection is setup
+        while not uci_engine.ready:
+            uci_engine.registerIncomingData()
+        # print uci_engine.get_options()'
+        # try:
+        #     self.other_engine_panel.title = uci_engine.engine_info['name']
+        # except ValueError:
+        #     print "No engine name detected"
+        uci_engine.startGame()
+        # uci_engine.requestMove()
+        self.uci_engine=uci_engine
+        # return
+        self.gen_uci_menu_item("Name", uci_engine.engine_info['name'], self.other_engine_panel, internal = False)
+
+        for k,v in uci_engine.get_options().iteritems():
+            self.gen_uci_menu_item(k, v, self.other_engine_panel, internal = False)
+        self.db_popup.dismiss()
 
     def open_database(self, x):
         self.fileChooser = fileChooser = FileChooserListView(path='~')
@@ -822,9 +879,15 @@ class Chess_app(App):
 
         self.open_db_popup()
 
+    def open_engine(self, x):
+        self.fileChooser = fileChooser = FileChooserListView(path='~')
+        fileChooser.bind(on_submit=self.load_uci_engine)
 
-    def open_db_popup(self):
-        self.db_popup = Popup(title='Select PGN file (.pgn) or PGN Index folder (.db)',
+        self.open_db_popup('Select a UCI engine executable')
+
+
+    def open_db_popup(self, message='Select PGN file (.pgn) or PGN Index folder (.db)'):
+        self.db_popup = Popup(title=message,
                               content=self.fileChooser, size_hint=(0.75, 1))
         self.db_popup.open()
 
@@ -873,12 +936,83 @@ class Chess_app(App):
             self.write_lcd_prev_move()
         elif button_val == "UP":
             self.add_eng_moves(None, ENGINE_ANALYSIS)
-            if not self.use_engine:
+            if not self.use_internal_engine:
                 self.write_to_lcd("Engine stopped", clear=True)
         # elif button_val == "DOWN":
         #     self.add_eng_moves(None, ENGINE_ANALYSIS)
 
+    def gen_uci_menu_item(self, title, uci_option, engine_panel, internal=True):
+        if internal:
+            engine = sf
+        else:
+            engine = self.uci_engine
 
+        def on_change_slider_value(slider, value):
+            engine.set_option(slider.name, value)
+            slider.current.text = "{0:d}".format(int(float(engine.get_options()[slider.name][0])))
+
+        def on_change_button(value):
+            if value.state == "normal":
+                engine.set_option(value.name, 'false')
+            else:
+                engine.set_option(value.name, 'true')
+                # print('The checkbox', checkbox, 'is inactive')
+            value.current.text = "{0}".format(engine.get_options()[value.name][0])
+
+        def on_change_textbox(instance):
+            text = instance.text
+            engine.set_option(instance.name, text)
+            # instance.text = text
+        if title == 'Name':
+            uci_item = SettingItem(panel=engine_panel, title=title)  #create instance of one item in left side panel
+            uci_item_label = Label(text=uci_option)
+            uci_item.add_widget(uci_item_label)
+            engine_panel.add_widget(uci_item) # add item2 to left side panel
+
+        elif uci_option[1] == 'spin' or uci_option[1] == 'check' or uci_option[1] == 'string':
+            uci_item = SettingItem(panel=engine_panel, title=title)  #create instance of one item in left side panel
+            # uci_item.selected_alpha = 0.5
+            if uci_option[1] == 'spin':
+                uci_item.desc = "From {0} - {1}".format(uci_option[-2], uci_option[-1])
+                uci_item_control = Slider(min=uci_option[-2], max=uci_option[-1], value=int(uci_option[-3]))
+                uci_item_control.bind(value=on_change_slider_value)
+
+            elif uci_option[1] == 'check':
+                state = "normal"
+                if uci_option[0] == 'true':
+                    state = "down"
+                uci_item_control = ToggleButton(state=state, on_press=on_change_button)
+
+
+            elif uci_option[1] == 'string':
+                uci_item_control = TextInput(text=uci_option[0], focus=False, multiline=False)
+                uci_item_control.bind(on_text_validate=on_change_textbox)
+
+            uci_item_control.name = uci_item.title
+            if uci_option[1] != 'string':
+                uci_item_label = Label(text=engine.get_options()[uci_item.title][0])
+                if uci_option[1] == 'spin':
+                    uci_item_label.size_hint = (0.2, 1)
+                elif uci_option[1] == 'string':
+                    uci_item_label.size_hint = (0.5, 1)
+                else:
+                    uci_item_label.size_hint = (0.8, 1)
+                uci_item_control.current = uci_item_label
+                uci_item.add_widget(uci_item_label)
+
+            uci_item.add_widget(uci_item_control)
+            engine_panel.add_widget(uci_item) # add item2 to left side panel
+
+    def get_internal_engine_info(self):
+        info_str = sf.info()
+        # 'Stockfish 250314 64 by Tord Romstad, Marco Costalba and Joona Kiiski'
+        return info_str.split('by')
+
+    def add_load_uci_engine_setting(self, panel):
+        uci_engine_exec = SettingItem(panel=panel,
+                                      title="Load UCI Engine")  #create instance of one item in left side panel
+        uci_engine_exec.bind(on_release=self.open_engine)
+        panel.add_widget(uci_engine_exec)
 
     def generate_settings(self):
         def go_to_setup_board(value):
@@ -937,7 +1071,10 @@ class Chess_app(App):
 
         settings_panel = Settings() #create instance of Settings
 
-        engine_panel = SettingsPanel(title="Engine") #create instance of left side panel
+        engine_panel = SettingsPanel(title=self.internal_engine_info[0]) #create instance of left side panel
+        self.other_engine_panel = SettingsPanel(title="Other Engine") #create instance of left side panel
+        self.add_load_uci_engine_setting(self.other_engine_panel)
+
         board_panel = SettingsPanel(title="Board") #create instance of left side panel
         setup_pos_item = SettingItem(panel=board_panel, title="Input FEN") #create instance of one item in left side panel
         setup_board_item = SettingItem(panel=board_panel, title="Setup Board") #create instance of one item in left side panel
@@ -982,48 +1119,37 @@ class Chess_app(App):
         fen_input = TextInput(text="", focus=True, multiline=False, use_bubble = True)
 #        print Clipboard['application/data']
 
-        def on_level_value(slider, value):
-            # self.level_label.text=value
-            # print slider.value
-            # print type(value)
-            self.level_label.text = "%d" % value
-
         def on_fen_input(instance):
             if self.chessboard.setFEN(instance.text):
                 self.refresh_board()
                 self.start_pos_changed = True
                 self.custom_fen = instance.text
 
-        ##            print 'The widget', instance.text
-        #
         fen_input.bind(on_text_validate=on_fen_input)
-
-
         setup_pos_item.add_widget(fen_input)
-        level_item = SettingItem(panel=engine_panel, title="Level") #create instance of one item in left side panel
-        level_slider = Slider(min=0, max=20, value=20, step=1)
-        level_slider.bind(value=on_level_value)
-        self.level_label = Label(text=self.engine_level)
-        level_item.add_widget(level_slider)
-        level_current = SettingItem(panel=engine_panel, title="Selected Level") #create instance of one item in left side panel
-        level_current.add_widget(self.level_label)
+
+        for k,v in sf.get_options().iteritems():
+            self.gen_uci_menu_item(k, v, engine_panel)
+
+        # level_current = SettingItem(panel=engine_panel, title="Selected Level") #create instance of one item in left side panel
+        # uci_item_slider.add_widget(uci_item_label)
 
         board_panel.add_widget(setup_pos_item) # add item1 to left side panel
         board_panel.add_widget(setup_board_item)
 
-        engine_panel.add_widget(level_item) # add item2 to left side panel
-        engine_panel.add_widget(level_current) # add item2 to left side panel
+        # engine_panel.add_widget(uci_item_label) # add item2 to left side panel
 
         settings_panel.add_widget(board_panel)
         settings_panel.add_widget(database_panel)
         settings_panel.add_widget(dgt_panel)
         settings_panel.add_widget(engine_panel) #add left side panel itself to the settings menu
+        settings_panel.add_widget(self.other_engine_panel) #add left side panel itself to the settings menu
 
         def go_back():
             self.root.current = 'main'
-            if self.engine_level != self.level_label.text:
-                self.engine_level = self.level_label.text
-                sf.set_option('skill level', self.engine_level)
+            # if self.engine_level != self.level_label.text:
+            #     self.engine_level = self.level_label.text
+            #     sf.set_option('skill level', self.engine_level)
 
         settings_panel.on_close=go_back
 
@@ -1335,7 +1461,10 @@ class Chess_app(App):
         self.computer_move_FEN_reached = False
 
         self.engine_comp_color = 'b'
+
         self.engine_level = '20'
+        self.sf_options = {}
+
         self.time_last = None
         self.dgt_time = None
         self.time_white = 0
@@ -1390,7 +1519,12 @@ class Chess_app(App):
 
         self.squares = []
         self.setup_board_squares = []
-        self.use_engine = False
+        self.use_internal_engine = False
+        self.internal_engine_info = self.get_internal_engine_info()
+
+        self.use_uci_engine = False
+        self.uci_engine = None
+
         self.use_ref_db = False
         self.stop_called = False
         # self.engine_running = False
@@ -1398,6 +1532,8 @@ class Chess_app(App):
         sf.add_observer(self.update_engine_output)
         # print sf.getOptions()
         sf.set_option('OwnBook','true')
+        # sf.set_option('Threads','4')
+
         # Make this an option later
         self.use_tb = False
        # sf.set_option('SyzygyPath', '/Users/shiv/chess/tb/syzygy')
@@ -1927,7 +2063,7 @@ class Chess_app(App):
         # print "stopping engine"
         # sleep(1)
 
-        self.use_engine = False
+        self.use_internal_engine = False
         self.hint_move = None
         self.engine_score.children[0].text = ENGINE_HEADER
         # self.refresh_board()
@@ -1973,11 +2109,11 @@ class Chess_app(App):
 #        print instance
         if value == ENGINE_ANALYSIS or value == ENGINE_PLAY or value == ENGINE_TRAINING:
 #            print "Bringing up engine menu"
-            if self.use_engine:
+            if self.use_internal_engine:
                 self.stop_engine()
                 self.engine_mode = None
             else:
-                self.use_engine = True
+                self.use_internal_engine = True
                 self.hint_move = None
                 self.engine_mode = value
                 if value == ENGINE_PLAY:
@@ -1995,7 +2131,7 @@ class Chess_app(App):
                 sf.set_option('skill level', '20')
                 self.engine_mode = None
                 # print "Stopping train"
-                self.use_engine = False
+                self.use_internal_engine = False
                 self.hint_move = None
                 self.engine_score.children[0].text = ENGINE_HEADER
             # self.refresh_board()
@@ -2059,8 +2195,45 @@ class Chess_app(App):
 
         return best_move, ponder_move
 
-    def get_score(self, line):
+    def get_scores(self, line):
+        depths, scores = [], []
         tokens = line.split()
+        info_indices = [i for i, x in enumerate(tokens) if x == "info"]
+        # print "lines:"
+        # print "info_indices:"
+        # print info_indices
+        # print "tokens:"
+        # print tokens
+        for i, idx in enumerate(info_indices[:-1]):
+            l = tokens[idx:info_indices[i+1]]
+            # print "prev token::"
+            # print l
+            depth, score = self.get_score(l, str_line=False)
+            # print "depth:"
+            # print depth
+            # print "score:"
+            # print score
+            depths.append(depth)
+            scores.append(score)
+        else:
+            # print "last_token::"
+            l = tokens[info_indices[-1]:]
+            # print l
+            depth, score = self.get_score(l, str_line=False)
+            depths.append(depth)
+            scores.append(score)
+        # print "end get_scores"
+        # print "depths:"
+        # print depths
+        # print "scores:"
+        # print scores
+        return depths, scores
+
+    def get_score(self, line, str_line=True):
+        if str_line:
+            tokens = line.split()
+        else:
+            tokens = line
         try:
             score_index = tokens.index('score')
         except ValueError, e:
@@ -2113,46 +2286,89 @@ class Chess_app(App):
         return move_list
 
     def parse_score(self, line, figurine=False):
+        # print "line: "
         # print line
-        depth, score = self.get_score(line)
-        move_list = []
-        can_move_list = []
+        # print "num_lines: {0}".format(len(line.split("\n")))
+
         tokens = line.split()
-        # print tokens
-        first_mv = None
+
+        depths = []
+        scores = []
+        move_lists = []
+        can_move_lists = []
+
         try:
             line_index = tokens.index('pv')
-            first_mv = tokens[line_index+1]
-            # prev_fen = sf.get_fen(self.pyfish_fen,  self.chessboard.get_prev_moves())
-            # # print prev_fen
-            # move_list = sf.to_san(prev_fen, tokens[line_index+1:])
-            move_list = self.get_san(tokens[line_index+1:], figurine=figurine)
-            can_move_list = tokens[line_index+1:]
+            # first_mv = tokens[line_index+1]
+            multi_pv_index = tokens.index('multipv')
+            pv_tokens = tokens[line_index+1:]
+
+            if multi_pv_index > -1:
+                depths, scores = self.get_scores(line)
+                # print "scores: "
+                # print scores
+                for i, score in enumerate(scores):
+                    if self.use_tb and score == 151:
+                        scores[i] = "Tablebase [b]1-0[/b]"
+                    elif self.use_tb and score == -151:
+                        scores[i] = "Tablebase [b]0-1[/b]"
+                    else:
+                        scores[i] = "{0}".format(score)
+                pv_indices = [i for i, x in enumerate(tokens) if x == "pv"]
+                # print "pv_indices: "
+                # print pv_indices
+                info_indices = [i for i, x in enumerate(tokens) if x == "info" and i > 0]
+                # print "info_indices: "
+                # print info_indices
+
+                for i, p in enumerate(pv_indices):
+                    if i > len(info_indices)-1:
+                        move_lists.append(self.get_san(tokens[p+1:], figurine = figurine))
+                        can_move_lists.append(tokens[p+1:])
+                    else:
+                        move_lists.append(self.get_san(tokens[p+1:info_indices[i]], figurine = figurine))
+                        can_move_lists.append(tokens[p+1:info_indices[i]])
+
+                # print "tokens: "
+                # print pv_tokens[:info_index]
+                # move_lists.append(self.get_san(pv_tokens[:info_index], figurine=figurine))
+                # can_move_list = pv_tokens[:info_index]
+            else:
+                depth, score = self.get_score(line)
+                depths.append(depth)
+                scores.append(score)
+                move_lists.append(self.get_san(pv_tokens, figurine=figurine))
+                can_move_lists.append(pv_tokens)
+            # variation = self.generate_move_list(move_list, start_move_num=self.chessboard.half_move_num) if line_index!= -1 else None
+
             # print move_list
         except ValueError, e:
             line_index = -1
             # raise
-        variation = self.generate_move_list(move_list,start_move_num=self.chessboard.half_move_num) if line_index!=-1 else None
 
         #del analysis_board
-        if variation and score is not None:
-            if self.use_tb and score == 151:
-                score = "Tablebase [b]1-0[/b]"
-            elif self.use_tb and score == -151:
-                score = "Tablebase [b]0-1[/b]"
-            else:
-                score = "[b]{0}[/b]".format(score)
+        # print "variation:"
+        # print variation
+        outputs = []
+        if move_lists:
+            for i, move_list in enumerate(move_lists):
+                # print "move_list:"
+                # print move_list
+                variation = self.generate_move_list(move_list, start_move_num=self.chessboard.half_move_num, eval=scores[i])
+                # print "variation:"
+                # print variation
+                pretty_var = u""
+                if i == 0:
+                    pretty_var += u"[color=000000][ref={0}]Stop[/ref][/color]".format(ENGINE_ANALYSIS)
+                pretty_var += u"\n[color=000000]{0}[/color]".format(variation)
+                # print "pretty_var:"
+                # print pretty_var
 
-            return first_mv, can_move_list, move_list, "[color=000000]%s     [i][ref=%s]Stop[/ref][/i][/color]\n[color=000000]%s[/color]" %(score, ENGINE_ANALYSIS, "".join(variation))
-        # else:
-        #     print "no score/var"
-        #     print variation
-        #     print score
+                outputs.append((move_list[0], can_move_lists[i], move_list, pretty_var))
+        # print "outputs:"
+        # print outputs
+        return outputs
 
-
-    # def format_time_str(self,time_a, separator='.'):
-    #     return "%d%s%02d" % (int(time_a/60), separator, int(time_a%60))
-    #
     def format_time_str(self, time_a):
 
         seconds = time_a
@@ -2206,7 +2422,7 @@ class Chess_app(App):
             # os.system("say " + spoken_san)
 
     def update_engine_output(self, line):
-        if not self.use_engine:
+        if not self.use_internal_engine:
             # print "not using engine"
             # print line
             # parse best move
@@ -2219,72 +2435,93 @@ class Chess_app(App):
                 self.grid._highlight_square_name(self.hint_move[-2:])
                 self.grid._highlight_square_name(self.hint_move[:2])
 
-        # print line
 
-        if self.use_engine:
+        if self.use_internal_engine:
+            # print line
             output = self.engine_score
             if self.engine_mode == ENGINE_ANALYSIS:
-                out_score = self.parse_score(line, figurine=True)
+                out_scores = self.parse_score(line, figurine=True)
+
                 #out_score = None
-                if out_score:
-                    first_mv, can_line, raw_line, cleaned_line = out_score
-                    if first_mv:
-                        self.grid._draw_board()
-                        self.grid._draw_pieces()
-                        self.grid._highlight_square_name(first_mv[-2:])
-                        self.grid._highlight_square_name(first_mv[:2])
-                        self.engine_highlight_move = first_mv
-                        if cleaned_line:
-                            # print "Cleaned line"
-                            # print cleaned_line
-                            output.children[0].text = cleaned_line
-                        if raw_line:
-                            output.raw = raw_line
-                        if can_line:
-                            output.can_line = can_line
+                if out_scores:
+                    # print "outscores: "
+                    # print out_scores
+                    for i, out_score in enumerate(out_scores):
+                        first_mv, can_line, raw_line, cleaned_line = out_score
+                        # print "first_mv: "
+                        # print first_mv
+                        #
+                        # print "Cleaned line:"
+                        # print cleaned_line
 
-                        if self.dgt_connected and self.dgtnix:
-                            tokens = line.split()
+                        if first_mv:
+                            # self.grid._draw_board()
+                            # self.grid._draw_pieces()
+                            # self.grid._highlight_square_name(first_mv[-2:])
+                            # self.grid._highlight_square_name(first_mv[:2])
+                            # self.engine_highlight_move = first_mv
+                            if cleaned_line:
+                                # print "writing cleaned line.."
+                                if i == 0:
+                                    output.children[0].text = cleaned_line
+                                    # self.grid._draw_board()
+                                    # self.grid._draw_pieces()
+                                    # self.grid._highlight_square_name(first_mv[-2:])
+                                    # self.grid._highlight_square_name(first_mv[:2])
+                                    # self.engine_highlight_move = first_mv
+                                else:
+                                    # print "Cleaned line:"
+                                    # print cleaned_line
+                                    output.children[0].text += cleaned_line
 
-                            line_index = tokens.index('pv')
-                            if line_index > -1:
-                                pv = self.get_san(tokens[line_index+1:])
-                                # print "pv : {0}".format(pv)
+                                # print "NO cleaned line"
+                            # if raw_line:
+                            #     output.raw = raw_line
+                            # if can_line:
+                            #     output.can_line = can_line
 
-                                if len(pv)>0:
+                            if self.dgt_connected and self.dgtnix:
+                                tokens = line.split()
 
-                                        # first_mv = pv[0]
-                                    # if self.use_tb and score == 151:
-                                    #     score = 'TB: 1-0'
-                                    # if self.use_tb and score == -151:
-                                    #     score = 'TB: 0-1'
-                                        # separator = ".." if self.turn == BLACK else ""
-                                        # print self.generate_move_list(pv, eval=score, start_move_num=len(self.move_list)+1)
+                                line_index = tokens.index('pv')
+                                if line_index > -1:
+                                    pv = self.get_san(tokens[line_index+1:])
+                                    # print "pv : {0}".format(pv)
 
-                        # output = self.generate_move_list(pv, eval=score, start_move_num=len(self.move_list)+1)
-                                    depth, score = self.get_score(line)
+                                    if len(pv)>0:
 
-                                    output = self.generate_move_list(pv, eval=score, start_move_num=self.chessboard.half_move_num)
-                                    self.write_to_lcd(output, clear=True)
+                                            # first_mv = pv[0]
+                                        # if self.use_tb and score == 151:
+                                        #     score = 'TB: 1-0'
+                                        # if self.use_tb and score == -151:
+                                        #     score = 'TB: 0-1'
+                                            # separator = ".." if self.turn == BLACK else ""
+                                            # print self.generate_move_list(pv, eval=score, start_move_num=len(self.move_list)+1)
 
-                                    # print "Using DGT"
-                                    # Display score on the DGT clock
-                                    # print line
-                                    # depth, score = self.get_score(line)
-                                    # print "depth:{0}".format(depth)
-                                    #
-                                    # print "score:{0}".format(score)
+                            # output = self.generate_move_list(pv, eval=score, start_move_num=len(self.move_list)+1)
+                                        depth, score = self.get_score(line)
 
-                            # if score.startswith("mate"):
-                            #     score = score[4:]
-                            #     score = "m "+score
-                            # score = score.replace("-", "n")
-                            # self.dgtnix.SendToClock(self.format_str_for_dgt(score), False, True)
-                                # sleep(1)
-                            # output = self.generate_move_list(raw_line, eval=score, start_move_num=self.chessboard.half_move_num)
-                                # print output
-                                # self.dgtnix.SendToClock(self.format_move_for_dgt(first_mv), False, False)
-                    # print "Before cleaned line"
+                                        output = self.generate_move_list(pv, eval=score, start_move_num=self.chessboard.half_move_num)
+                                        self.write_to_lcd(output, clear=True)
+
+                                        # print "Using DGT"
+                                        # Display score on the DGT clock
+                                        # print line
+                                        # depth, score = self.get_score(line)
+                                        # print "depth:{0}".format(depth)
+                                        #
+                                        # print "score:{0}".format(score)
+
+                                # if score.startswith("mate"):
+                                #     score = score[4:]
+                                #     score = "m "+score
+                                # score = score.replace("-", "n")
+                                # self.dgtnix.SendToClock(self.format_str_for_dgt(score), False, True)
+                                    # sleep(1)
+                                # output = self.generate_move_list(raw_line, eval=score, start_move_num=self.chessboard.half_move_num)
+                                    # print output
+                                    # self.dgtnix.SendToClock(self.format_move_for_dgt(first_mv), False, False)
+                        # print "Before cleaned line"
 
             elif self.engine_mode == ENGINE_PLAY:
                 if self.engine_computer_move:
@@ -2572,7 +2809,7 @@ class Chess_app(App):
             # TODO: log error
 
     def generate_move_list(self, all_moves, eval = None, start_move_num = 1):
-        score = ""
+        score = u""
         if start_move_num % 2 == 0:
             turn_sep = '..'
         else:
@@ -2960,7 +3197,7 @@ class Chess_app(App):
             self.pyfish_fen = 'startpos'
             # sf.position('startpos', self.chessboard.get_prev_moves())
 
-        if self.use_engine:
+        if self.use_internal_engine:
             if self.start_pos_changed:
                 # self.uci_engine.sendFen(self.custom_fen)
                 self.start_pos_changed = False
