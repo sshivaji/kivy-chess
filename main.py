@@ -777,6 +777,9 @@ class DataItem(object):
 
 
 class Chess_app(App):
+    def on_stop(self):
+        if self.uci_engine:
+            self.uci_engine.eng_process.kill()
     def validate_device(self, text):
         if not os.path.exists(text):
             popup = Popup(title='Sorry, DGT Device NOT found!',
@@ -824,28 +827,29 @@ class Chess_app(App):
         self.uci_engine_thread.daemon = True # thread dies with the program
         self.uci_engine_thread.start()
 
-    def load_uci_engine(self, obj, f, mevent):
+    def start_uci_engine(self, f):
         if self.uci_engine:
             self.uci_engine.stop()
 
             self.other_engine_panel.clear_widgets()
             self.add_load_uci_engine_setting(self.other_engine_panel)
-
         uci_engine = UCIEngine(f)
         uci_engine.start()
+        # uci_engine.configure({'Threads' : 32, 'Hash' : 8192})
         uci_engine.configure({})
-
         # Wait until the uci connection is setup
         while not uci_engine.ready:
             uci_engine.registerIncomingData()
-        self.uci_engine=uci_engine
+        self.uci_engine = uci_engine
         if self.uci_engine_thread:
             self.uci_engine_thread.kill()
-
         self.start_uci_engine_thread()
         uci_engine.startGame()
-        # uci_engine.requestMove()
-        # return
+        return uci_engine
+
+    def load_uci_engine(self, obj, f, mevent):
+        uci_engine = self.start_uci_engine(f)
+
         self.gen_uci_menu_item("Name", uci_engine.engine_info['name'], self.other_engine_panel, internal = False)
 
         for k,v in uci_engine.get_options().iteritems():
@@ -1496,6 +1500,7 @@ class Chess_app(App):
         self.squares = []
         self.setup_board_squares = []
         self.use_internal_engine = False
+        self.internal_engine_output = ""
         self.internal_engine_info = self.get_internal_engine_info()
 
         self.use_uci_engine = False
@@ -1844,6 +1849,7 @@ class Chess_app(App):
         setup_board_screen.add_widget(setup_widget)
         sm.add_widget(setup_board_screen)
 
+        # self.start_uci_engine('/Users/shiv/stockfish-32.sh')
         return sm
 
     def go_to_settings(self, instance):
@@ -2276,7 +2282,10 @@ class Chess_app(App):
         try:
             line_index = tokens.index('pv')
             # first_mv = tokens[line_index+1]
-            multi_pv_index = tokens.index('multipv')
+            try:
+                multi_pv_index = tokens.index('multipv')
+            except ValueError, e:
+                multi_pv_index = -1
             pv_tokens = tokens[line_index+1:]
 
             if multi_pv_index > -1:
@@ -2311,6 +2320,10 @@ class Chess_app(App):
                 # can_move_list = pv_tokens[:info_index]
             else:
                 depth, score = self.get_score(line)
+                # print "depth:"
+                # print depth
+                # print "score:"
+                # print score
                 depths.append(depth)
                 scores.append(score)
                 move_lists.append(self.get_san(pv_tokens, figurine=figurine))
@@ -2401,111 +2414,75 @@ class Chess_app(App):
     def update_external_engine_output(self, callback):
         while True:
             if self.uci_engine:
-                # Using external engine
-                print "External:  "
-                print self.uci_engine.getOutput()
+                if self.engine_mode == ENGINE_ANALYSIS:
+                    output = self.engine_score
+                    line = self.uci_engine.getOutput()
+                    if line:
+                        cleaned_line = self.parse_analysis(line)
+                        if cleaned_line:
+                            external_engine_output = u"\n[color=000000]{0}[/color]".format(self.uci_engine.engine_info['name']) + ': ' + cleaned_line
+                            if external_engine_output:
+                                # print "enternal_output: "
+                                # print external_engine_output
+
+                                if self.use_internal_engine and self.internal_engine_output:
+                                    output.children[0].text = self.internal_engine_output + external_engine_output
+                                else:
+                                    output.children[0].text = external_engine_output
+                # # Using external engine
+                # print "External:  "
+                # print self.uci_engine.getOutput()
+
+    def parse_analysis(self, line):
+        out_scores = self.parse_score(line, figurine=True)
+        output_buffer = u''
+
+        if out_scores:
+            for i, out_score in enumerate(out_scores):
+                first_mv, can_line, raw_line, cleaned_line = out_score
+
+                if first_mv:
+                    if cleaned_line:
+                        # print "writing cleaned line.."
+                        if i == 0:
+                            output_buffer = cleaned_line
+                        else:
+                            output_buffer += cleaned_line
+
+                    if self.dgt_connected and self.dgtnix:
+                        tokens = line.split()
+
+                        line_index = tokens.index('pv')
+                        if line_index > -1:
+                            pv = self.get_san(tokens[line_index + 1:])
+                            # print "pv : {0}".format(pv)
+
+                            if len(pv) > 0:
+                                depth, score = self.get_score(line)
+                                self.write_to_lcd(self.generate_move_list(pv, eval=score,
+                                          start_move_num=self.chessboard.half_move_num), clear=True)
+        return output_buffer
 
     def update_engine_output(self, line):
         if not self.use_internal_engine:
-            # print "not using engine"
-            # print line
-            # parse best move
             self.hint_move, self.ponder_move = self.parse_bestmove(line)
-            # self.grid._update_position(None, self.chessboard.position.fen)
             if self.hint_move:
-                # print "hint_move : {0}".format(self.hint_move)
                 self.grid._draw_board()
                 self.grid._draw_pieces()
                 self.grid._highlight_square_name(self.hint_move[-2:])
                 self.grid._highlight_square_name(self.hint_move[:2])
 
         if self.use_internal_engine:
-            # print line
             output = self.engine_score
             if self.engine_mode == ENGINE_ANALYSIS:
-                out_scores = self.parse_score(line, figurine=True)
+                cleaned_line = self.parse_analysis(line)
 
-                #out_score = None
-                if out_scores:
-                    # print "outscores: "
-                    # print out_scores
-                    for i, out_score in enumerate(out_scores):
-                        first_mv, can_line, raw_line, cleaned_line = out_score
-                        # print "first_mv: "
-                        # print first_mv
-                        #
-                        # print "Cleaned line:"
-                        # print cleaned_line
-
-                        if first_mv:
-                            # self.grid._draw_board()
-                            # self.grid._draw_pieces()
-                            # self.grid._highlight_square_name(first_mv[-2:])
-                            # self.grid._highlight_square_name(first_mv[:2])
-                            # self.engine_highlight_move = first_mv
-                            if cleaned_line:
-                                # print "writing cleaned line.."
-                                if i == 0:
-                                    output.children[0].text = cleaned_line
-                                    # self.grid._draw_board()
-                                    # self.grid._draw_pieces()
-                                    # self.grid._highlight_square_name(first_mv[-2:])
-                                    # self.grid._highlight_square_name(first_mv[:2])
-                                    # self.engine_highlight_move = first_mv
-                                else:
-                                    # print "Cleaned line:"
-                                    # print cleaned_line
-                                    output.children[0].text += cleaned_line
-
-                                # print "NO cleaned line"
-                            # if raw_line:
-                            #     output.raw = raw_line
-                            # if can_line:
-                            #     output.can_line = can_line
-
-                            if self.dgt_connected and self.dgtnix:
-                                tokens = line.split()
-
-                                line_index = tokens.index('pv')
-                                if line_index > -1:
-                                    pv = self.get_san(tokens[line_index+1:])
-                                    # print "pv : {0}".format(pv)
-
-                                    if len(pv)>0:
-
-                                            # first_mv = pv[0]
-                                        # if self.use_tb and score == 151:
-                                        #     score = 'TB: 1-0'
-                                        # if self.use_tb and score == -151:
-                                        #     score = 'TB: 0-1'
-                                            # separator = ".." if self.turn == BLACK else ""
-                                            # print self.generate_move_list(pv, eval=score, start_move_num=len(self.move_list)+1)
-
-                            # output = self.generate_move_list(pv, eval=score, start_move_num=len(self.move_list)+1)
-                                        depth, score = self.get_score(line)
-
-                                        output = self.generate_move_list(pv, eval=score, start_move_num=self.chessboard.half_move_num)
-                                        self.write_to_lcd(output, clear=True)
-
-                                        # print "Using DGT"
-                                        # Display score on the DGT clock
-                                        # print line
-                                        # depth, score = self.get_score(line)
-                                        # print "depth:{0}".format(depth)
-                                        #
-                                        # print "score:{0}".format(score)
-
-                                # if score.startswith("mate"):
-                                #     score = score[4:]
-                                #     score = "m "+score
-                                # score = score.replace("-", "n")
-                                # self.dgtnix.SendToClock(self.format_str_for_dgt(score), False, True)
-                                    # sleep(1)
-                                # output = self.generate_move_list(raw_line, eval=score, start_move_num=self.chessboard.half_move_num)
-                                    # print output
-                                    # self.dgtnix.SendToClock(self.format_move_for_dgt(first_mv), False, False)
-                        # print "Before cleaned line"
-
+                if cleaned_line:
+                    # print "cleaned_line:"
+                    # print cleaned_line
+                    self.internal_engine_output = u"\n[color=000000]{0}[/color]".format(self.get_internal_engine_info()[0]) + ' ' + cleaned_line
+                    if not self.uci_engine:
+                        output.children[0].text = self.internal_engine_output
             elif self.engine_mode == ENGINE_PLAY:
                 if self.engine_computer_move:
                     best_move, self.ponder_move = self.parse_bestmove(line)
@@ -2689,21 +2666,24 @@ class Chess_app(App):
 #            print "touch_up_setup:"
 #            print self.last_touch_up_setup
             # print len(self.last_touch_up_setup)
-            if len(self.last_touch_down_setup)==1 and len(self.last_touch_up_setup)==2:
-                sq = Square(self.last_touch_up_setup)
-                self.setup_chessboard[sq] = Piece(self.last_touch_down_setup)
-                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.setup_chessboard[self.last_touch_up_setup])
+            try:
+                if len(self.last_touch_down_setup)==1 and len(self.last_touch_up_setup)==2:
+                    sq = Square(self.last_touch_up_setup)
+                    self.setup_chessboard[sq] = Piece(self.last_touch_down_setup)
+                    self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.setup_chessboard[self.last_touch_up_setup])
 
-            elif len(self.last_touch_down_setup)==2 and len(self.last_touch_up_setup)==1:
-                del self.setup_chessboard[self.last_touch_down_setup]
-                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], self.setup_chessboard[self.last_touch_down_setup])
+                elif len(self.last_touch_down_setup)==2 and len(self.last_touch_up_setup)==1:
+                    del self.setup_chessboard[self.last_touch_down_setup]
+                    self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], self.setup_chessboard[self.last_touch_down_setup])
 
-            elif len(self.last_touch_down_setup)==2 and len(self.last_touch_up_setup)==2:
-                sq = Square(self.last_touch_up_setup)
-                self.setup_chessboard[sq] = self.setup_chessboard[Square(self.last_touch_down_setup)]
-                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.setup_chessboard[self.last_touch_up_setup])
-                del self.setup_chessboard[self.last_touch_down_setup]
-                self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], self.setup_chessboard[self.last_touch_down_setup])
+                elif len(self.last_touch_down_setup)==2 and len(self.last_touch_up_setup)==2:
+                    sq = Square(self.last_touch_up_setup)
+                    self.setup_chessboard[sq] = self.setup_chessboard[Square(self.last_touch_down_setup)]
+                    self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.setup_chessboard[self.last_touch_up_setup])
+                    del self.setup_chessboard[self.last_touch_down_setup]
+                    self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], self.setup_chessboard[self.last_touch_down_setup])
+            except ValueError:
+                return
 
     def touch_up_move(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
