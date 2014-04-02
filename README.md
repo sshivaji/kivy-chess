@@ -1,7 +1,20 @@
 kivy-chess
 ==========
 
-Work in progress Chess Application using Kivy.
+Chess Database/Analysis and playing program.
+
+Features
+   1. Ability to analyze positions remotely on powerful computers (more information coming soon).
+   2. Instant Database position searches.
+   3. Play vs the computer with levels that can work for strong and weak players (from club players to GMs 2500, 2600, 2700 etc).
+   4. Opening book support. Ability to find holes in your repertoire (more information coming).
+   5. DGT board support.
+
+Screenshots
+  1. Main Screen ![Main Screen](/doc/screenshots/kivy-chess-main.jpg "Main Screen")
+  1. DGT Options ![DGT](/doc/screenshots/kivy-chess-dgt.png "DGT")
+
+Techical Information:
 
 To Build
    1. Download Kivy
@@ -22,22 +35,7 @@ To save large database location
    2. Execute ``sudo make install``
    3. Copy/move polyglot leveldb index folder to kivy-chess/book/
  
-    
-
-   
 To use DGT support
    1. Go to the DGT folder.
    2. Follow instructions under https://github.com/sshivaji/kivy-chess/tree/master/dgt
    3. Then go to the setup button and configure your DGT board.
-
-Features
-   1. Ability to play over human input moves.
-   2. Observe engine output on positions.
-   3. Take back and move forward, with variation support.
-   4. Opening book support
-   5. Database support with position index.
-   6. DGT board support
-
-Screenshots
-  1. Main Screen ![Main Screen](/doc/screenshots/kivy-chess-main.jpg "Main Screen")
-  1. DGT Options ![DGT](/doc/screenshots/kivy-chess-dgt.png "DGT")
