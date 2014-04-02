@@ -838,8 +838,8 @@ class Chess_app(App):
             self.add_load_uci_engine_setting(self.other_engine_panel)
         uci_engine = UCIEngine(f)
         uci_engine.start()
-        # uci_engine.configure({'Threads' : 32, 'Hash' : 8192})
-        # uci_engine.configure({})
+        # uci_engine.configure({'Threads' : 32, 'Hash' : 2048})
+        uci_engine.configure({})
         # Wait until the uci connection is setup
         while not uci_engine.ready:
             # print "Uci not ready"
@@ -2360,7 +2360,7 @@ class Chess_app(App):
                 # print "move_list:"
                 # print move_list
                 try:
-                    tail =" {0} Knps".format(infos[i]["nps"]/1000)
+                    tail =" D{0} {1} Knps".format(infos[i]["depth"], infos[i]["nps"]/1000)
                 except KeyError:
                     tail = ""
                 # print "infos:"
@@ -2370,7 +2370,7 @@ class Chess_app(App):
                 # print variation
                 pretty_var = u""
                 if i == 0:
-                    pretty_var += u"[color=000000][ref={0}]Stop[/ref]{1}[/color]".format(ENGINE_ANALYSIS, tail)
+                    pretty_var += u"[color=3333ff][ref={0}]Stop[/ref]{1}[/color]".format(ENGINE_ANALYSIS, tail)
                 pretty_var += u"\n[color=000000]{0}[/color]".format(variation)
                 # print "pretty_var:"
                 # print pretty_var
@@ -2442,7 +2442,7 @@ class Chess_app(App):
                     if line:
                         cleaned_line = self.parse_analysis(line)
                         if cleaned_line:
-                            external_engine_output = u"\n[color=000000]{0}[/color]".format(self.uci_engine.engine_info['name']) + ': ' + cleaned_line
+                            external_engine_output = u"\n[color=3333ff]{0}[/color]".format(self.uci_engine.engine_info['name']) + ': ' + cleaned_line
                             if external_engine_output:
                                 # print "enternal_output: "
                                 # print external_engine_output
