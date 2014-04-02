@@ -777,6 +777,9 @@ class DataItem(object):
 
 
 class Chess_app(App):
+    # def on_start(self):
+    #     self.start_uci_engine('/Users/shiv/stockfish-32.sh')
+
     def on_stop(self):
         if self.uci_engine:
             self.uci_engine.eng_process.kill()
@@ -836,10 +839,12 @@ class Chess_app(App):
         uci_engine = UCIEngine(f)
         uci_engine.start()
         # uci_engine.configure({'Threads' : 32, 'Hash' : 8192})
-        uci_engine.configure({})
+        # uci_engine.configure({})
         # Wait until the uci connection is setup
         while not uci_engine.ready:
+            # print "Uci not ready"
             uci_engine.registerIncomingData()
+        # print "Uci ready"
         self.uci_engine = uci_engine
         if self.uci_engine_thread:
             self.uci_engine_thread.kill()
@@ -1118,12 +1123,19 @@ class Chess_app(App):
         board_panel.add_widget(setup_board_item)
 
         # engine_panel.add_widget(uci_item_label) # add item2 to left side panel
-        if settings_panel.interface is not None:
-            settings_panel.interface.add_panel(board_panel, 'Board', 1)
-            settings_panel.interface.add_panel(database_panel, 'Database', 2)
-            settings_panel.interface.add_panel(dgt_panel, 'DGT', 3)
-            settings_panel.interface.add_panel(engine_panel, 'Engine', 4)
-            settings_panel.interface.add_panel(self.other_engine_panel, 'Other Engine', 5)
+        try:
+            if settings_panel.interface is not None:
+                settings_panel.interface.add_panel(board_panel, 'Board', 1)
+                settings_panel.interface.add_panel(database_panel, 'Database', 2)
+                settings_panel.interface.add_panel(dgt_panel, 'DGT', 3)
+                settings_panel.interface.add_panel(engine_panel, 'Engine', 4)
+                settings_panel.interface.add_panel(self.other_engine_panel, 'Other Engine', 5)
+        except AttributeError:
+            settings_panel.add_widget(board_panel)
+            settings_panel.add_widget(database_panel)
+            settings_panel.add_widget(dgt_panel)
+            settings_panel.add_widget(engine_panel)
+            settings_panel.add_widget(self.other_engine_panel)
 
         def go_back():
             self.root.current = 'main'
@@ -1849,7 +1861,6 @@ class Chess_app(App):
         setup_board_screen.add_widget(setup_widget)
         sm.add_widget(setup_board_screen)
 
-        # self.start_uci_engine('/Users/shiv/stockfish-32.sh')
         return sm
 
     def go_to_settings(self, instance):
@@ -2178,7 +2189,7 @@ class Chess_app(App):
         return best_move, ponder_move
 
     def get_scores(self, line):
-        depths, scores = [], []
+        infos = []
         tokens = line.split()
         info_indices = [i for i, x in enumerate(tokens) if x == "info"]
         # print "lines:"
@@ -2190,26 +2201,24 @@ class Chess_app(App):
             l = tokens[idx:info_indices[i+1]]
             # print "prev token::"
             # print l
-            depth, score = self.get_score(l, str_line=False)
+            info = self.get_score(l, str_line=False)
             # print "depth:"
             # print depth
             # print "score:"
             # print score
-            depths.append(depth)
-            scores.append(score)
+            infos.append(info)
         else:
             # print "last_token::"
             l = tokens[info_indices[-1]:]
             # print l
-            depth, score = self.get_score(l, str_line=False)
-            depths.append(depth)
-            scores.append(score)
+            info = self.get_score(l, str_line=False)
+            infos.append(info)
         # print "end get_scores"
         # print "depths:"
         # print depths
         # print "scores:"
         # print scores
-        return depths, scores
+        return infos
 
     def get_score(self, line, str_line=True):
         if str_line:
@@ -2220,6 +2229,12 @@ class Chess_app(App):
             score_index = tokens.index('score')
         except ValueError, e:
             score_index = -1
+
+        try:
+            nps_index = tokens.index('nps') + 1
+        except ValueError, e:
+            nps_index = -1
+        nps = None
         score = None
         depth = None
         score_type = ""
@@ -2232,6 +2247,9 @@ class Chess_app(App):
                 # print "No depth"
                 depth = None
             score_type = tokens[score_index + 1]
+            if nps_index > -1:
+                nps = int(tokens[nps_index])
+
             if tokens[score_index + 1] == "cp":
                 score = float(tokens[score_index + 2]) / 100 * 1.0
                 try:
@@ -2246,14 +2264,14 @@ class Chess_app(App):
                 except ValueError, e:
                     print "Cannot convert Mate number of moves to a int"
                     print e
-
             # print self.chessboard.position.turn
             if self.chessboard.position.turn == 'b':
                 if score:
                     score *= -1
             if score_type == "mate":
                 score = score_type + " " + str(score)
-        return depth, score
+
+        return {"nps":nps, "depth":depth, "score":score}
 
     def get_san(self, moves, figurine=False):
         prev_fen = sf.get_fen(self.pyfish_fen,  self.chessboard.get_prev_moves())
@@ -2274,11 +2292,9 @@ class Chess_app(App):
 
         tokens = line.split()
 
-        depths = []
-        scores = []
         move_lists = []
         can_move_lists = []
-
+        infos = []
         try:
             line_index = tokens.index('pv')
             # first_mv = tokens[line_index+1]
@@ -2288,17 +2304,18 @@ class Chess_app(App):
                 multi_pv_index = -1
             pv_tokens = tokens[line_index+1:]
 
+
             if multi_pv_index > -1:
-                depths, scores = self.get_scores(line)
+                infos = self.get_scores(line)
                 # print "scores: "
                 # print scores
-                for i, score in enumerate(scores):
-                    if self.use_tb and score == 151:
-                        scores[i] = "Tablebase [b]1-0[/b]"
+                for i, info in enumerate(infos):
+                    if self.use_tb and info["score"] == 151:
+                        infos[i]["score"] = "Tablebase [b]1-0[/b]"
                     elif self.use_tb and score == -151:
-                        scores[i] = "Tablebase [b]0-1[/b]"
+                        infos[i]["score"] = "Tablebase [b]0-1[/b]"
                     else:
-                        scores[i] = "{0}".format(score)
+                        infos[i]["score"] = "{0}".format(info["score"])
                 pv_indices = [i for i, x in enumerate(tokens) if x == "pv"]
                 # print "pv_indices: "
                 # print pv_indices
@@ -2319,13 +2336,12 @@ class Chess_app(App):
                 # move_lists.append(self.get_san(pv_tokens[:info_index], figurine=figurine))
                 # can_move_list = pv_tokens[:info_index]
             else:
-                depth, score = self.get_score(line)
+                info = self.get_score(line)
                 # print "depth:"
                 # print depth
                 # print "score:"
                 # print score
-                depths.append(depth)
-                scores.append(score)
+                infos.append(info)
                 move_lists.append(self.get_san(pv_tokens, figurine=figurine))
                 can_move_lists.append(pv_tokens)
             # variation = self.generate_move_list(move_list, start_move_num=self.chessboard.half_move_num) if line_index!= -1 else None
@@ -2343,12 +2359,18 @@ class Chess_app(App):
             for i, move_list in enumerate(move_lists):
                 # print "move_list:"
                 # print move_list
-                variation = self.generate_move_list(move_list, start_move_num=self.chessboard.half_move_num, eval=scores[i])
+                try:
+                    tail =" {0} Knps".format(infos[i]["nps"]/1000)
+                except KeyError:
+                    tail = ""
+                # print "infos:"
+                # print infos[i]
+                variation = self.generate_move_list(move_list, start_move_num=self.chessboard.half_move_num, eval=infos[i]["score"])
                 # print "variation:"
                 # print variation
                 pretty_var = u""
                 if i == 0:
-                    pretty_var += u"[color=000000][ref={0}]Stop[/ref][/color]".format(ENGINE_ANALYSIS)
+                    pretty_var += u"[color=000000][ref={0}]Stop[/ref]{1}[/color]".format(ENGINE_ANALYSIS, tail)
                 pretty_var += u"\n[color=000000]{0}[/color]".format(variation)
                 # print "pretty_var:"
                 # print pretty_var
@@ -2771,7 +2793,7 @@ class Chess_app(App):
             raise
             # TODO: log error
 
-    def generate_move_list(self, all_moves, eval = None, start_move_num = 1):
+    def generate_move_list(self, all_moves, eval = None, tail = None, start_move_num = 1):
         score = u""
         if start_move_num % 2 == 0:
             turn_sep = '..'
@@ -2792,27 +2814,9 @@ class Chess_app(App):
                 #     score += "\n"
                 #                else:
                 #                    score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
+        if tail:
+            score += tail
         return score
-
-    # def generate_move_list(self, all_moves, start_move_num = 1, raw = False):
-    #     score = ""
-    #     if raw:
-    #          return " ".join(all_moves)
-    #     for i, mv in it.izip(it.count(start_move_num), all_moves):
-    #         move = "b"
-    #         if i % 2 == 1:
-    #             score += " %d. " % ((i + 1) / 2)
-    #             move = "w"
-    #
-    #         if mv:
-    #             if raw:
-    #                 score += " % s" % mv
-    #                 if i % 5 == 0:
-    #                     score += "\n"
-    #             else:
-    #                 score += " [ref=%d:%s] %s [/ref]"%((i + 1) / 2, move, mv)
-    #     return score
-
 
     def database_action(self):
         print "action"
