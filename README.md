@@ -6,7 +6,7 @@ Chess Database/Analysis and playing program.
 Features
    1. Ability to analyze positions remotely on powerful computers (more information coming soon).
    2. Instant Database position searches.
-   3. Play vs the computer with levels that can work for strong and weak players (from club players to GMs 2500, 2600, 2700 etc).
+   3. Play vs the computer with levels that can work for strong and weak players (from club players to GMs).
    4. Opening book support. Ability to find holes in your repertoire (more information coming).
    5. DGT board support.
 
