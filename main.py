@@ -778,7 +778,7 @@ class DataItem(object):
 
 class Chess_app(App):
     # def on_start(self):
-    #     self.start_uci_engine('/Users/shiv/stockfish-32.sh')
+    #     self.start_uci_engine('/Users/shiv/chess/engines/komodo-3-mac')
 
     def on_stop(self):
         if self.uci_engine:
@@ -826,7 +826,7 @@ class Chess_app(App):
             self.ref_db_index_book = leveldb.LevelDB(leveldb_path)
 
     def start_uci_engine_thread(self):
-        self.uci_engine_thread = KThread(target=self.update_external_engine_output, args=(None,))
+        self.uci_engine_thread = Thread(target=self.update_external_engine_output, args=(None,))
         self.uci_engine_thread.daemon = True # thread dies with the program
         self.uci_engine_thread.start()
 
@@ -2435,8 +2435,7 @@ class Chess_app(App):
 
     def update_external_engine_output(self, callback):
         while True:
-            if self.uci_engine:
-                if self.engine_mode == ENGINE_ANALYSIS:
+            if self.uci_engine and self.engine_mode == ENGINE_ANALYSIS:
                     output = self.engine_score
                     line = self.uci_engine.getOutput()
                     if line:
@@ -2451,9 +2450,8 @@ class Chess_app(App):
                                     output.children[0].text = self.internal_engine_output + external_engine_output
                                 else:
                                     output.children[0].text = external_engine_output
-                # # Using external engine
-                # print "External:  "
-                # print self.uci_engine.getOutput()
+            else:
+                sleep(0.05)
 
     def parse_analysis(self, line):
         out_scores = self.parse_score(line, figurine=True)
