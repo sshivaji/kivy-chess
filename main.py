@@ -778,7 +778,7 @@ class DataItem(object):
 
 class Chess_app(App):
     # def on_start(self):
-    #     self.start_uci_engine('/Users/shiv/chess/engines/komodo-3-mac')
+    #     self.start_uci_engine('/Users/shiv/stockfish-32.sh')
 
     def on_stop(self):
         if self.uci_engine:
@@ -2051,8 +2051,13 @@ class Chess_app(App):
             # self.chessboard.addTextMove(mv)
             self.refresh_board()
 
-    def stop_engine(self):
+    @staticmethod
+    def sf_stop():
         sf.stop()
+        sleep(0.05)
+
+    def stop_engine(self):
+        self.sf_stop()
         # print "stopping engine"
         # sleep(1)
 
@@ -3149,8 +3154,7 @@ class Chess_app(App):
         # print "Before stopping"
         # if self.engine_running:
         if self.engine_mode != ENGINE_PLAY:
-            sf.stop()
-            sleep(0.05)
+            self.sf_stop()
 
         if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
             self.custom_fen = self.chessboard_root.headers.headers['FEN']
