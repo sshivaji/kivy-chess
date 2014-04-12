@@ -1525,7 +1525,7 @@ class Chess_app(App):
         sf.add_observer(self.update_engine_output)
         # print sf.getOptions()
         sf.set_option('OwnBook','true')
-        # sf.set_option('Threads','4')
+        # sf.set_option('Threads','8')
 
         # Make this an option later
         self.use_tb = False
