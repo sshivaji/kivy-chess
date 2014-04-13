@@ -106,11 +106,14 @@ ENGINE_PLAY = "engine_play"
 
 ENGINE_PLAY_STOP = "play_stop"
 
+ENGINE_TRAIN_HINT = "train_hint"
 ENGINE_PLAY_HINT = "play_hint"
 
-YOURTURN_MENU = u"[color=000000][size=24][i]{2}[/i]    [b]{3}[/b][/size]\nYour turn\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n[ref="+ENGINE_PLAY_HINT+"]Hint: {0}\nScore: {1} [/ref][/color]"
+YOURTURN_MENU = u"[color=000000][size=24][i]{2}[/i]    [b]{3}[/b][/size]\n" \
+                u"Your turn\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n" \
+                "[ref="+ENGINE_PLAY_HINT+"]Hint: {0}\nScore: {1} [/ref][/color]"
 
-TRAIN_MENU = u"[color=000000][b]{0}    [/b]{1}[b]\n\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref][/b][/color]"
+TRAIN_MENU = u"[color=000000][ref="+ENGINE_TRAIN_HINT+"][b]{0}[/ref]    [/b]{1} [b]\n\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref][/b][/color]"
 
 ENGINE_ANALYSIS = "engine_analysis"
 
@@ -1496,6 +1499,7 @@ class Chess_app(App):
         self.chessboard_root = self.chessboard
         self.ponder_move = None
         self.hint_move = None
+        self.train_move_info = {}
         self.engine_highlight_move = None
         self.lcd_lock = RLock()
         self.lcd = None
@@ -1505,6 +1509,7 @@ class Chess_app(App):
         self.eng_eval = None
 
         self.train_eng_score = {}
+        # self.curr_train_eng_score = None
 
         self.setup_chessboard = Position()
         self.setup_chessboard.clear_board()
@@ -2135,6 +2140,10 @@ class Chess_app(App):
             # self.refresh_board()
         elif value == ENGINE_PLAY_HINT:
             self.show_hint = True
+        elif value == ENGINE_TRAIN_HINT:
+            self.engine_score.children[0].text = TRAIN_MENU.format(self.get_san([self.train_move_info["move"]], figurine=True)[0], self.train_move_info["score"])
+            return
+            # Do not generate new training hints
         else:
             for i, mv in enumerate(self.engine_score.can_line):
                 if i >= 1:
@@ -2513,8 +2522,9 @@ class Chess_app(App):
                     best_move, self.ponder_move = self.parse_bestmove(line)
     #                            print "ponder_move:{0}".format(self.ponder_move)
 
-                    depth, score = self.get_score(line)
-                    if score:
+                    info = self.get_score(line)
+                    if info:
+                        score = info["score"]
                         self.eng_eval = score
                     # self.update_time(color=self.engine_comp_color)
                     if best_move:
@@ -2530,35 +2540,35 @@ class Chess_app(App):
                         self.ponder_move_san = None
                         # se(best_move)
             elif self.engine_mode == ENGINE_TRAINING:
-
                 output.children[0].text = THINKING
-                best_move, self.ponder_move = self.parse_bestmove(line)
-    #                            print "best_move:{0}".format(best_move)
-    #             print "ponder_move:{0}".format(self.ponder_move)
+                # print "before assign"
+                self.train_move_info["move"], self.ponder_move = self.parse_bestmove(line)
+                # print "best_move:{0}".format(self.train_move_info["move"])
+                # print "ponder_move:{0}".format(self.ponder_move)
+                info = self.get_score(line)
 
-                depth, score = self.get_score(line)
-                # print score
+                if info:
+                    depth = info["depth"]
+                    score = info["score"]
+                    if depth:
+                        self.train_eng_score[depth] = score
 
-                if depth:
-                    self.train_eng_score[depth] = score
-                    # print "depth : {0}".format(depth)
-                if best_move:
-                    # print "best_move"
-                    # print "training_score : {0}".format(score)
+                if self.train_move_info["move"]:
                     random_depth = random.randint(3, 10)
-                    # print "random_depth : {0}".format(random_depth)
-                    # print "san :{0}".format(best_move)
-                    san = self.get_san([best_move], figurine=True)[0]
-                    # print san
-                    # print "san :{0}".format(san)
+                    # print "move: {0}".format(self.train_move_info["move"])
+                    san = self.get_san([self.train_move_info["move"]], figurine=True)[0]
+                    # print "score: {0}".format(self.train_move_info["score"])
+                    # print "san: {0}".format(san)
+
                     score = ""
                     if self.train_eng_score.has_key(random_depth):
                         score = self.train_eng_score[random_depth]
-                    if self.ponder_move != "(none)":
-                        output.children[0].text = TRAIN_MENU.format(score, "Hidden")
-                    else:
-                        output.children[0].text = TRAIN_MENU.format(san, score)
+                        self.train_move_info["score"] = score
 
+                    if self.ponder_move != "(none)":
+                        output.children[0].text = TRAIN_MENU.format("Hidden", self.train_move_info["score"])
+                    else:
+                        output.children[0].text = TRAIN_MENU.format(san, "")
                     self.train_eng_score = {}
 
 
