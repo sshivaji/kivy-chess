@@ -58,6 +58,8 @@ from time import sleep
 from chess import polyglot_opening_book
 from uci import UCIEngine
 
+CLOUD_ENGINE_EXEC = 'cloud_engine.sh'
+
 THINKING_TIME = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]"
 THINKING = "[color=000000][b][size=16]Thinking..[/size][/b][/color]"
 
@@ -780,8 +782,9 @@ class DataItem(object):
 
 
 class Chess_app(App):
-    # def on_start(self):
-    #     self.start_uci_engine('/Users/shiv/stockfish-32.sh')
+    def on_start(self):
+        if os.path.isfile(CLOUD_ENGINE_EXEC):
+            self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True)
 
     def on_stop(self):
         if self.uci_engine:
@@ -833,7 +836,7 @@ class Chess_app(App):
         self.uci_engine_thread.daemon = True # thread dies with the program
         self.uci_engine_thread.start()
 
-    def start_uci_engine(self, f):
+    def start_uci_engine(self, f, cloud=False):
         if self.uci_engine:
             self.uci_engine.stop()
 
@@ -841,8 +844,10 @@ class Chess_app(App):
             self.add_load_uci_engine_setting(self.other_engine_panel)
         uci_engine = UCIEngine(f)
         uci_engine.start()
-        # uci_engine.configure({'Threads' : 32, 'Hash' : 2048})
-        uci_engine.configure({})
+        if cloud:
+            uci_engine.configure({'Threads': 32, 'Hash': 2048})
+        else:
+            uci_engine.configure({})
         # Wait until the uci connection is setup
         while not uci_engine.ready:
             # print "Uci not ready"
