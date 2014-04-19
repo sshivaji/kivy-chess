@@ -78,6 +78,7 @@ from chess.game_node import PIECE_FONT_MAP
 from chess import PgnFile
 #from chess import PgnIndex
 from chess.game_node import GameNode
+from chess.game_node import NAG_TO_READABLE_MAP, READABLE_TO_NAG_MAP
 from libchess import Piece
 from libchess import Square
 from chess.game_header_bag import GameHeaderBag
@@ -243,17 +244,62 @@ class KThread(Thread):
     def kill(self):
         self.killed = True
 
-class Annotation(BoxLayout):
+class GameControls(BoxLayout):
+    def __init__(self, app, **kwargs):
+        super(GameControls, self).__init__(**kwargs)
+        self.app = app
 
+    def new(self):
+        self.app.new('')
+
+    def save(self):
+        self.app.save('')
+
+
+    def go_to_settings(self):
+        self.app.go_to_settings('')
+
+class EngineControls(BoxLayout):
+    def __init__(self, app, **kwargs):
+        super(EngineControls, self).__init__(**kwargs)
+        self.app = app
+
+    def toggle_engine(self, command):
+        self.app.add_eng_moves('', command)
+
+class Annotation(BoxLayout):
     def __init__(self, app, **kwargs):
         super(Annotation, self).__init__(**kwargs)
         self.app = app
 
     def set_move_eval(self, value):
-        self.app.chessboard.evaluation = {'move_eval': value}
-    def set_pos_eval(self, value):
-        self.app.chessboard.evaluation = {'pos_eval': value}
+        self.app.chessboard.set_eval('move_eval', value)
+        self.app.refresh_board(update=True)
 
+    def set_pos_eval(self, value):
+        self.app.chessboard.set_eval('pos_eval', value)
+        self.app.refresh_board(update=True)
+
+
+    def open_comment_dialog(self):
+        def update_comments(comment):
+            # print comment.text
+            self.app.chessboard.comment = comment_text.text
+            popup.dismiss()
+            self.app.refresh_board(update=True)
+
+        l = BoxLayout()
+
+        comment_text = TextInput(text=self.app.chessboard.comment, markup=True, focus=True, multiline=True, use_bubble = True)
+        comment_text.bind(on_text_validate=update_comments)
+
+        close_button = Button(markup=True, text="Close", size_hint=(0.1,1))
+        close_button.bind(on_press=update_comments)
+        l.add_widget(comment_text)
+        l.add_widget(close_button)
+
+        popup = Popup(title='Comment', content=l, size_hint=(1, 0.25))
+        popup.open()
 
 class ChessBoardWidget(Widget):
     _moving_piece_pos = ListProperty([0, 0])
@@ -1603,10 +1649,6 @@ class Chess_app(App):
 
         self.b = BoxLayout(size_hint=(0.15, 0.15))
         comment_bt = Annotation(self)
-        # comment_bt = Button(markup=True)
-        # comment_bt.text = "!?"
-
-        # comment_bt.bind(on_press=self.comment)
         self.b.add_widget(comment_bt)
         back_bt = Button(markup=True)
         back_bt.text = "<"
@@ -1623,32 +1665,36 @@ class Chess_app(App):
         fwd_bt.bind(on_press=self.fwd)
         self.b.add_widget(fwd_bt)
 
-        new_bt = Button(markup=True)
-        new_bt.text = "New"
+        # new_bt = Button(markup=True)
+        # new_bt.text = "New"
+        #
+        # new_bt.bind(on_press=self.new)
+        # self.b.add_widget(new_bt)
+        #
+        # save_bt = Button(markup=True)
+        # save_bt.text = "Save"
+        #
+        # save_bt.bind(on_press=self.save)
+        # self.b.add_widget(save_bt)
+        #
+        # settings_bt = Button(markup=True, text='Setup')
+        # settings_bt.bind(on_press=self.go_to_settings)
+        # self.b.add_widget(settings_bt)
+        game_bt = GameControls(self)
+        self.b.add_widget(game_bt)
 
-        new_bt.bind(on_press=self.new)
-        self.b.add_widget(new_bt)
-
-        save_bt = Button(markup=True)
-        save_bt.text = "Save"
-
-        save_bt.bind(on_press=self.save)
-        self.b.add_widget(save_bt)
-
-        settings_bt = Button(markup=True, text='Setup')
-        settings_bt.bind(on_press=self.go_to_settings)
-        self.b.add_widget(settings_bt)
 
         # box.add_widget()
         parent.add_widget(self.grid)
 
-        self.info_grid = GridLayout(cols=1, rows=4, spacing=5, padding=(8, 8), orientation='vertical')
+        self.info_grid = GridLayout(cols=1, rows=5, spacing=5, padding=(8, 8), orientation='vertical')
         self.info_grid.add_widget(self.b)
 
         self.game_score = ScrollableLabel('[color=000000][b]%s[/b][/color]' % GAME_HEADER, font_name='img/CAChess.ttf',
                                           font_size=17, ref_callback=self.go_to_move)
 
         self.info_grid.add_widget(self.game_score)
+        self.info_grid.add_widget(EngineControls(self, size_hint=(1,0.15)))
 
         self.engine_score = ScrollableLabel(ENGINE_HEADER, font_name='img/CAChess.ttf', font_size=17, ref_callback=self.add_eng_moves)
         self.info_grid.add_widget(self.engine_score)
@@ -3144,8 +3190,10 @@ class Chess_app(App):
 
         if self.chessboard.san:
             self.prev_move.text = self.get_prev_move()
+            if self.chessboard.evaluation.has_key('move_eval'):
+                self.prev_move.text += ' ' + NAG_TO_READABLE_MAP[self.chessboard.evaluation['move_eval']]
             if self.chessboard.evaluation.has_key('pos_eval'):
-                self.prev_move.text += ' ' + self.chessboard.evaluation['pos_eval']
+                self.prev_move.text += ' ' + NAG_TO_READABLE_MAP[self.chessboard.evaluation['pos_eval']]
 
 #        all_moves = self.chessboard.getAllTextMoves()
 #        print self.chessboard_root.game_score()

@@ -1,3 +1,8 @@
+#:import ENGINE_ANALYSIS main.ENGINE_ANALYSIS
+#:import ENGINE_TRAINING main.ENGINE_TRAINING
+#:import ENGINE_PLAY main.ENGINE_PLAY
+
+
 [HSeparator@Label]:
     size_hint_y: None
     height: max(dp(25), self.texture_size[1] + dp(10))
@@ -8,7 +13,6 @@
 
 <Annotation>:
     ActionBar:
-        pos_hint: {'top':1}
         size_hint_y: 1
         ActionView:
             use_separator: True
@@ -21,30 +25,90 @@
                 mode: 'spinner'
                 text: '!?'
                 ActionButton:
+                    text: 'Reset'
+                    on_press: root.set_move_eval(0)
+                ActionButton:
                     text: '!?'
-                    on_press: root.set_move_eval('!?')
+                    on_press: root.set_move_eval(5)
                 ActionButton:
                     text: '!'
-                    on_press: root.set_move_eval('!')
+                    on_press: root.set_move_eval(1)
                 ActionButton:
                     text: '?'
-                    on_press: root.set_move_eval('?')
+                    on_press: root.set_move_eval(2)
                 ActionButton:
                     text: '?!'
-                    on_press: root.set_move_eval('?!')
+                    on_press: root.set_move_eval(6)
             ActionGroup:
                 id: eval_action_group
                 mode: 'normal'
                 text: 'Eval'
                 ActionButton:
+                    text: 'Reset'
+                    on_press: root.set_pos_eval(0)
+                ActionButton:
                     text: '+='
-                    on_press: root.set_pos_eval('+=')
+                    on_press: root.set_pos_eval(14)
                 ActionButton:
                     text: '='
-                    on_press: root.set_pos_eval('=')
+                    on_press: root.set_pos_eval(10)
                 ActionButton:
                     text: '=+'
-                    on_press: root.set_pos_eval('=+')
+                    on_press: root.set_pos_eval(15)
                 ActionButton:
                     text: 'Comment'
+                    on_press: root.open_comment_dialog()
 
+<GameControls>:
+    ActionBar:
+        size_hint_y: 1
+        ActionView:
+            use_separator: True
+            ActionPrevious:
+                with_previous: False
+
+            ActionOverflow:
+            ActionGroup:
+                id: game_action_group
+                mode: 'spinner'
+                text: 'Game'
+                ActionButton:
+                    text: 'New Game'
+                    on_press: root.new()
+                ActionButton:
+                    text: 'Save Game'
+                    on_press: root.save()
+                ActionButton:
+                    text: 'Setup'
+                    on_press: root.go_to_settings()
+
+<EngineControls>:
+    ActionBar:
+        size_hint_y: 1
+        ContextualActionView:
+            use_separator: True
+            ActionPrevious:
+                with_previous: False
+
+            ActionOverflow:
+            ActionButton:
+                text: 'Analysis'
+                on_press: root.toggle_engine(ENGINE_ANALYSIS)
+            ActionButton:
+                text: 'Play'
+                on_press: root.toggle_engine(ENGINE_PLAY)
+
+            ActionButton:
+                text: 'Train'
+                on_press: root.toggle_engine(ENGINE_TRAINING)
+
+            ActionGroup:
+                id: game_action_group
+                mode: 'spinner'
+                text: 'Engine'
+                ActionButton:
+                    text: 'Stockfish'
+                ActionButton:
+                    text: 'Cloud'
+                ActionButton:
+                    text: 'Add..'

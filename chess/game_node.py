@@ -30,6 +30,25 @@ PIECE_FONT_MAP = {
     "P": u'\u00a7'
 }
 
+NAG_TO_READABLE_MAP = {
+    0: "",
+    1: "!",
+    2: "?",
+    3: "!!",
+    4: "??",
+    5: "!?",
+    6: "?!",
+    10: "=",
+    14: "+=",
+    15: "=+",
+    16: "+-",
+    17: "-+",
+    18: "+ -",
+    19: "- +"
+}
+
+READABLE_TO_NAG_MAP = {v:k for k, v in NAG_TO_READABLE_MAP.iteritems()}
+
 class GameNode(object):
     """A node in the tree of a game.
 
@@ -65,7 +84,7 @@ class GameNode(object):
     False
     """
 
-    def __init__(self, previous_node, move, nags=[], evaluation = {}, comment="",
+    def __init__(self, previous_node, move, nags=[], comment="",
                  start_comment=""):
         self.__previous_node = previous_node
         self.__move = move
@@ -95,7 +114,7 @@ class GameNode(object):
             GameNode.positions[str(self.__position.__hash__())] = self
 
         self.__nags = nags
-        self.__evaluation = evaluation
+        self.__evaluation = {}
         self.comment = comment
         self.start_comment = start_comment
 
@@ -181,11 +200,8 @@ class GameNode(object):
         """Position Evaluation map ('move_eval', and 'pos_eval' are keys)"""
         return self.__evaluation
 
-    @evaluation.setter
-    def evaluation(self, value):
-        """Position Evaluation map ('move_eval', and 'pos_eval' are keys)"""
-        self.__evaluation = value
-
+    def set_eval(self, key, value):
+        self.__evaluation[key] = value
 
     def get_prev_moves(self, format="raw"):
         if self.previous_node:
@@ -359,6 +375,7 @@ class GameNode(object):
         """
         del self.__variations[self.index(variation)]
 
+
     def walk_tree_iterative(self, variation, move, format="normal", score="", figurine=False):
         score = u''
         q = [variation]
@@ -395,10 +412,32 @@ class GameNode(object):
                     score += "{0} ".format(el.move)
 
                 try:
+                    if el.evaluation.has_key("move_eval") or el.evaluation.has_key("pos_eval"):
+                        el.__nags = []
+
+                    if el.evaluation.has_key("move_eval"):
+                        el.__nags.append(el.evaluation["move_eval"])
+                        # score += "{0} ".format(el.evaluation["move_eval"])
+                    if el.evaluation.has_key("pos_eval"):
+                        el.__nags.append(el.evaluation["pos_eval"])
+
+                        # score += "{0} ".format(el.evaluation["pos_eval"])
+                    if el.nags:
+                        for nag in el.nags:
+                            if format == "file":
+                                if nag:
+                                    score += "${0} ".format(nag)
+                            else:
+                                if nag in NAG_TO_READABLE_MAP:
+                                    score += "{0} ".format(NAG_TO_READABLE_MAP[nag])
+                except UnicodeDecodeError, e:
+                    print e
+
+                try:
                     if el.comment:
                         score += "[color=3333ff]{0}[/color]".format(el.comment)
-                except UnicodeEncodeError:
-                    pass
+                except UnicodeEncodeError, e:
+                    print e
 
                 if not el.is_main_line() and len(el.__variations) == 0:
                     # print "move: {0} is a leaf".format(el.__san)
@@ -409,7 +448,7 @@ class GameNode(object):
                     score += " "
                     if el.is_main_line():
                         score +="[/b]"
-                    score+="[/size][/ref] "
+                    score += "[/size][/ref] "
 
                 if len(el)>0:
                     for v in el.__variations:
