@@ -65,7 +65,7 @@ class GameNode(object):
     False
     """
 
-    def __init__(self, previous_node, move, nags=[], comment="",
+    def __init__(self, previous_node, move, nags=[], evaluation = {}, comment="",
                  start_comment=""):
         self.__previous_node = previous_node
         self.__move = move
@@ -95,6 +95,7 @@ class GameNode(object):
             GameNode.positions[str(self.__position.__hash__())] = self
 
         self.__nags = nags
+        self.__evaluation = evaluation
         self.comment = comment
         self.start_comment = start_comment
 
@@ -174,6 +175,17 @@ class GameNode(object):
     def nags(self):
         """A list of numeric annotation glyphs."""
         return self.__nags
+
+    @property
+    def evaluation(self):
+        """Position Evaluation map ('move_eval', and 'pos_eval' are keys)"""
+        return self.__evaluation
+
+    @evaluation.setter
+    def evaluation(self, value):
+        """Position Evaluation map ('move_eval', and 'pos_eval' are keys)"""
+        self.__evaluation = value
+
 
     def get_prev_moves(self, format="raw"):
         if self.previous_node:

@@ -15,6 +15,7 @@ from kivy_util import ScrollableLabel
 from kivy_util import ScrollableGrid
 
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.screenmanager import ScreenManager, Screen
 from kivy.uix.settings import Settings, SettingItem, SettingsPanel
 from kivy.uix.screenmanager import SlideTransition
@@ -241,6 +242,18 @@ class KThread(Thread):
 
     def kill(self):
         self.killed = True
+
+class Annotation(BoxLayout):
+
+    def __init__(self, app, **kwargs):
+        super(Annotation, self).__init__(**kwargs)
+        self.app = app
+
+    def set_move_eval(self, value):
+        self.app.chessboard.evaluation = {'move_eval': value}
+    def set_pos_eval(self, value):
+        self.app.chessboard.evaluation = {'pos_eval': value}
+
 
 class ChessBoardWidget(Widget):
     _moving_piece_pos = ListProperty([0, 0])
@@ -846,6 +859,7 @@ class Chess_app(App):
         uci_engine.start()
         if cloud:
             uci_engine.configure({'Threads': 32, 'Hash': 2048})
+            uci_engine.engine_info['name'] = 'Cloud ' + uci_engine.engine_info['name']
         else:
             uci_engine.configure({})
         # Wait until the uci connection is setup
@@ -1587,9 +1601,14 @@ class Chess_app(App):
         self.update_grid_border(0,0,0)
         Window.bind(on_resize=self.update_grid_border)
 
-        self.b = BoxLayout(size_hint=(0.15,0.15))
+        self.b = BoxLayout(size_hint=(0.15, 0.15))
+        comment_bt = Annotation(self)
+        # comment_bt = Button(markup=True)
+        # comment_bt.text = "!?"
 
-        back_bt = Button(markeup=True)
+        # comment_bt.bind(on_press=self.comment)
+        self.b.add_widget(comment_bt)
+        back_bt = Button(markup=True)
         back_bt.text = "<"
 
         back_bt.bind(on_press=self.back)
@@ -1598,24 +1617,17 @@ class Chess_app(App):
         self.prev_move = Label(markup=True,font_name='img/CAChess.ttf',font_size=16)
         self.b.add_widget(self.prev_move)
 
-        fwd_bt = Button(markeup=True)
+        fwd_bt = Button(markup=True)
         fwd_bt.text = ">"
 
         fwd_bt.bind(on_press=self.fwd)
         self.b.add_widget(fwd_bt)
 
-        comment_bt = Button(markup=True)
-        comment_bt.text = "!?"
-
-        comment_bt.bind(on_press=self.comment)
-        self.b.add_widget(comment_bt)
-
-        new_bt = Button(markeup=True)
+        new_bt = Button(markup=True)
         new_bt.text = "New"
 
         new_bt.bind(on_press=self.new)
         self.b.add_widget(new_bt)
-
 
         save_bt = Button(markup=True)
         save_bt.text = "Save"
@@ -2170,9 +2182,6 @@ class Chess_app(App):
         self.chessboard = Game()
         self.chessboard_root = self.chessboard
         self.refresh_board(update=True)
-
-    def comment(self, obj):
-        print "Comment button clicked"
 
     def back(self, obj):
         if self.chessboard.previous_node:
@@ -3135,7 +3144,8 @@ class Chess_app(App):
 
         if self.chessboard.san:
             self.prev_move.text = self.get_prev_move()
-
+            if self.chessboard.evaluation.has_key('pos_eval'):
+                self.prev_move.text += ' ' + self.chessboard.evaluation['pos_eval']
 
 #        all_moves = self.chessboard.getAllTextMoves()
 #        print self.chessboard_root.game_score()

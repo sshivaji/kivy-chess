@@ -1,0 +1,50 @@
+[HSeparator@Label]:
+    size_hint_y: None
+    height: max(dp(25), self.texture_size[1] + dp(10))
+    text: ctx.text if 'text' in ctx else ''
+    text_size: self.width, None
+    valign: 'middle'
+    halign: 'center'
+
+<Annotation>:
+    ActionBar:
+        pos_hint: {'top':1}
+        size_hint_y: 1
+        ActionView:
+            use_separator: True
+            ActionPrevious:
+                with_previous: False
+
+            ActionOverflow:
+            ActionGroup:
+                id: annotation_action_group
+                mode: 'spinner'
+                text: '!?'
+                ActionButton:
+                    text: '!?'
+                    on_press: root.set_move_eval('!?')
+                ActionButton:
+                    text: '!'
+                    on_press: root.set_move_eval('!')
+                ActionButton:
+                    text: '?'
+                    on_press: root.set_move_eval('?')
+                ActionButton:
+                    text: '?!'
+                    on_press: root.set_move_eval('?!')
+            ActionGroup:
+                id: eval_action_group
+                mode: 'normal'
+                text: 'Eval'
+                ActionButton:
+                    text: '+='
+                    on_press: root.set_pos_eval('+=')
+                ActionButton:
+                    text: '='
+                    on_press: root.set_pos_eval('=')
+                ActionButton:
+                    text: '=+'
+                    on_press: root.set_pos_eval('=+')
+                ActionButton:
+                    text: 'Comment'
+
