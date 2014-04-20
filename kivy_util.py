@@ -1,9 +1,29 @@
-from kivy.resources import resource_find
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.graphics import Rectangle
 from kivy.graphics import Color
+from kivy.graphics import InstructionGroup
+from kivy.graphics import Line
 from data_grid import DataGrid
+from math import atan2, sin, cos
+
+
+class Arrow(InstructionGroup):
+    def __init__(self, points, line_width = 1, head_length = 8, **kwargs):
+        super(Arrow, self).__init__(**kwargs)
+        Line(points=points, width=line_width)
+        for p in self.get_head_line_points(points, head_length):
+            Line(points=p, width=line_width)
+
+    @staticmethod
+    def get_head_line_points(points, head_length):
+        xd = points[0] - points[2]
+        yd = points[1] - points[3]
+        t = atan2(yd, xd)
+        # return the angle between point2 and point1 with a variance of 30 degrees on each side
+        head_angles = (t-0.5, t+0.5)
+        for th in head_angles:
+            yield [points[2], points[3], points[2] + head_length * cos(th), points[3] + head_length * sin(th)]
 
 class ScrollableLabel(ScrollView):
     def __init__(self, text, ref_callback=None, font_size=13, font_name='DroidSans', *args, **kwargs):

@@ -13,6 +13,7 @@ from kivy.uix.checkbox import CheckBox
 
 from kivy_util import ScrollableLabel
 from kivy_util import ScrollableGrid
+from kivy_util import Arrow
 
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
@@ -48,7 +49,6 @@ from kivy.uix.button import Button
 from kivy.uix.gridlayout import GridLayout
 from kivy.animation import Animation
 from kivy.properties import ListProperty
-
 #from kivy.core.clipboard import Clipboard
 
 #from ChessBoard import ChessBoard
@@ -102,7 +102,7 @@ REF_ = '[ref='
 
 BOOK_POSITION_UPDATE = "BOOK_POSITION_UPDATE"
 
-Clock.max_iteration = 20
+Clock.max_iteration = 100
 
 GAME_HEADER = 'New Game'
 
@@ -309,7 +309,9 @@ class ChessBoardWidget(Widget):
     _game = None
 
     def _update_after_animation(self, anim, *args):
+        # print "update_after_anim"
         if hasattr(anim, 'fen'):
+            # print "FEN"
             self.set_position(anim.fen)
             self._draw_board()
             self._draw_pieces()
@@ -317,40 +319,89 @@ class ChessBoardWidget(Widget):
             # print('ANIMMOVE : ' + anim.move)
             # self.fen = sf.get_fen(self._game.start_position, self._game.moves+[anim.move])
             # self._game.moves.append(anim.move)
-            self.app.process_move(anim.move)
             self.set_position(self.app.chessboard.position.fen)
+            self.app.process_move(anim.move)
+
+            # if self.to_x and self.to_y:
+            #         # Line(points=[self._moving_piece_pos[0], self._moving_piece_pos[1], self.to_x, self.to_y])
+            #     Arrow([self._moving_piece_pos[0], self._moving_piece_pos[1], self.to_x, self.to_y], line_width = 3, head_length = 10)
+
             self._draw_board()
             self._draw_pieces()
+
+
         else:
             self._moving_piece_from = -1
             self._moving_piece = '.'
 
 
-    def _update_position(self, g, value):
-        #print "UPDATING WITH MOVE" + str(value)
-        if not g:
-            self.set_position(value)
-            self._draw_board()
-            self._draw_pieces()
+    def _update_position(self, prev_move, fen):
+        # print "UPDATING WITH MOVE" + str(fen)
+        if fen == self.fen:
+            # print "Same FEN, no update"
             return
-        if self.fen == g.current_fen():
-            return
-        if self.fen == sf.get_fen(g.start_position,g.moves[:-1]):  # Animate if this is a new move on current fen
-            self._moving_piece_from = self.square_number(g.moves[-1][:2])
+        # if not prev_move:
+        if prev_move:
+            self._moving_piece_from = self.square_number(str(prev_move)[:2])
             self._moving_piece = self.position[self._moving_piece_from]
             self._moving_piece_pos[0], self._moving_piece_pos[1] = self._to_coordinates(self._moving_piece_from)
-            animation = Animation(_moving_piece_pos=self._to_coordinates(self.square_number(g.moves[-1][2:4])), duration=0.1, t='in_out_sine')
-            animation.fen=g.current_fen()
-            animation.bind(on_complete=self._update_after_animation)
-            animation.start(self)
-            self.app.hint_move = None
+            self.from_x, self.from_y = self._moving_piece_pos
+            self.from_x += self.square_size/2
+            self.from_y += self.square_size/2
+            # self._moving_piece_to = self.square_number(str(prev_move)[2:4])
 
-        else:
-            self.set_position(g.current_fen())
-            self._draw_board()
-            self._draw_pieces()
-            self.app.hint_move = None
-        #print "END UPDATE"
+            self.to_x, self.to_y = self._to_coordinates(self.square_number(str(prev_move)[2:4]))
+            self.to_x += self.square_size/2
+            self.to_y += self.square_size/2
+        self.set_position(fen)
+        # self.to_x = None
+        # self.to_y = None
+        # self.app.hint_move = None
+        self._draw_board()
+        self._draw_pieces()
+
+            # return
+
+        # if prev_move:  # Animate if this is a new move on current fen
+        #     # print "prev_move: {0}".format(prev_move)
+        #     self._moving_piece_from = self.square_number(str(prev_move)[:2])
+        #     self._moving_piece = self.position[self._moving_piece_from]
+        #     self._moving_piece_pos[0], self._moving_piece_pos[1] = self._to_coordinates(self._moving_piece_from)
+        #     self.from_x, self.from_y = self._moving_piece_pos
+        #     self.from_x += self.square_size/2
+        #     self.from_y += self.square_size/2
+        #     # self._moving_piece_to = self.square_number(str(prev_move)[2:4])
+        #
+        #     self.to_x, self.to_y = self._to_coordinates(self.square_number(str(prev_move)[2:4]))
+        #     self.to_x += self.square_size/2
+        #     self.to_y += self.square_size/2
+        #     # animation = Animation(_moving_piece_pos=self._to_coordinates(self.square_number(str(prev_move)[2:4])), duration=0.1, t='in_out_sine')
+        #     animation = Animation(_moving_piece_pos=self._to_coordinates(self.square_number(str(prev_move)[2:4])), duration=0, t='in_out_sine')
+        #
+        #     animation.fen = fen
+        #     animation.bind(on_complete=self._update_after_animation)
+        #     animation.start(self)
+        #     # with self.canvas:
+        #     #     Color(*self.highlight_color)
+        #     #     print "Drawing arrow"
+        #     #     print self._moving_piece_pos[0]
+        #     #     print self._moving_piece_pos[1]
+        #     #     print to_x
+        #     #     print to_y
+        #     #     if to_x and to_y:
+        #     #         # Line(points=[self._moving_piece_pos[0], self._moving_piece_pos[1], self.to_x, self.to_y])
+        #     #         Arrow([self._moving_piece_pos[0], self._moving_piece_pos[1], to_x, to_y], line_width = 3, head_length = 10)
+
+
+            # self.app.hint_move = None
+
+        # else:
+        #     print "No anim"
+        #     self.set_position(g.current_fen())
+        #     self._draw_board()
+        #     self._draw_pieces()
+        #     self.app.hint_move = None
+        # #print "END UPDATE"
         #print "END UPDATE"
 
     def set_position(self, fen):
@@ -397,6 +448,19 @@ class ChessBoardWidget(Widget):
             if p != '.' and i != skip:
                 self._draw_piece(p, self._to_coordinates(i))
             i += 1
+        with self.canvas:
+            # self.canvas.clear()
+            if self.to_x and self.to_y:
+                if (abs(self.from_y - self.to_y) > 0) or (abs(self.from_x - self.to_x) > 0):
+                    Color(*self.highlight_color)
+
+                        # Line(points=[self._moving_piece_pos[0], self._moving_piece_pos[1], self.to_x, self.to_y])
+                    Arrow([self.from_x, self.from_y, self.to_x, self.to_y], line_width = 1, head_length = 1)
+                    # print "Drawing arrow"
+                    # print self.from_x
+                    # print self.from_y
+                    # print self.to_x
+                    # print self.to_y
 
     def _draw_board(self):
         with self.canvas:
@@ -410,6 +474,8 @@ class ChessBoardWidget(Widget):
                     if (row + file) & 0x1:
                         Rectangle(pos=(
                             self.bottom_left[0] + file * self.square_size, self.bottom_left[1] + row * self.square_size), texture=self.light_img.texture, size=(self.square_size, self.square_size))
+
+
 
     def on_size(self, instance, value):
         self.square_size = int(min(self.size) / 8)
@@ -482,6 +548,10 @@ class ChessBoardWidget(Widget):
         self._background_textures = { 'K':'k', 'Q':'l', 'R':'m', 'B':'n', 'N':'o', 'P':'p', 'k':'q', 'q':'r', 'r':'s', 'b':'t', 'n':'u', 'p':'v'}
         self._front_textures = { 'K':'H', 'Q':'I', 'R':'J', 'B':'K', 'N':'L', 'P':'M', 'k':'N', 'q':'O', 'r':'P', 'b':'Q', 'n':'R', 'p':'S'}
         self.bind(_moving_piece_pos=self._animate_piece)
+        self.from_x = None
+        self.from_y = None
+        self.to_x = None
+        self.to_y = None
         Window.bind(mouse_pos=self.mouse_callback)
 
 
@@ -3180,10 +3250,7 @@ class Chess_app(App):
         squares = self.chessboard.position
         # print self.chessboard.position.fen
         # print self.chessboard.position.get_ep_square()
-        try:
-            self.grid._update_position(None, self.chessboard.position.fen)
-        except:
-            pass
+        self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
         # for i, p in enumerate(SQUARES):
         #     self.fill_chess_board(self.squares[i], squares[p])
         # self.grid._update_position(self.chessboard.position.fen, "")
