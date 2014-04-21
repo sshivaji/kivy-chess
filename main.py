@@ -1177,17 +1177,20 @@ class Chess_app(App):
                 self.dgtnix.subscribe(self.dgt_probe)
                 poll_dgt()
                 if arduino:
-                    from nanpy.lcd import Lcd
-                    from nanpy import SerialManager
-                    from nanpy import ArduinoApi
-                    connection = SerialManager(device='/dev/cu.usbmodem411')
-                    self.arduino = ArduinoApi(connection=connection)
-                    Clock.schedule_interval(self.process_arduino_button, 1)
+                    try:
+                        from nanpy.lcd import Lcd
+                        from nanpy import SerialManager
+                        from nanpy import ArduinoApi
+                        connection = SerialManager(device='/dev/cu.usbmodem641')
+                        self.arduino = ArduinoApi(connection=connection)
+                        Clock.schedule_interval(self.process_arduino_button, 0.01)
 
-                    # time.sleep(3)
-                    self.lcd = Lcd([8, 9, 4, 5, 6, 7 ], [16, 2], connection=connection)
-                    self.lcd.printString('Kivy Chess')
-
+                        # time.sleep(3)
+                        self.lcd = Lcd([8, 9, 4, 5, 6, 7 ], [16, 2], connection=connection)
+                        self.lcd.printString('Kivy Chess')
+                    except OSError:
+                        self.lcd = None
+                        print "No LCD found"
                 if not self.dgtnix:
                     print "Unable to connect to the device on {0}".format(self.device)
                 else:
@@ -2429,7 +2432,7 @@ class Chess_app(App):
                 move_list[i] = m
         return move_list
 
-    def parse_score(self, line, figurine=False):
+    def parse_score(self, line, figurine=False, raw=False):
         # print "line: "
         # print line
         # print "num_lines: {0}".format(len(line.split("\n")))
@@ -2514,8 +2517,12 @@ class Chess_app(App):
                 # print variation
                 pretty_var = u""
                 if i == 0:
-                    pretty_var += u"[color=3333ff][ref={0}]Stop[/ref]{1}[/color]".format(ENGINE_ANALYSIS, tail)
-                pretty_var += u"\n[color=000000]{0}[/color]".format(variation)
+                    if not raw:
+                        pretty_var += u"[color=3333ff][ref={0}]Stop[/ref]{1}[/color]".format(ENGINE_ANALYSIS, tail)
+                if raw:
+                    pretty_var += variation
+                else:
+                    pretty_var += u"\n[color=000000]{0}[/color]".format(variation)
                 # print "pretty_var:"
                 # print pretty_var
 
@@ -2597,8 +2604,8 @@ class Chess_app(App):
             else:
                 sleep(0.05)
 
-    def parse_analysis(self, line):
-        out_scores = self.parse_score(line, figurine=True)
+    def parse_analysis(self, line, figurine=True, raw=False):
+        out_scores = self.parse_score(line, figurine=figurine, raw=raw)
         output_buffer = u''
 
         if out_scores:
@@ -2613,18 +2620,7 @@ class Chess_app(App):
                         else:
                             output_buffer += cleaned_line
 
-                    if self.dgt_connected and self.dgtnix:
-                        tokens = line.split()
 
-                        line_index = tokens.index('pv')
-                        if line_index > -1:
-                            pv = self.get_san(tokens[line_index + 1:])
-                            # print "pv : {0}".format(pv)
-
-                            if len(pv) > 0:
-                                depth, score = self.get_score(line)
-                                self.write_to_lcd(self.generate_move_list(pv, eval=score,
-                                          start_move_num=self.chessboard.half_move_num), clear=True)
         return output_buffer
 
     def update_engine_output(self, line):
@@ -2647,6 +2643,10 @@ class Chess_app(App):
                     self.internal_engine_output = u"\n[color=000000]{0}[/color]".format(self.get_internal_engine_info()[0]) + ' ' + cleaned_line
                     if not self.uci_engine:
                         output.children[0].text = self.internal_engine_output
+                        if self.dgt_connected and self.lcd:
+                            cleaned_line = self.parse_analysis(line, figurine=False, raw=True)
+                            # print cleaned_line
+                            self.write_to_lcd(cleaned_line, clear=True)
             elif self.engine_mode == ENGINE_PLAY:
                 if self.engine_computer_move:
                     best_move, self.ponder_move = self.parse_bestmove(line)
