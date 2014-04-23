@@ -102,6 +102,10 @@
                 text: 'Train'
                 on_press: root.toggle_engine(ENGINE_TRAINING)
 
+            ActionButton:
+                text: 'Game Review'
+                on_press: root.analyze_game()
+
             ActionGroup:
                 id: game_action_group
                 mode: 'spinner'

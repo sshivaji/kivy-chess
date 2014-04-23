@@ -267,6 +267,9 @@ class EngineControls(BoxLayout):
     def toggle_engine(self, command):
         self.app.add_eng_moves('', command)
 
+    def analyze_game(self):
+        self.app.analyze_game()
+
 class Annotation(BoxLayout):
     def __init__(self, app, **kwargs):
         super(Annotation, self).__init__(**kwargs)
@@ -1067,6 +1070,39 @@ class Chess_app(App):
         # elif button_val == "DOWN":
         #     self.add_eng_moves(None, ENGINE_ANALYSIS)
 
+    def analyze_game(self):
+        self.stop_engine()
+        self.engine_mode = ENGINE_ANALYSIS
+
+        # while self.back(None):
+        #     pass
+        self.chessboard = self.chessboard_root
+        self.use_internal_engine = True
+        self.hint_move = None
+        self.refresh_board(update=False)
+
+        while self.fwd(None):
+            # sleep(1)
+            # print "move.."
+            fen = self.chessboard.position.fen
+            p = Position(fen)
+            polyglot_entries = list(self.book.get_entries_for_position(p))
+            num_polyglot_entries = len(polyglot_entries)
+
+            if num_polyglot_entries < 2:
+                # sleep(5)
+                # self.refresh_board()
+
+                # sleep(1)
+                print self.internal_engine_raw_output
+            # # Analyze the position
+        self.add_eng_moves(None, ENGINE_ANALYSIS)
+
+        # Analyze each non book position for 5 seconds
+        # If played move is worse than best move by > 3, add a double question mark and indicate best move in a variation
+        # If played move is worse than best move by > 0.75, add a single question mark and indicate best move in a variation
+        # If played move is the best move and better than other moves by 0.5, and is not a recapture, add an !
+
     def gen_uci_menu_item(self, title, uci_option, engine_panel, internal=True):
         if internal:
             engine = sf
@@ -1656,6 +1692,7 @@ class Chess_app(App):
         self.setup_board_squares = []
         self.use_internal_engine = False
         self.internal_engine_output = ""
+        self.internal_engine_raw_output = ""
         self.internal_engine_info = self.get_internal_engine_info()
 
         self.use_uci_engine = False
@@ -2641,6 +2678,7 @@ class Chess_app(App):
                     # print "cleaned_line:"
                     # print cleaned_line
                     self.internal_engine_output = u"\n[color=000000]{0}[/color]".format(self.get_internal_engine_info()[0]) + ' ' + cleaned_line
+                    self.internal_engine_raw_output = self.parse_analysis(line, figurine=False, raw=True)
                     if not self.uci_engine:
                         output.children[0].text = self.internal_engine_output
                         if self.dgt_connected and self.lcd:
@@ -2771,8 +2809,9 @@ class Chess_app(App):
             self.chessboard = self.chessboard.variations[0]
             self.refresh_board(update=False)
         except IndexError:
-            pass
+            return False
             # TODO: log error if in debug mode
+        return True
 
     def save(self, obj):
         use_db = False
