@@ -17,6 +17,7 @@
         ActionView:
             use_separator: True
             ActionPrevious:
+                title: 'Move'
                 with_previous: False
 
             ActionOverflow:
@@ -26,38 +27,39 @@
                 text: '!?'
                 ActionButton:
                     text: 'Reset'
-                    on_press: root.set_move_eval(0)
+                    on_press: root.set_move_eval(0, self)
+
                 ActionButton:
                     text: '!?'
-                    on_press: root.set_move_eval(5)
+                    on_press: root.set_move_eval(5, self)
                 ActionButton:
                     text: '!'
-                    on_press: root.set_move_eval(1)
+                    on_press: root.set_move_eval(1, self)
                 ActionButton:
                     text: '?'
-                    on_press: root.set_move_eval(2)
+                    on_press: root.set_move_eval(2, self)
                 ActionButton:
                     text: '?!'
-                    on_press: root.set_move_eval(6)
+                    on_press: root.set_move_eval(6, self)
             ActionGroup:
                 id: eval_action_group
                 mode: 'normal'
                 text: 'Eval'
                 ActionButton:
                     text: 'Reset'
-                    on_press: root.set_pos_eval(0)
+                    on_press: root.set_pos_eval(0, self)
                 ActionButton:
                     text: '+='
-                    on_press: root.set_pos_eval(14)
+                    on_press: root.set_pos_eval(14, self)
                 ActionButton:
                     text: '='
-                    on_press: root.set_pos_eval(10)
+                    on_press: root.set_pos_eval(10, self)
                 ActionButton:
                     text: '=+'
-                    on_press: root.set_pos_eval(15)
+                    on_press: root.set_pos_eval(15, self)
                 ActionButton:
                     text: 'Comment'
-                    on_press: root.open_comment_dialog()
+                    on_press: root.open_comment_dialog(self)
 
 <GameControls>:
     ActionBar:
@@ -65,6 +67,7 @@
         ActionView:
             use_separator: True
             ActionPrevious:
+                title: 'Game'
                 with_previous: False
 
             ActionOverflow:
@@ -74,13 +77,13 @@
                 text: 'Game'
                 ActionButton:
                     text: 'New Game'
-                    on_press: root.new()
+                    on_press: root.new(self)
                 ActionButton:
                     text: 'Save Game'
-                    on_press: root.save()
+                    on_press: root.save(self)
                 ActionButton:
                     text: 'Setup'
-                    on_press: root.go_to_settings()
+                    on_press: root.go_to_settings(self)
 
 <EngineControls>:
     ActionBar:
@@ -88,6 +91,7 @@
         ContextualActionView:
             use_separator: True
             ActionPrevious:
+                title: 'Engine'
                 with_previous: False
 
             ActionOverflow:

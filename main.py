@@ -249,15 +249,20 @@ class GameControls(BoxLayout):
         super(GameControls, self).__init__(**kwargs)
         self.app = app
 
-    def new(self):
+    def new(self, bt):
         self.app.new('')
+        bt.parent.parent.dismiss()
 
-    def save(self):
+    def save(self, bt):
         self.app.save('')
+        bt.parent.parent.dismiss()
 
 
-    def go_to_settings(self):
+
+    def go_to_settings(self, bt):
         self.app.go_to_settings('')
+        bt.parent.parent.dismiss()
+
 
 class EngineControls(BoxLayout):
     def __init__(self, app, **kwargs):
@@ -275,16 +280,29 @@ class Annotation(BoxLayout):
         super(Annotation, self).__init__(**kwargs)
         self.app = app
 
-    def set_move_eval(self, value):
-        self.app.chessboard.set_eval('move_eval', value)
-        self.app.refresh_board(update=True)
+    # def callback(self, button):
+    #     print "In callback"
+    #     print button
+    #     # do your management stuff like animation etc here
+    #     # then depending on yout use case dismiss the popup
+    #     button.parent.parent.dismiss()
+    #     # self._label.text = self._label.text + '\n' + button.text
 
-    def set_pos_eval(self, value):
+    def set_move_eval(self, value, bt):
+        self.app.chessboard.set_eval('move_eval', value)
+        # self._dropdown.dismiss()
+        # print dir(grp.parent)
+        # grp._dropdown.dismiss()
+        self.app.refresh_board(update=True)
+        bt.parent.parent.dismiss()
+
+
+    def set_pos_eval(self, value, bt):
         self.app.chessboard.set_eval('pos_eval', value)
         self.app.refresh_board(update=True)
+        bt.parent.parent.dismiss()
 
-
-    def open_comment_dialog(self):
+    def open_comment_dialog(self, bt):
         def update_comments(comment):
             # print comment.text
             self.app.chessboard.comment = comment_text.text
@@ -292,6 +310,7 @@ class Annotation(BoxLayout):
             self.app.refresh_board(update=True)
 
         l = BoxLayout()
+        bt.parent.parent.dismiss()
 
         comment_text = TextInput(text=self.app.chessboard.comment, markup=True, focus=True, multiline=True, use_bubble = True)
         comment_text.bind(on_text_validate=update_comments)
