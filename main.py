@@ -59,7 +59,7 @@ from time import sleep
 from chess import polyglot_opening_book
 from uci import UCIEngine
 
-CLOUD_ENGINE_EXEC = 'cloud_engine.sh'
+CLOUD_ENGINE_EXEC = './cloud_engine.sh'
 
 THINKING_TIME = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]"
 THINKING = "[color=000000][b][size=16]Thinking..[/size][/b][/color]"
@@ -997,7 +997,7 @@ class Chess_app(App):
         uci_engine.start()
         if cloud:
             uci_engine.configure({'Threads': 32, 'Hash': 2048})
-            uci_engine.engine_info['name'] = 'Cloud ' + uci_engine.engine_info['name']
+            # print uci_engine.engine_info
         else:
             uci_engine.configure({})
         # Wait until the uci connection is setup
@@ -1005,6 +1005,9 @@ class Chess_app(App):
             # print "Uci not ready"
             uci_engine.registerIncomingData()
         # print "Uci ready"
+        if cloud:
+            uci_engine.engine_info['name'] = 'Cloud ' + uci_engine.engine_info['name']
+
         self.uci_engine = uci_engine
         if self.uci_engine_thread:
             self.uci_engine_thread.kill()
