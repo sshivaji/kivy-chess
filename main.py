@@ -58,6 +58,7 @@ from operator import attrgetter
 from time import sleep
 from chess import polyglot_opening_book
 from uci import UCIEngine
+import Queue
 
 CLOUD_ENGINE_EXEC = './cloud_engine.sh'
 
@@ -258,7 +259,6 @@ class GameControls(BoxLayout):
         bt.parent.parent.dismiss()
 
 
-
     def go_to_settings(self, bt):
         self.app.go_to_settings('')
         bt.parent.parent.dismiss()
@@ -272,8 +272,10 @@ class EngineControls(BoxLayout):
     def toggle_engine(self, command):
         self.app.add_eng_moves('', command)
 
-    def analyze_game(self):
-        self.app.analyze_game()
+    def analyze_game(self, bt):
+        bt.parent.parent.dismiss()
+        Clock.schedule_once(self.app.analyze_game)
+
 
 class Annotation(BoxLayout):
     def __init__(self, app, **kwargs):
@@ -1092,33 +1094,49 @@ class Chess_app(App):
         # elif button_val == "DOWN":
         #     self.add_eng_moves(None, ENGINE_ANALYSIS)
 
-    def analyze_game(self):
-        self.stop_engine()
+
+    def analyze_game(self, callback):
+        # self.stop_engine()
         self.engine_mode = ENGINE_ANALYSIS
+        self.game_analysis = True
 
         # while self.back(None):
         #     pass
         self.chessboard = self.chessboard_root
         self.use_internal_engine = True
         self.hint_move = None
-        self.refresh_board(update=False)
+        # self.refresh_board(update=False)
 
         while self.fwd(None):
             # sleep(1)
             # print "move.."
-            fen = self.chessboard.position.fen
-            p = Position(fen)
-            polyglot_entries = list(self.book.get_entries_for_position(p))
-            num_polyglot_entries = len(polyglot_entries)
+            # fen = self.chessboard.position.fen
+            print self.internal_engine_raw_output
 
-            if num_polyglot_entries < 2:
-                # sleep(5)
-                # self.refresh_board()
+            print "Put in queue"
+            # self.analysis_queue.put(datetime.datetime.now())
+            print "waiting.."
+            # self.analysis_queue.join()
+            print "Wait finish"
+            print self.internal_engine_raw_output
+            sleep(2)
 
-                # sleep(1)
-                print self.internal_engine_raw_output
+
+            # print self.internal_engine_raw_output
+            # p = Position(fen)
+            # polyglot_entries = list(self.book.get_entries_for_position(p))
+            # num_polyglot_entries = len(polyglot_entries)
+            #
+            # if num_polyglot_entries < 2:
+            #     # sleep(5)
+            #     # self.refresh_board()
+            #
+            #     # sleep(1)
+
+
             # # Analyze the position
         self.add_eng_moves(None, ENGINE_ANALYSIS)
+        self.game_analysis=False
 
         # Analyze each non book position for 5 seconds
         # If played move is worse than best move by > 3, add a double question mark and indicate best move in a variation
@@ -1648,6 +1666,7 @@ class Chess_app(App):
         self.variation_dropdown = None
         self.start_pos_changed = False
         self.engine_mode = None
+        self.game_analysis = False
         self.engine_computer_move = True
         self.computer_move_FEN_reached = False
 
@@ -1706,6 +1725,7 @@ class Chess_app(App):
 
         self.train_eng_score = {}
         # self.curr_train_eng_score = None
+        self.analysis_queue = Queue.Queue()
 
         self.setup_chessboard = Position()
         self.setup_chessboard.clear_board()
@@ -2697,10 +2717,25 @@ class Chess_app(App):
                 cleaned_line = self.parse_analysis(line)
 
                 if cleaned_line:
-                    # print "cleaned_line:"
-                    # print cleaned_line
+                    print "cleaned_line:"
+                    print cleaned_line
                     self.internal_engine_output = u"\n[color=000000]{0}[/color]".format(self.get_internal_engine_info()[0]) + ' ' + cleaned_line
                     self.internal_engine_raw_output = self.parse_analysis(line, figurine=False, raw=True)
+                    # if self.game_analysis:
+                    #     while True:
+                    #         # print "Before queue get"
+                    #         d = self.analysis_queue.get()
+                    #         # print "got {0} from queue".format(d)
+                    #         current = datetime.datetime.now()
+                    #
+                    #         seconds_elapsed = (current - d).total_seconds()
+                    #         print "seconds_elapsed: {0}".format(seconds_elapsed)
+                    #         if seconds_elapsed >= 5:
+                    #             break
+                    #         self.analysis_queue.put(current)
+                    #         self.analysis_queue.task_done()
+
+                        # self.analysis_queue.task_done()
                     if not self.uci_engine:
                         output.children[0].text = self.internal_engine_output
                         if self.dgt_connected and self.lcd:
@@ -2830,6 +2865,7 @@ class Chess_app(App):
         try:
             self.chessboard = self.chessboard.variations[0]
             self.refresh_board(update=False)
+
         except IndexError:
             return False
             # TODO: log error if in debug mode

@@ -88,7 +88,7 @@
 <EngineControls>:
     ActionBar:
         size_hint_y: 1
-        ContextualActionView:
+        ActionView:
             use_separator: True
             ActionPrevious:
                 title: 'Engine'
@@ -108,7 +108,7 @@
 
             ActionButton:
                 text: 'Game Review'
-                on_press: root.analyze_game()
+                on_press: root.analyze_game(self)
 
             ActionGroup:
                 id: game_action_group
