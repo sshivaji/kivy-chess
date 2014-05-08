@@ -2,6 +2,7 @@ from threading import Thread, RLock
 import traceback
 import sys
 import random
+from functools import partial
 
 import kivy
 from kivy.config import ConfigParser
@@ -58,7 +59,7 @@ from operator import attrgetter
 from time import sleep
 from chess import polyglot_opening_book
 from uci import UCIEngine
-import Queue
+from Queue import Queue
 
 CLOUD_ENGINE_EXEC = './cloud_engine.sh'
 
@@ -274,7 +275,14 @@ class EngineControls(BoxLayout):
 
     def analyze_game(self, bt):
         bt.parent.parent.dismiss()
-        Clock.schedule_once(self.app.analyze_game)
+        # Kivy lesson learned for game analysis
+        # Main thread should not do any blocking or long tasks
+        # The recommended pattern is that the main thread calls another thread
+        # and then does a schedule_interval to react to the actions of the spawned thread
+
+        self.app.game_analysis_thread = KThread(target=self.app.analyze_game)
+        self.app.game_analysis_thread.start()
+        Clock.schedule_interval(self.app.update_board_position, 1)
 
 
 class Annotation(BoxLayout):
@@ -1095,7 +1103,7 @@ class Chess_app(App):
         #     self.add_eng_moves(None, ENGINE_ANALYSIS)
 
 
-    def analyze_game(self, callback):
+    def analyze_game(self):
         # self.stop_engine()
         self.engine_mode = ENGINE_ANALYSIS
         self.game_analysis = True
@@ -1105,34 +1113,10 @@ class Chess_app(App):
         self.chessboard = self.chessboard_root
         self.use_internal_engine = True
         self.hint_move = None
-        # self.refresh_board(update=False)
 
         while self.fwd(None):
-            # sleep(1)
-            # print "move.."
-            # fen = self.chessboard.position.fen
+            sleep(5)
             print self.internal_engine_raw_output
-
-            print "Put in queue"
-            # self.analysis_queue.put(datetime.datetime.now())
-            print "waiting.."
-            # self.analysis_queue.join()
-            print "Wait finish"
-            print self.internal_engine_raw_output
-            sleep(2)
-
-
-            # print self.internal_engine_raw_output
-            # p = Position(fen)
-            # polyglot_entries = list(self.book.get_entries_for_position(p))
-            # num_polyglot_entries = len(polyglot_entries)
-            #
-            # if num_polyglot_entries < 2:
-            #     # sleep(5)
-            #     # self.refresh_board()
-            #
-            #     # sleep(1)
-
 
             # # Analyze the position
         self.add_eng_moves(None, ENGINE_ANALYSIS)
@@ -1725,7 +1709,7 @@ class Chess_app(App):
 
         self.train_eng_score = {}
         # self.curr_train_eng_score = None
-        self.analysis_queue = Queue.Queue()
+        self.analysis_queue = Queue()
 
         self.setup_chessboard = Position()
         self.setup_chessboard.clear_board()
@@ -2439,11 +2423,7 @@ class Chess_app(App):
             # print l
             info = self.get_score(l, str_line=False)
             infos.append(info)
-        # print "end get_scores"
-        # print "depths:"
-        # print depths
-        # print "scores:"
-        # print scores
+
         return infos
 
     def get_score(self, line, str_line=True):
@@ -2717,8 +2697,8 @@ class Chess_app(App):
                 cleaned_line = self.parse_analysis(line)
 
                 if cleaned_line:
-                    print "cleaned_line:"
-                    print cleaned_line
+                    # print "cleaned_line:"
+                    # print cleaned_line
                     self.internal_engine_output = u"\n[color=000000]{0}[/color]".format(self.get_internal_engine_info()[0]) + ' ' + cleaned_line
                     self.internal_engine_raw_output = self.parse_analysis(line, figurine=False, raw=True)
                     # if self.game_analysis:
@@ -2861,10 +2841,10 @@ class Chess_app(App):
             pass
 
 
-    def fwd(self, obj):
+    def fwd(self, obj, graphics_refresh=True, refresh=True):
         try:
             self.chessboard = self.chessboard.variations[0]
-            self.refresh_board(update=False)
+            self.refresh_board(graphics_update=graphics_refresh, update=refresh)
 
         except IndexError:
             return False
@@ -3340,17 +3320,14 @@ class Chess_app(App):
             san = self.convert_san_to_figurine(san)
         return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
 
-    def refresh_board(self, update = True, spoken = False):
-        # print "refresh_board"
-        # flatten lists into one list of 64 squares
-#        squares = [item for sublist in self.chessboard.getBoard() for item in sublist]
-        squares = self.chessboard.position
-        # print self.chessboard.position.fen
-        # print self.chessboard.position.get_ep_square()
-        self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
-        # for i, p in enumerate(SQUARES):
-        #     self.fill_chess_board(self.squares[i], squares[p])
-        # self.grid._update_position(self.chessboard.position.fen, "")
+    def update_board_position(self, *args):
+        if self.game_analysis:
+            self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
+        else:
+            return False
+    def refresh_board(self, graphics_update = True, update=True, spoken=False):
+        if graphics_update:
+            self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
 
         if self.chessboard.san:
             self.prev_move.text = self.get_prev_move()
@@ -3359,22 +3336,16 @@ class Chess_app(App):
             if self.chessboard.evaluation.has_key('pos_eval'):
                 self.prev_move.text += ' ' + NAG_TO_READABLE_MAP[self.chessboard.evaluation['pos_eval']]
 
-#        all_moves = self.chessboard.getAllTextMoves()
-#        print self.chessboard_root.game_score()
-
         if update:
             all_moves = self.chessboard_root.game_score(figurine=True)
             if all_moves:
                 self.game_score.children[0].text=u"[color=000000]{0}[/color]".format(all_moves)
-        if self.variation_dropdown:
+        if graphics_update and self.variation_dropdown:
             self.variation_dropdown.dismiss()
-        if len(self.chessboard.variations) > 1:
+        if graphics_update and len(self.chessboard.variations) > 1:
             self.variation_dropdown = DropDown()
             for i,v in enumerate(self.chessboard.variations):
-            # for index in range(len(self.chessboard.variations)):
                 btn = Button(id=str(i), text='{0}'.format(v.san), size_hint_y=None, height=20)
-                # btn = Button(text='Value %d' % index)
-
 
                 # for each button, attach a callback that will call the select() method
                 # on the dropdown. We'll pass the text of the button as the data of the
@@ -3386,10 +3357,6 @@ class Chess_app(App):
                 self.variation_dropdown.add_widget(btn)
             self.variation_dropdown.open(self.b)
 
-        # print self.chessboard.get_prev_moves()
-
-        # print "Before stopping"
-        # if self.engine_running:
         if self.engine_mode != ENGINE_PLAY:
             self.sf_stop()
 
@@ -3404,8 +3371,6 @@ class Chess_app(App):
             # sf.position('startpos', self.chessboard.get_prev_moves())
 
         if self.use_internal_engine:
-
-
             if self.engine_mode == ENGINE_ANALYSIS:
                 # if self.engine_running:
                 sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), infinite=True)
@@ -3415,17 +3380,8 @@ class Chess_app(App):
                 sf.set_option('skill level', '17')
                 sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), depth=15)
             else:
-                # print "computer_move: "
-                # print self.engine_computer_move
                 if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
-                    # print "before go play"
-                    # sf.go(movetime=10)
                     sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), wtime=int(self.time_white*1000), btime=int(self.time_black*1000), winc=int(self.time_inc_white*1000), binc=int(self.time_inc_black*1000))
-                    # print "Started engine"
-                    # self.engine_running = True
-
-                    # self.uci_engine.requestMove(wtime=self.time_white, btime=self.time_black,
-                    #     winc=self.time_inc_white, binc=self.time_inc_black)
 
         if self.uci_engine:
             self.uci_engine.stop()
@@ -3440,16 +3396,14 @@ class Chess_app(App):
         if self.start_pos_changed:
             # self.uci_engine.sendFen(self.custom_fen)
             self.start_pos_changed = False
-
-        self.update_book_panel()
+        if graphics_update:
+            self.update_book_panel()
         # print self.speak_move_queue
         if spoken:
             if len(self.speak_move_queue)>0:
                 for e in self.speak_move_queue:
                     self.speak_move_queue = []
                     os.system("say "+e)
-        # self.update_database_panel()
-#        self.update_user_book_panel()
 
 if __name__ == '__main__':
     Chess_app().run()
