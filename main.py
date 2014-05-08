@@ -1115,9 +1115,10 @@ class Chess_app(App):
         self.hint_move = None
 
         while self.fwd(None):
+            self.refresh_engine()
             sleep(5)
             print self.internal_engine_raw_output
-
+            print self.internal_engine_raw_scores
             # # Analyze the position
         self.add_eng_moves(None, ENGINE_ANALYSIS)
         self.game_analysis=False
@@ -1719,6 +1720,7 @@ class Chess_app(App):
         self.use_internal_engine = False
         self.internal_engine_output = ""
         self.internal_engine_raw_output = ""
+        self.internal_engine_raw_scores = []
         self.internal_engine_info = self.get_internal_engine_info()
 
         self.use_uci_engine = False
@@ -2571,7 +2573,11 @@ class Chess_app(App):
                     tail = ""
                 # print "infos:"
                 # print infos[i]
-                variation = self.generate_move_list(move_list, start_move_num=self.chessboard.half_move_num, eval=infos[i]["score"])
+                if raw:
+                    variation = self.generate_move_list(move_list, move_num=False)
+                else:
+                    variation = self.generate_move_list(move_list, start_move_num=self.chessboard.half_move_num, eval=infos[i]["score"])
+
                 # print "variation:"
                 # print variation
                 pretty_var = u""
@@ -2585,7 +2591,7 @@ class Chess_app(App):
                 # print "pretty_var:"
                 # print pretty_var
 
-                outputs.append((move_list[0], can_move_lists[i], move_list, pretty_var))
+                outputs.append((move_list[0], can_move_lists[i], move_list, pretty_var, infos[i]))
         # print "outputs:"
         # print outputs
         return outputs
@@ -2649,7 +2655,7 @@ class Chess_app(App):
                     output = self.engine_score
                     line = self.uci_engine.getOutput()
                     if line:
-                        cleaned_line = self.parse_analysis(line)
+                        cleaned_line, infos = self.parse_analysis(line)
                         if cleaned_line:
                             external_engine_output = u"\n[color=3333ff]{0}[/color]".format(self.uci_engine.engine_info['name']) + ': ' + cleaned_line
                             if external_engine_output:
@@ -2666,10 +2672,11 @@ class Chess_app(App):
     def parse_analysis(self, line, figurine=True, raw=False):
         out_scores = self.parse_score(line, figurine=figurine, raw=raw)
         output_buffer = u''
-
+        infos = []
         if out_scores:
             for i, out_score in enumerate(out_scores):
-                first_mv, can_line, raw_line, cleaned_line = out_score
+                first_mv, can_line, raw_line, cleaned_line, info = out_score
+                infos.append(info)
 
                 if first_mv:
                     if cleaned_line:
@@ -2680,7 +2687,7 @@ class Chess_app(App):
                             output_buffer += cleaned_line
 
 
-        return output_buffer
+        return output_buffer, infos
 
     def update_engine_output(self, line):
         if not self.use_internal_engine:
@@ -2694,32 +2701,18 @@ class Chess_app(App):
         if self.use_internal_engine:
             output = self.engine_score
             if self.engine_mode == ENGINE_ANALYSIS:
-                cleaned_line = self.parse_analysis(line)
+                cleaned_line, infos = self.parse_analysis(line)
 
                 if cleaned_line:
                     # print "cleaned_line:"
                     # print cleaned_line
                     self.internal_engine_output = u"\n[color=000000]{0}[/color]".format(self.get_internal_engine_info()[0]) + ' ' + cleaned_line
-                    self.internal_engine_raw_output = self.parse_analysis(line, figurine=False, raw=True)
-                    # if self.game_analysis:
-                    #     while True:
-                    #         # print "Before queue get"
-                    #         d = self.analysis_queue.get()
-                    #         # print "got {0} from queue".format(d)
-                    #         current = datetime.datetime.now()
-                    #
-                    #         seconds_elapsed = (current - d).total_seconds()
-                    #         print "seconds_elapsed: {0}".format(seconds_elapsed)
-                    #         if seconds_elapsed >= 5:
-                    #             break
-                    #         self.analysis_queue.put(current)
-                    #         self.analysis_queue.task_done()
+                    self.internal_engine_raw_output, self.internal_engine_raw_scores = self.parse_analysis(line, figurine=False, raw=True)
 
-                        # self.analysis_queue.task_done()
                     if not self.uci_engine:
                         output.children[0].text = self.internal_engine_output
                         if self.dgt_connected and self.lcd:
-                            cleaned_line = self.parse_analysis(line, figurine=False, raw=True)
+                            cleaned_line, infos = self.parse_analysis(line, figurine=False, raw=True)
                             # print cleaned_line
                             self.write_to_lcd(cleaned_line, clear=True)
             elif self.engine_mode == ENGINE_PLAY:
@@ -2840,11 +2833,11 @@ class Chess_app(App):
         except IndexError:
             pass
 
-
-    def fwd(self, obj, graphics_refresh=True, refresh=True):
+    def fwd(self, obj, refresh=True):
         try:
             self.chessboard = self.chessboard.variations[0]
-            self.refresh_board(graphics_update=graphics_refresh, update=refresh)
+            if refresh:
+                self.refresh_board(update=False)
 
         except IndexError:
             return False
@@ -3013,9 +3006,9 @@ class Chess_app(App):
             raise
             # TODO: log error
 
-    def generate_move_list(self, all_moves, eval = None, tail = None, start_move_num = 1):
+    def generate_move_list(self, all_moves, eval = None, tail = None, start_move_num = 1, move_num = True):
         score = u""
-        if start_move_num % 2 == 0:
+        if move_num and start_move_num % 2 == 0:
             turn_sep = '..'
         else:
             turn_sep = ''
@@ -3024,7 +3017,7 @@ class Chess_app(App):
 
         for i, mv in it.izip(it.count(start_move_num), all_moves):
             # move = "b"
-            if i % 2 == 1:
+            if move_num and i % 2 == 1:
                 score += "%d." % ((i + 1) / 2)
                 # move = "w"
             if mv:
@@ -3325,9 +3318,47 @@ class Chess_app(App):
             self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
         else:
             return False
-    def refresh_board(self, graphics_update = True, update=True, spoken=False):
-        if graphics_update:
-            self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
+
+    def refresh_engine(self):
+        if self.engine_mode != ENGINE_PLAY:
+            self.sf_stop()
+        if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
+            self.custom_fen = self.chessboard_root.headers.headers['FEN']
+        if self.custom_fen:
+            self.pyfish_fen = self.custom_fen
+            # sf.position(self.custom_fen, self.chessboard.get_prev_moves())
+        else:
+            self.pyfish_fen = 'startpos'
+            # sf.position('startpos', self.chessboard.get_prev_moves())
+        if self.use_internal_engine:
+            if self.engine_mode == ENGINE_ANALYSIS:
+                # if self.engine_running:
+                sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), infinite=True)
+                # print "Started engine"
+                # self.engine_running = True
+            elif self.engine_mode == ENGINE_TRAINING:
+                sf.set_option('skill level', '17')
+                sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), depth=15)
+            else:
+                if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
+                    sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(),
+                          wtime=int(self.time_white * 1000), btime=int(self.time_black * 1000),
+                          winc=int(self.time_inc_white * 1000), binc=int(self.time_inc_black * 1000))
+        if self.uci_engine:
+            self.uci_engine.stop()
+            self.uci_engine.reportMoves(self.chessboard.get_prev_moves())
+            if self.start_pos_changed:
+                self.uci_engine.sendFen(self.pyfish_fen)
+                # self.start_pos_changed = False
+
+            if self.engine_mode == ENGINE_ANALYSIS:
+                self.uci_engine.requestAnalysis()
+        if self.start_pos_changed:
+            # self.uci_engine.sendFen(self.custom_fen)
+            self.start_pos_changed = False
+
+    def refresh_board(self, update=True, spoken=False):
+        self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
 
         if self.chessboard.san:
             self.prev_move.text = self.get_prev_move()
@@ -3340,9 +3371,9 @@ class Chess_app(App):
             all_moves = self.chessboard_root.game_score(figurine=True)
             if all_moves:
                 self.game_score.children[0].text=u"[color=000000]{0}[/color]".format(all_moves)
-        if graphics_update and self.variation_dropdown:
+        if self.variation_dropdown:
             self.variation_dropdown.dismiss()
-        if graphics_update and len(self.chessboard.variations) > 1:
+        if len(self.chessboard.variations) > 1:
             self.variation_dropdown = DropDown()
             for i,v in enumerate(self.chessboard.variations):
                 btn = Button(id=str(i), text='{0}'.format(v.san), size_hint_y=None, height=20)
@@ -3357,47 +3388,8 @@ class Chess_app(App):
                 self.variation_dropdown.add_widget(btn)
             self.variation_dropdown.open(self.b)
 
-        if self.engine_mode != ENGINE_PLAY:
-            self.sf_stop()
-
-        if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
-            self.custom_fen = self.chessboard_root.headers.headers['FEN']
-
-        if self.custom_fen:
-            self.pyfish_fen = self.custom_fen
-            # sf.position(self.custom_fen, self.chessboard.get_prev_moves())
-        else:
-            self.pyfish_fen = 'startpos'
-            # sf.position('startpos', self.chessboard.get_prev_moves())
-
-        if self.use_internal_engine:
-            if self.engine_mode == ENGINE_ANALYSIS:
-                # if self.engine_running:
-                sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), infinite=True)
-                # print "Started engine"
-                # self.engine_running = True
-            elif self.engine_mode == ENGINE_TRAINING:
-                sf.set_option('skill level', '17')
-                sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), depth=15)
-            else:
-                if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
-                    sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), wtime=int(self.time_white*1000), btime=int(self.time_black*1000), winc=int(self.time_inc_white*1000), binc=int(self.time_inc_black*1000))
-
-        if self.uci_engine:
-            self.uci_engine.stop()
-            self.uci_engine.reportMoves(self.chessboard.get_prev_moves())
-            if self.start_pos_changed:
-                self.uci_engine.sendFen(self.pyfish_fen)
-                # self.start_pos_changed = False
-
-            if self.engine_mode == ENGINE_ANALYSIS:
-                self.uci_engine.requestAnalysis()
-
-        if self.start_pos_changed:
-            # self.uci_engine.sendFen(self.custom_fen)
-            self.start_pos_changed = False
-        if graphics_update:
-            self.update_book_panel()
+        self.refresh_engine()
+        self.update_book_panel()
         # print self.speak_move_queue
         if spoken:
             if len(self.speak_move_queue)>0:
