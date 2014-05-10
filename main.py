@@ -815,7 +815,7 @@ class CustomListItemButton(ListItemButton):
         #     self.background = Rectangle()
             # Rectangle(size=Window.size)
         self.markup = True
-        # self.selected_color = (0,0,0,0)
+        self.selected_color = get_color_from_hex('#add8e6')
         self.border = (0,0,0,0)
         self.deselected_color = (1,1,1, 1)
         self.background_color = (1,1,1, 1)
@@ -1114,11 +1114,14 @@ class Chess_app(App):
         self.use_internal_engine = True
         self.hint_move = None
 
-        while self.fwd(None):
+        while True:
             self.refresh_engine()
             sleep(5)
             print self.internal_engine_raw_output
             print self.internal_engine_raw_scores
+            if not self.fwd(None):
+                break
+
             # # Analyze the position
         self.add_eng_moves(None, ENGINE_ANALYSIS)
         self.game_analysis=False
