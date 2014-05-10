@@ -253,16 +253,27 @@ class GameControls(BoxLayout):
 
     def new(self, bt):
         self.app.new('')
-        bt.parent.parent.dismiss()
+        try:
+            bt.parent.parent.dismiss()
+        except AttributeError, e:
+            # Once expanded to full screen, you no longer have to dismiss the popup
+            print e
 
     def save(self, bt):
         self.app.save('')
-        bt.parent.parent.dismiss()
-
+        try:
+            bt.parent.parent.dismiss()
+        except AttributeError, e:
+            # Once expanded to full screen, you no longer have to dismiss the popup
+            print e
 
     def go_to_settings(self, bt):
         self.app.go_to_settings('')
-        bt.parent.parent.dismiss()
+        try:
+            bt.parent.parent.dismiss()
+        except AttributeError, e:
+            # Once expanded to full screen, you no longer have to dismiss the popup
+            print e
 
 
 class EngineControls(BoxLayout):
@@ -274,7 +285,11 @@ class EngineControls(BoxLayout):
         self.app.add_eng_moves('', command)
 
     def analyze_game(self, bt):
-        bt.parent.parent.dismiss()
+        try:
+            bt.parent.parent.dismiss()
+        except AttributeError, e:
+            # Once expanded to full screen, you no longer have to dismiss the popup
+            print e
         # Kivy lesson learned for game analysis
         # Main thread should not do any blocking or long tasks
         # The recommended pattern is that the main thread calls another thread
@@ -304,13 +319,21 @@ class Annotation(BoxLayout):
         # print dir(grp.parent)
         # grp._dropdown.dismiss()
         self.app.refresh_board(update=True)
-        bt.parent.parent.dismiss()
+        try:
+            bt.parent.parent.dismiss()
+        except AttributeError, e:
+            # Once expanded to full screen, you no longer have to dismiss the popup
+            print e
 
 
     def set_pos_eval(self, value, bt):
         self.app.chessboard.set_eval('pos_eval', value)
         self.app.refresh_board(update=True)
-        bt.parent.parent.dismiss()
+        try:
+            bt.parent.parent.dismiss()
+        except AttributeError, e:
+            # Once expanded to full screen, you no longer have to dismiss the popup
+            print e
 
     def open_comment_dialog(self, bt):
         def update_comments(comment):
@@ -1122,7 +1145,7 @@ class Chess_app(App):
             if not self.fwd(None):
                 break
 
-            # # Analyze the position
+            # Analyze the position
         self.add_eng_moves(None, ENGINE_ANALYSIS)
         self.game_analysis=False
 
