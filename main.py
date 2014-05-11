@@ -1126,6 +1126,13 @@ class Chess_app(App):
         #     self.add_eng_moves(None, ENGINE_ANALYSIS)
 
 
+    def convert_mate_to_score(self, curr_eng_score):
+        if curr_eng_score.startswith('mate'):
+            curr_eng_score = 1000
+            if self.chessboard.position.turn == 'b':
+                curr_eng_score *= -1
+        return curr_eng_score
+
     def analyze_game(self):
         # self.stop_engine()
         self.engine_mode = ENGINE_ANALYSIS
@@ -1136,23 +1143,51 @@ class Chess_app(App):
         self.chessboard = self.chessboard_root
         self.use_internal_engine = True
         self.hint_move = None
-
+        last_eng_score = None
+        last_eng_first_move = None
         while True:
             self.refresh_engine()
-            sleep(5)
-            print self.internal_engine_raw_output
-            print self.internal_engine_raw_scores
+            sleep(1)
+            # If played move is worse than best move by > 3, add a double question mark and indicate best move in a variation
+            # If played move is worse than best move by > 0.75, add a single question mark and indicate best move in a variation
+            # If played move is the best move and better than other moves by 0.5, and is not a recapture, add an !
+            move_symbol = None
+            try:
+                if last_eng_score:
+                    curr_eng_score = last_eng_score[0]['score']
+                    curr_eng_score = float(self.convert_mate_to_score(curr_eng_score))
+
+                    last_eng_score = self.internal_engine_raw_scores[0]['score']
+                    last_eng_score = float(self.convert_mate_to_score(last_eng_score))
+
+
+                    if last_eng_score - curr_eng_score >= 3:
+                        move_symbol = "??"
+                        # print "Played move is a blunder"
+                    elif last_eng_score - curr_eng_score >= 0.75:
+                        move_symbol = "?"
+                        # print "Played move is bad"
+
+            except ValueError:
+                print "mate?"
+
+
+
+            last_eng_first_move = self.internal_engine_raw_output.split()[0]
+            # print "eng_rec_first_move : {0}".format(last_eng_first_move)
+            # print self.internal_engine_raw_scores
+            last_eng_score = self.internal_engine_raw_scores
+            if move_symbol:
+                self.chessboard.set_eval('move_eval', READABLE_TO_NAG_MAP[move_symbol])
+                # print "played move: {0}{1}".format(self.chessboard.san, move_symbol)
+
             if not self.fwd(None):
                 break
+
 
             # Analyze the position
         self.add_eng_moves(None, ENGINE_ANALYSIS)
         self.game_analysis=False
-
-        # Analyze each non book position for 5 seconds
-        # If played move is worse than best move by > 3, add a double question mark and indicate best move in a variation
-        # If played move is worse than best move by > 0.75, add a single question mark and indicate best move in a variation
-        # If played move is the best move and better than other moves by 0.5, and is not a recapture, add an !
 
     def gen_uci_menu_item(self, title, uci_option, engine_panel, internal=True):
         if internal:
