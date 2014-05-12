@@ -84,8 +84,9 @@ class GameNode(object):
     False
     """
 
-    def __init__(self, previous_node, move, nags=[], comment="",
-                 start_comment=""):
+    def __init__(self, previous_node, move, nags=None, comment="", start_comment=""):
+        if not nags:
+            nags = []
         self.__previous_node = previous_node
         self.__move = move
 
@@ -412,6 +413,10 @@ class GameNode(object):
                     score += "{0} ".format(el.move)
 
                 try:
+                    # print "evaluation: "
+                    # print el.evaluation
+                    # print "nags:: "
+                    # print el.nags
                     if el.evaluation.has_key("move_eval") or el.evaluation.has_key("pos_eval"):
                         el.__nags = []
 

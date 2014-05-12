@@ -4,6 +4,8 @@ import sys
 import subprocess
 from threading import Thread
 import select
+import spur
+import paramiko
 
 try:
     from Queue import Queue, Empty
@@ -21,7 +23,7 @@ class UCIOption:
 
 
 class UCIEngine:
-    def __init__(self, exe):
+    def __init__(self, exe, cloud=False, hostname=None, username=None, private_key_file=None):
         """Constructor for an AI player.
 
         'name' is the name of the player (string).
@@ -39,7 +41,7 @@ class UCIEngine:
         self.ready            = False
         self.__inCallback       = False
         self.eng_process = None
-
+        self.cloud = cloud
 
         self.STATE_IDLE = 'IDLE'
         self.STATE_CONNECTING = 'CONNECTING'
@@ -52,9 +54,23 @@ class UCIEngine:
         self.eng_process = None
         # "engines/stockfish4-mac-64"
         try:
-            self.eng_process = subprocess.Popen(exe, stdout=subprocess.PIPE, stdin=subprocess.PIPE, bufsize=0)
+            if not cloud:
+                shell = spur.LocalShell()
+                self.eng_process = shell.spawn(exe, stdout=subprocess.PIPE, store_pid=True)
+
+            else:
+                shell = spur.SshShell(
+                    hostname=hostname,
+                    username=username,
+                    private_key_file=private_key_file,
+                    missing_host_key=paramiko.AutoAddPolicy()
+                )
+                self.eng_process = shell.spawn([exe], stdout=subprocess.PIPE, store_pid=True, allow_error=True)
+
+            process_stdout = self.eng_process._stdout if cloud else self.eng_process._subprocess.stdout
+
             self.buffer = Queue()
-            t = Thread(target=self.enqueue_output, args=(self.eng_process, self.buffer))
+            t = Thread(target=self.enqueue_output, args=(process_stdout, self.buffer))
             t.daemon = True # thread dies with the program
             t.start()
 
@@ -62,8 +78,9 @@ class UCIEngine:
             print "OS error in starting engine"
 
     def enqueue_output(self, p, queue):
-        out = p.stdout
+        out = p
         while True:
+            # print out.readline()
             queue.put(out.readline())
 
     def logText(self, text, style):
@@ -74,7 +91,7 @@ class UCIEngine:
     def onOutgoingData(self, data):
         """
         """
-        self.eng_process.stdin.write(data)
+        self.eng_process.stdin_write(data)
 
 #        pass
 
@@ -256,7 +273,7 @@ class UCIEngine:
             self.readyToConfigure = True
             return 'info'
 
-        elif command == 'readyok':
+        elif command == 'readyok' or command.endswith('eadyok'):
             if len(args) != 0:
                 print 'WARNING: Arguments on readyok: ' + str(args)
             self.ready = True

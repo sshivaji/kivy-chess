@@ -969,10 +969,15 @@ class Chess_app(App):
     def on_start(self):
         if os.path.isfile(CLOUD_ENGINE_EXEC):
             self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True)
-
+        # self.start_uci_engine('./stockfish', cloud=True)
+        # self.start_uci_engine('engines/stockfish4-mac-64', cloud=False)
+        # pass
     def on_stop(self):
         if self.uci_engine:
-            self.uci_engine.eng_process.kill()
+            if not self.uci_engine.cloud:
+                self.uci_engine.eng_process._subprocess.kill()
+            else:
+                self.uci_engine.eng_process.send_signal(3)
     def validate_device(self, text):
         if not os.path.exists(text):
             popup = Popup(title='Sorry, DGT Device NOT found!',
@@ -1026,13 +1031,13 @@ class Chess_app(App):
 
             self.other_engine_panel.clear_widgets()
             self.add_load_uci_engine_setting(self.other_engine_panel)
-        uci_engine = UCIEngine(f)
+        uci_engine = UCIEngine(f, cloud=cloud)
         uci_engine.start()
-        if cloud:
-            uci_engine.configure({'Threads': 32, 'Hash': 2048})
+        # if cloud:
+        #     uci_engine.configure({'Threads': 32, 'Hash': 2048})
             # print uci_engine.engine_info
-        else:
-            uci_engine.configure({})
+        # else:
+        uci_engine.configure({})
         # Wait until the uci connection is setup
         while not uci_engine.ready:
             # print "Uci not ready"

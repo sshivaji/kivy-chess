@@ -90,6 +90,7 @@ class PgnFile(object):
             elif token.startswith("$"):
                 if not in_variation:
                     raise PgnError("NAGs must go behind moves.")
+                # print token
                 variation_stack[-1].nags.append(int(token[1:]))
             elif token == "(":
                 try:
