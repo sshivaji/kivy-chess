@@ -4,6 +4,7 @@ import datetime
 from optparse import OptionParser
 from dateutil.parser import parse
 import dateutil.tz as tz
+import json
 
 
 def start_instances(ec2conn, image_name='ec2stockfish', key="stockfish", num=1, instance_type='m1.medium'):
@@ -65,6 +66,46 @@ def compute_num_long_running_instances(running_instances):
     # print "#long running instances:%d" % num_long_running_instances
     return num_long_running_instances
 
+def process_request_api(id, key="stockfish", instance_type="m1.medium", image_prefix = "ec2stockfish", debug=False, start=False,
+                        stop=False, get_status=False, dryrun=False):
+    ec2conn = connection.EC2Connection()
+    if not dryrun:
+        if get_status:
+            if not id:
+                raise Exception("Need a --id option for uniquely querying image")
+            i = get_instance(ec2conn, id, image_prefix= image_prefix)
+            if i:
+                print json.dumps({"id": id, "state": i.state, "dns_name":i.dns_name})
+            else:
+                print json.dumps({"id": id, "state": "Not found"})
+                # print "id: {0}, state: {1}".format(options.id, i.state)
+
+        # if 0 < num_instances_to_start <= options.max_instances:
+        elif stop:
+            if not id:
+                raise Exception("Need a --id option for terminating image")
+            i = get_instance(ec2conn, id, image_prefix= image_prefix)
+            if i:
+                ec2conn.terminate_instances(instance_ids=[i.id])
+                print json.dumps({"id": id, "state": "terminated"})
+
+                # print "id: {0}, state: terminated".format(options.id)
+        elif start:
+            if not id:
+                raise Exception("Need a --id option for uniquely associating your image")
+            start_instances(ec2conn, image_name= image_prefix, key = key, num = 1, instance_type = instance_type)
+
+        # if num_instances_to_start >=0:
+        #     # Remove soft-delete tags as we need to keep instances!
+        #     remove_soft_delete_instances(running_instances)
+
+        # elif num_instances_to_start < 0:
+        #     # Execute only forcestop for now, hysterisis later
+        #     update_sqs_queue(options.queue, options.ctrl_queue, queue_size)
+    else:
+        print "Dryrun, not doing anything"
+
+
 def process_request():
     parser = OptionParser()
 
@@ -80,7 +121,7 @@ def process_request():
         help="Start an instance")
 
     parser.add_option("--stop", dest="stop_instance",help="Stop an instance")
-    parser.add_option("--status", dest="status",
+    parser.add_option("--status", dest="status", default=False, action="store_true",
         help="Get status of instance")
 
 
@@ -89,62 +130,50 @@ def process_request():
 
 
     options, args = parser.parse_args()
-    ec2conn = connection.EC2Connection()
+    # ec2conn = connection.EC2Connection()
+    process_request_api(options.id, key=options.key, instance_type=options.instance_type,
+                        image_prefix=options.image_prefix, debug=options.debug,
+                        start=options.start_instance, stop=options.stop_instance, get_status=options.status, dryrun=options.dryrun)
 
 #    print "get_num_running"
-    running_instances = get_running_instances(ec2conn, image_prefix=options.image_prefix)
+#     running_instances = get_running_instances(ec2conn, image_prefix=options.image_prefix)
     # print "running_instances:"
     # print running_instances
-    num_long_running_instances = compute_num_long_running_instances(running_instances)
-    num_running_instances = len(running_instances)
-    # print ec2conn.get_all_images(filters={'name': 'HighCPU'})
+    # num_long_running_instances = compute_num_long_running_instances(running_instances)
+    # num_running_instances = len(running_instances)
 
-
-
-#    print "get_queue_size"
-#     queue_size = get_queue_size(options.queue)
-#    print "get_num_instance_to_start_stop"
-#     num_instances_to_start = get_num_instances_to_start_or_stop(queue_size, num_running_instances, ratio = options.ratio, max = options.max_instances, debug=options.debug)
-
-    # There are more than 1 long running instance
-    # if num_long_running_instances > 0 and queue_size>0:
-    #     num_instances_to_start+=num_long_running_instances
-    #     if num_instances_to_start + num_running_instances > options.max_instances:
-    #         num_instances_to_start = options.max_instances - num_running_instances
+    # if not options.dryrun:
+    #     if options.status:
+    #         if not options.id:
+    #             raise Exception("Need a --id option for uniquely querying image")
+    #         i = get_instance(ec2conn,options.id, image_prefix=options.image_prefix)
+    #         if i:
+    #             print json.dumps({"id":options.id, "state": i.state, "dns_name":i.dns_name})
+    #             # print "id: {0}, state: {1}".format(options.id, i.state)
     #
-    # print "Queue size: %d"%queue_size
-    # print "Num of instances to spin up: %d"%num_instances_to_start
-    # print "Running_instances: %d"%num_running_instances
-
-    if not options.dryrun:
-        if options.status:
-            if not options.id:
-                raise Exception("Need a --id option for uniquely querying image")
-            i = get_instance(ec2conn,options.id, image_prefix=options.image_prefix)
-            if i:
-                print "id: {0}, state: {1}".format(options.id, i.state)
-
-        # if 0 < num_instances_to_start <= options.max_instances:
-        elif options.stop_instance:
-            if not options.id:
-                raise Exception("Need a --id option for terminating image")
-            i = get_instance(ec2conn,options.id, image_prefix=options.image_prefix)
-            if i:
-                ec2conn.terminate_instances(instance_ids=[i.id])
-                print "id: {0}, state: terminated".format(options.id)
-        elif options.start_instance:
-            if not options.id:
-                raise Exception("Need a --id option for uniquely associating your image")
-            start_instances(ec2conn, image_name=options.image_prefix, key = options.key, num = 1, instance_type = options.instance_type)
-
-        # if num_instances_to_start >=0:
-        #     # Remove soft-delete tags as we need to keep instances!
-        #     remove_soft_delete_instances(running_instances)
-
-        # elif num_instances_to_start < 0:
-        #     # Execute only forcestop for now, hysterisis later
-        #     update_sqs_queue(options.queue, options.ctrl_queue, queue_size)
-    else:
-        print "Dryrun, not doing anything"
+    #     # if 0 < num_instances_to_start <= options.max_instances:
+    #     elif options.stop_instance:
+    #         if not options.id:
+    #             raise Exception("Need a --id option for terminating image")
+    #         i = get_instance(ec2conn,options.id, image_prefix=options.image_prefix)
+    #         if i:
+    #             ec2conn.terminate_instances(instance_ids=[i.id])
+    #             print json.dumps({"id":options.id, "state": "terminated"})
+    #
+    #             # print "id: {0}, state: terminated".format(options.id)
+    #     elif options.start_instance:
+    #         if not options.id:
+    #             raise Exception("Need a --id option for uniquely associating your image")
+    #         start_instances(ec2conn, image_name=options.image_prefix, key = options.key, num = 1, instance_type = options.instance_type)
+    #
+    #     # if num_instances_to_start >=0:
+    #     #     # Remove soft-delete tags as we need to keep instances!
+    #     #     remove_soft_delete_instances(running_instances)
+    #
+    #     # elif num_instances_to_start < 0:
+    #     #     # Execute only forcestop for now, hysterisis later
+    #     #     update_sqs_queue(options.queue, options.ctrl_queue, queue_size)
+    # else:
+    #     print "Dryrun, not doing anything"
 if __name__ == '__main__':
     process_request()
