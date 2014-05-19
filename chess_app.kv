@@ -113,6 +113,12 @@
             ActionGroup:
                 id: game_action_group
                 mode: 'spinner'
-                text: 'Engine'
+                text: 'Cloud'
                 ActionButton:
-                    text: 'Cloud'
+                    text: 'Start Engine'
+                    on_press: root.start_cloud_engine(self)
+
+                ActionButton:
+                    text: 'Stop Engine'
+                    on_press: root.stop_cloud_engine(self)
+

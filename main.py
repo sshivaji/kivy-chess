@@ -58,6 +58,7 @@ import itertools as it
 from operator import attrgetter
 from time import sleep
 from chess import polyglot_opening_book
+import cloud_eng
 from uci import UCIEngine
 from Queue import Queue
 
@@ -90,6 +91,7 @@ import stockfish as sf
 import os
 import datetime
 import leveldb
+import uuid
 from pydgt import DGTBoard
 from pydgt import FEN
 
@@ -283,6 +285,48 @@ class EngineControls(BoxLayout):
 
     def toggle_engine(self, command):
         self.app.add_eng_moves('', command)
+
+    def start_cloud_engine(self, bt):
+        try:
+            bt.parent.parent.dismiss()
+        except AttributeError, e:
+            # Once expanded to full screen, you no longer have to dismiss the popup
+            print e
+
+        if self.app.cloud_engine_id:
+            print "Cloud Engine already started"
+            # Dont start cloud engine if an ID exists
+        else:
+            self.app.cloud_engine_id = uuid.uuid1()
+            print "Engine id: {0}".format(self.app.cloud_engine_id)
+            cloud_eng.process_request_api(self.app.cloud_engine_id, debug=True,
+                start=True, dryrun=True)
+            # stop=options.stop_instance, get_status=options.status,
+            # Provision a new id
+
+
+
+        # cloud_eng.process_request_api(options.id, key=options.key, instance_type=options.instance_type,
+        #     image_prefix=options.image_prefix, debug=options.debug,
+        #     start=options.start_instance, stop=options.stop_instance, get_status=options.status, dryrun=options.dryrun)
+
+        # def process_request_api(id, key="stockfish", instance_type="m1.medium", image_prefix = "ec2stockfish", debug=False, start=False,
+        #                 stop=False, get_status=False, dryrun=False):
+
+
+        print "Started Cloud engine"
+
+
+    def stop_cloud_engine(self, bt):
+        try:
+            bt.parent.parent.dismiss()
+        except AttributeError, e:
+            # Once expanded to full screen, you no longer have to dismiss the popup
+            print e
+        print "Stopped Cloud engine"
+        print "Engine id: {0}".format(self.app.cloud_engine_id)
+
+        self.app.cloud_engine_id = None
 
     def analyze_game(self, bt):
         try:
@@ -1738,6 +1782,10 @@ class Chess_app(App):
         self.db_sort_criteria = []
         self.show_hint = False
         self.speak_move_queue = []
+
+        self.cloud_engine_id = None
+        self.cloud_engine_running = False
+
 #        PGN Index test
 #        index = PgnIndex("kasparov-deep-blue-1997.pgn")
 ##
