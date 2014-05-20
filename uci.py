@@ -23,7 +23,7 @@ class UCIOption:
 
 
 class UCIEngine:
-    def __init__(self, exe, cloud=False, hostname=None, username=None, private_key_file=None):
+    def __init__(self, exe, cloud=False, cloud_hostname=None, cloud_username=None, cloud_private_key_file=None):
         """Constructor for an AI player.
 
         'name' is the name of the player (string).
@@ -60,9 +60,9 @@ class UCIEngine:
 
             else:
                 shell = spur.SshShell(
-                    hostname=hostname,
-                    username=username,
-                    private_key_file=private_key_file,
+                    hostname=cloud_hostname,
+                    username=cloud_username,
+                    private_key_file=cloud_private_key_file,
                     missing_host_key=paramiko.AutoAddPolicy()
                 )
                 self.eng_process = shell.spawn([exe], stdout=subprocess.PIPE, store_pid=True, allow_error=True)

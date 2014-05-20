@@ -62,7 +62,7 @@ import cloud_eng
 from uci import UCIEngine
 from Queue import Queue
 
-CLOUD_ENGINE_EXEC = './cloud_engine.sh'
+CLOUD_ENGINE_EXEC = './stockfish'
 
 THINKING_TIME = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]"
 THINKING = "[color=000000][b][size=16]Thinking..[/size][/b][/color]"
@@ -299,21 +299,8 @@ class EngineControls(BoxLayout):
         else:
             self.app.cloud_engine_id = uuid.uuid1()
             print "Engine id: {0}".format(self.app.cloud_engine_id)
-            cloud_eng.process_request_api(self.app.cloud_engine_id, debug=True,
-                start=True, dryrun=True)
-            # stop=options.stop_instance, get_status=options.status,
-            # Provision a new id
-
-
-
-        # cloud_eng.process_request_api(options.id, key=options.key, instance_type=options.instance_type,
-        #     image_prefix=options.image_prefix, debug=options.debug,
-        #     start=options.start_instance, stop=options.stop_instance, get_status=options.status, dryrun=options.dryrun)
-
-        # def process_request_api(id, key="stockfish", instance_type="m1.medium", image_prefix = "ec2stockfish", debug=False, start=False,
-        #                 stop=False, get_status=False, dryrun=False):
-
-
+            cloud_eng.process_request_api(self.app.cloud_engine_id, image_prefix="HighCPU", debug=True,
+                start=True, dryrun=False)
         print "Started Cloud engine"
 
 
@@ -324,8 +311,9 @@ class EngineControls(BoxLayout):
             # Once expanded to full screen, you no longer have to dismiss the popup
             print e
         print "Stopped Cloud engine"
-        print "Engine id: {0}".format(self.app.cloud_engine_id)
-
+        cloud_eng.process_request_api(self.app.cloud_engine_id, image_prefix="HighCPU", debug=True,
+                stop=True, dryrun=False)
+        print "Engine id: {0} Stopped".format(self.app.cloud_engine_id)
         self.app.cloud_engine_id = None
 
     def analyze_game(self, bt):
@@ -1010,13 +998,16 @@ class DataItem(object):
 
 
 class Chess_app(App):
-    def on_start(self):
-        if os.path.isfile(CLOUD_ENGINE_EXEC):
-            self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True)
+    # def on_start(self):
+    #     if os.path.isfile(CLOUD_ENGINE_EXEC):
+    #         self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True)
         # self.start_uci_engine('./stockfish', cloud=True)
         # self.start_uci_engine('engines/stockfish4-mac-64', cloud=False)
         # pass
     def on_stop(self):
+        if self.cloud_engine_id:
+           cloud_eng.process_request_api(self.cloud_engine_id, image_prefix="HighCPU", debug=True,
+                stop=True, dryrun=False)
         if self.uci_engine:
             if not self.uci_engine.cloud:
                 self.uci_engine.eng_process._subprocess.kill()
@@ -1069,13 +1060,13 @@ class Chess_app(App):
         self.uci_engine_thread.daemon = True # thread dies with the program
         self.uci_engine_thread.start()
 
-    def start_uci_engine(self, f, cloud=False):
+    def start_uci_engine(self, f, cloud=False, cloud_hostname=None, cloud_username=None, cloud_private_key_file=None):
         if self.uci_engine:
             self.uci_engine.stop()
 
             self.other_engine_panel.clear_widgets()
             self.add_load_uci_engine_setting(self.other_engine_panel)
-        uci_engine = UCIEngine(f, cloud=cloud)
+        uci_engine = UCIEngine(f, cloud=cloud, cloud_hostname=cloud_hostname, cloud_username=cloud_username, cloud_private_key_file=cloud_private_key_file)
         uci_engine.start()
         # if cloud:
         #     uci_engine.configure({'Threads': 32, 'Hash': 2048})
@@ -1095,6 +1086,7 @@ class Chess_app(App):
             self.uci_engine_thread.kill()
         self.start_uci_engine_thread()
         uci_engine.startGame()
+        print "started UCI engine"
         return uci_engine
 
     def load_uci_engine(self, obj, f, mevent):
@@ -1783,9 +1775,11 @@ class Chess_app(App):
         self.show_hint = False
         self.speak_move_queue = []
 
-        self.cloud_engine_id = None
-        self.cloud_engine_running = False
-
+        self.cloud_engine_id=None
+        self.cloud_engine_running=False
+        self.cloud_hostname=None
+        self.cloud_username="ubuntu"
+        self.cloud_private_key_file="stockfish.pem"
 #        PGN Index test
 #        index = PgnIndex("kasparov-deep-blue-1997.pgn")
 ##
@@ -2438,6 +2432,21 @@ class Chess_app(App):
                     self.engine_computer_move = True
                     self.engine_comp_color = self.chessboard.position.turn
                     self.reset_clocks()
+                elif value == ENGINE_ANALYSIS:
+                    # Check for cloud engine
+                    # if self.cloud_engine_id:
+                        # {'status': 'success', 'dns_name': u'ec2-54-86-236-252.compute-1.amazonaws.com', 'state': u'running', 'id': '629f846b-df34-11e3-82c6-d49a20f3bb9c'}
+                        # result_hash = cloud_eng.process_request_api(self.cloud_engine_id, image_prefix="HighCPU", debug=True,
+				         #        get_status=True, dryrun=False)
+                        # print result_hash
+                        # if result_hash['status'] == 'success' and result_hash['state']=='running':
+                        #     print "connecting to cloud engine"
+                        #     if not self.uci_engine:
+                        #         self.cloud_hostname = result_hash['dns_name']
+                    if not self.uci_engine:
+                        self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True, cloud_hostname='ec2-54-86-110-208.compute-1.amazonaws.com', cloud_private_key_file=self.cloud_private_key_file, cloud_username=self.cloud_username)
+                        # print cloud_eng.process_request_api(self.cloud_engine_id, image_prefix="HighCPU", debug=True,
+				         #        get_status=True, dryrun=False)
 
             # self.refresh_board()
         elif value == ENGINE_PLAY_STOP:
