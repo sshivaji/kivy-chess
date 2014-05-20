@@ -59,6 +59,11 @@ class UCIEngine:
                 self.eng_process = shell.spawn(exe, stdout=subprocess.PIPE, store_pid=True)
 
             else:
+                print "Trying cloud connect.."
+                print "cloud_hostname : {0}".format(cloud_hostname)
+                print "cloud_username : {0}".format(cloud_username)
+                print "cloud_private_key_file : {0}".format(cloud_private_key_file)
+
                 shell = spur.SshShell(
                     hostname=cloud_hostname,
                     username=cloud_username,

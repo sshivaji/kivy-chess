@@ -53,6 +53,7 @@ from kivy.properties import ListProperty
 #from kivy.core.clipboard import Clipboard
 
 #from ChessBoard import ChessBoard
+import spur
 from sets import Set
 import itertools as it
 from operator import attrgetter
@@ -61,6 +62,9 @@ from chess import polyglot_opening_book
 import cloud_eng
 from uci import UCIEngine
 from Queue import Queue
+from os.path import expanduser
+
+
 
 CLOUD_ENGINE_EXEC = './stockfish'
 
@@ -297,10 +301,16 @@ class EngineControls(BoxLayout):
             print "Cloud Engine already started"
             # Dont start cloud engine if an ID exists
         else:
-            self.app.cloud_engine_id = uuid.uuid1()
-            print "Engine id: {0}".format(self.app.cloud_engine_id)
-            cloud_eng.process_request_api(self.app.cloud_engine_id, image_prefix="HighCPU", debug=True,
-                start=True, dryrun=False)
+            self.app.cloud_engine_thread = KThread(target=self.app.start_cloud_engine)
+            self.app.cloud_engine_thread.daemon = True
+            self.app.cloud_engine_thread.start()
+            # self.app.cloud_engine_id = uuid.uuid1()
+            # print "Engine id: {0}".format(self.app.cloud_engine_id)
+            # cloud_eng.process_request_api(self.app.cloud_engine_id, image_prefix="HighCPU", debug=True,
+            #     start=True, dryrun=False)
+            # if not self.uci_engine:
+            #     self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True, cloud_hostname='', cloud_private_key_file=self.cloud_private_key_file, cloud_username=self.cloud_username)
+
         print "Started Cloud engine"
 
 
@@ -1068,11 +1078,11 @@ class Chess_app(App):
             self.add_load_uci_engine_setting(self.other_engine_panel)
         uci_engine = UCIEngine(f, cloud=cloud, cloud_hostname=cloud_hostname, cloud_username=cloud_username, cloud_private_key_file=cloud_private_key_file)
         uci_engine.start()
-        # if cloud:
-        #     uci_engine.configure({'Threads': 32, 'Hash': 2048})
+        if cloud:
+            uci_engine.configure({'Threads': 32, 'Hash': 2048})
             # print uci_engine.engine_info
-        # else:
-        uci_engine.configure({})
+        else:
+            uci_engine.configure({})
         # Wait until the uci connection is setup
         while not uci_engine.ready:
             # print "Uci not ready"
@@ -1173,6 +1183,48 @@ class Chess_app(App):
             if self.chessboard.position.turn == 'b':
                 curr_eng_score *= -1
         return curr_eng_score
+
+    def start_cloud_engine(self):
+        self.cloud_engine_id = uuid.uuid1()
+        print "Engine id: {0}".format(self.cloud_engine_id)
+                #     # Check for cloud engine
+        if self.cloud_engine_id:
+            # {'status': 'success', 'dns_name': u'ec2-54-86-236-252.compute-1.amazonaws.com', 'state': u'running', 'id': '629f846b-df34-11e3-82c6-d49a20f3bb9c'}
+            start_result_hash = cloud_eng.process_request_api(self.cloud_engine_id, image_prefix="HighCPU", instance_type="c3.8xlarge", debug=True,
+                    start=True, dryrun=False)
+            num_sleeps = 0
+            while True:
+                sleep(5)
+                num_sleeps +=1
+                result_hash = cloud_eng.process_request_api(self.cloud_engine_id, image_prefix="HighCPU", debug=True,
+                    get_status=True, dryrun=False)
+                print "result_hash: {0}".format(result_hash)
+                if result_hash['status'] == 'success' and result_hash['state']=='running':
+                    print "connecting to cloud engine.."
+                    if not self.uci_engine:
+                        self.cloud_hostname = result_hash['dns_name']
+                        print "hostname: {0}".format(self.cloud_hostname)
+                        print "private_key_file: {0}".format(self.cloud_private_key_file)
+                        print "cloud_username: {0}".format(self.cloud_username)
+                        sleep(5)
+                        while True:
+                            num_ssh_retries = 0
+                            try:
+                                self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True, cloud_hostname=self.cloud_hostname, cloud_private_key_file=self.cloud_private_key_file, cloud_username=self.cloud_username)
+                                break
+                            except spur.ssh.ConnectionError:
+                                sleep(3)
+                                num_ssh_retries +=1
+                                print "Retrying ssh.."
+                            if num_ssh_retries > 10:
+                                print "Cannot connect to SSH"
+                                break
+
+                        print "Connected!"
+                        break
+                if num_sleeps > 20:
+                    break
+                print "Will retry after 5 seconds"
 
     def analyze_game(self):
         # self.stop_engine()
@@ -1779,7 +1831,7 @@ class Chess_app(App):
         self.cloud_engine_running=False
         self.cloud_hostname=None
         self.cloud_username="ubuntu"
-        self.cloud_private_key_file="stockfish.pem"
+        self.cloud_private_key_file=expanduser("~/.ssh/stockfish.pem")
 #        PGN Index test
 #        index = PgnIndex("kasparov-deep-blue-1997.pgn")
 ##
@@ -2432,19 +2484,19 @@ class Chess_app(App):
                     self.engine_computer_move = True
                     self.engine_comp_color = self.chessboard.position.turn
                     self.reset_clocks()
-                elif value == ENGINE_ANALYSIS:
-                    # Check for cloud engine
-                    # if self.cloud_engine_id:
-                        # {'status': 'success', 'dns_name': u'ec2-54-86-236-252.compute-1.amazonaws.com', 'state': u'running', 'id': '629f846b-df34-11e3-82c6-d49a20f3bb9c'}
-                        # result_hash = cloud_eng.process_request_api(self.cloud_engine_id, image_prefix="HighCPU", debug=True,
-				         #        get_status=True, dryrun=False)
-                        # print result_hash
-                        # if result_hash['status'] == 'success' and result_hash['state']=='running':
-                        #     print "connecting to cloud engine"
-                        #     if not self.uci_engine:
-                        #         self.cloud_hostname = result_hash['dns_name']
-                    if not self.uci_engine:
-                        self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True, cloud_hostname='ec2-54-86-110-208.compute-1.amazonaws.com', cloud_private_key_file=self.cloud_private_key_file, cloud_username=self.cloud_username)
+                # elif value == ENGINE_ANALYSIS:
+                #     # Check for cloud engine
+                #     # if self.cloud_engine_id:
+                #         # {'status': 'success', 'dns_name': u'ec2-54-86-236-252.compute-1.amazonaws.com', 'state': u'running', 'id': '629f846b-df34-11e3-82c6-d49a20f3bb9c'}
+                #         # result_hash = cloud_eng.process_request_api(self.cloud_engine_id, image_prefix="HighCPU", debug=True,
+				 #         #        get_status=True, dryrun=False)
+                #         # print result_hash
+                #         # if result_hash['status'] == 'success' and result_hash['state']=='running':
+                #         #     print "connecting to cloud engine"
+                #         #     if not self.uci_engine:
+                #         #         self.cloud_hostname = result_hash['dns_name']
+                #     if not self.uci_engine:
+                #         self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True, cloud_hostname='ec2-54-86-110-208.compute-1.amazonaws.com', cloud_private_key_file=self.cloud_private_key_file, cloud_username=self.cloud_username)
                         # print cloud_eng.process_request_api(self.cloud_engine_id, image_prefix="HighCPU", debug=True,
 				         #        get_status=True, dryrun=False)
 
