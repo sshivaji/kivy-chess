@@ -1242,6 +1242,8 @@ class Chess_app(App):
         last_eng_score = None
         last_eng_line = None
 
+        thresholds = [2, 0.6, 0.35]
+
         # self.refresh_engine()
         # sleep(4)
         # last_eng_line = self.internal_engine_raw_output
@@ -1279,15 +1281,12 @@ class Chess_app(App):
                 #
                 # print "curr_eng_score: {0}".format(curr_eng_score)
                 # print "last_eng_score: {0}".format(last_eng_score)
-
-
-
-                    if last_eng_score - curr_eng_score >= 2:
+                    if abs(last_eng_score - curr_eng_score) >= thresholds[0]:
                         move_symbol = "??"
                         # print "Played move is a blunder"
-                    elif last_eng_score - curr_eng_score >= 0.6:
+                    elif abs(last_eng_score - curr_eng_score) >= thresholds[1]:
                         move_symbol = "?"
-                    elif last_eng_score - curr_eng_score >= 0.35:
+                    elif abs(last_eng_score - curr_eng_score) >= thresholds[2]:
                         move_symbol = "?!"
                         # print "Played move is bad"
 
