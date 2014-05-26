@@ -164,7 +164,7 @@ class GameNode(object):
     def comment(self, value):
         if not isinstance(value, basestring):
             raise TypeError(
-                "Expected comment to be string, got: %s." % comment)
+                "Expected comment to be string, got: %s." % value)
         self.__comment = value
 
     @property
@@ -440,7 +440,10 @@ class GameNode(object):
 
                 try:
                     if el.comment:
-                        score += "[color=3333ff]{0}[/color]".format(el.comment)
+                        if format == "file":
+                            score += " {{{0}}} ".format(el.comment)
+                        else:
+                            score += "[color=3333ff]{0}[/color]".format(el.comment)
                 except UnicodeEncodeError, e:
                     print e
 

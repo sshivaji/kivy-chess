@@ -1178,10 +1178,13 @@ class Chess_app(App):
 
 
     def convert_mate_to_score(self, curr_eng_score):
+        curr_eng_score = curr_eng_score.strip()
         if curr_eng_score.startswith('mate'):
             curr_eng_score = 1000
             if self.chessboard.position.turn == 'b':
                 curr_eng_score *= -1
+        curr_eng_score = float(curr_eng_score)
+
         return curr_eng_score
 
     def start_cloud_engine(self):
@@ -1237,44 +1240,88 @@ class Chess_app(App):
         self.use_internal_engine = True
         self.hint_move = None
         last_eng_score = None
-        last_eng_first_move = None
+        last_eng_line = None
+
+        # self.refresh_engine()
+        # sleep(4)
+        # last_eng_line = self.internal_engine_raw_output
+        # last_eng_score = self.convert_mate_to_score(self.internal_engine_raw_scores[0]['score'])
+        # print "last_eng_score"
+        # print last_eng_score
+
         while True:
             self.refresh_engine()
-            sleep(1)
+            sleep(4)
             # If played move is worse than best move by > 3, add a double question mark and indicate best move in a variation
             # If played move is worse than best move by > 0.75, add a single question mark and indicate best move in a variation
             # If played move is the best move and better than other moves by 0.5, and is not a recapture, add an !
             move_symbol = None
+
+            curr_eng_score = self.convert_mate_to_score(self.internal_engine_raw_scores[0]['score'])
+
+
             try:
                 if last_eng_score:
-                    curr_eng_score = last_eng_score[0]['score']
-                    curr_eng_score = float(self.convert_mate_to_score(curr_eng_score))
 
-                    last_eng_score = self.internal_engine_raw_scores[0]['score']
-                    last_eng_score = float(self.convert_mate_to_score(last_eng_score))
+                # last_eng_line = self.internal_engine_raw_output
+                # curr_eng_score = last_eng_score[0]['score']
+                # print "curr_eng_score[0]"
+                # print last_eng_score[0]
+                # print self.convert_mate_to_score(curr_eng_score)
+                # curr_eng_score = float(self.convert_mate_to_score(curr_eng_score))
+                #
+                #
+                # # last_eng_score = self.internal_engine_raw_scores[0]['score']
+                # print "last_eng_score"
+                # # print self.convert_mate_to_score(last_eng_score)
+                # # last_eng_score = float(self.convert_mate_to_score(last_eng_score))
+                # print "delta: {0}".format(last_eng_score - curr_eng_score)
+                #
+                # print "curr_eng_score: {0}".format(curr_eng_score)
+                # print "last_eng_score: {0}".format(last_eng_score)
 
 
-                    if last_eng_score - curr_eng_score >= 3:
+
+                    if last_eng_score - curr_eng_score >= 2:
                         move_symbol = "??"
                         # print "Played move is a blunder"
-                    elif last_eng_score - curr_eng_score >= 0.75:
+                    elif last_eng_score - curr_eng_score >= 0.6:
                         move_symbol = "?"
+                    elif last_eng_score - curr_eng_score >= 0.35:
+                        move_symbol = "?!"
                         # print "Played move is bad"
 
-            except ValueError:
+            except ValueError, e:
+                print e
                 print "mate?"
 
-
-
-            last_eng_first_move = self.internal_engine_raw_output.split()[0]
+            # last_eng_first_move = self.internal_engine_raw_output.split()[0]
             # print "eng_rec_first_move : {0}".format(last_eng_first_move)
             # print self.internal_engine_raw_scores
-            last_eng_score = self.internal_engine_raw_scores
             if move_symbol:
                 self.chessboard.set_eval('move_eval', READABLE_TO_NAG_MAP[move_symbol])
-                # print "played move: {0}{1}".format(self.chessboard.san, move_symbol)
+                # tokens = self.internal_engine_raw_output.split()
+                self.chessboard.comment = 'Played move score is {0}, better is {1}'.format(curr_eng_score, last_eng_line)
 
-            if not self.fwd(None):
+                # num_moves = len(tokens)
+                # can_moves = self.get_can(tokens)
+
+
+                # for mv in can_moves:
+                #     # print mv
+                #     self.add_try_variation(str(mv))
+                #
+                #         # v = self.chessboard.add_variation(Move.from_uci(str(mv)))
+                # for m in xrange(0, num_moves):
+                #     self.back(None)
+
+
+                # print "played move: {0}{1}".format(self.chessboard.san, move_symbol)
+            last_eng_line = self.internal_engine_raw_output
+            last_eng_score = curr_eng_score
+            # print "last_eng_score: {0}".format(last_eng_score)
+
+            if not self.fwd(None, refresh=False, update=False):
                 break
 
 
@@ -2656,6 +2703,12 @@ class Chess_app(App):
 
         return {"nps":nps, "depth":depth, "score":score}
 
+    def get_can(self, moves):
+        prev_fen = sf.get_fen(self.pyfish_fen,  self.chessboard.get_prev_moves())
+        move_list = sf.to_can(prev_fen, moves)
+
+        return move_list
+
     def get_san(self, moves, figurine=False):
         prev_fen = sf.get_fen(self.pyfish_fen,  self.chessboard.get_prev_moves())
 
@@ -2695,7 +2748,7 @@ class Chess_app(App):
                 for i, info in enumerate(infos):
                     if self.use_tb and info["score"] == 151:
                         infos[i]["score"] = "Tablebase [b]1-0[/b]"
-                    elif self.use_tb and score == -151:
+                    elif self.use_tb and info["score"] == -151:
                         infos[i]["score"] = "Tablebase [b]0-1[/b]"
                     else:
                         infos[i]["score"] = "{0}".format(info["score"])
@@ -2743,15 +2796,15 @@ class Chess_app(App):
                 # print "move_list:"
                 # print move_list
                 try:
-                    tail =" D{0} {1} Knps".format(infos[i]["depth"], infos[i]["nps"]/1000)
+                    tail =" {0} Knps".format(infos[i]["nps"]/1000)
                 except KeyError:
                     tail = ""
                 # print "infos:"
                 # print infos[i]
-                if raw:
-                    variation = self.generate_move_list(move_list, move_num=False)
-                else:
-                    variation = self.generate_move_list(move_list, start_move_num=self.chessboard.half_move_num, eval=infos[i]["score"])
+                # if raw:
+                #     variation = self.generate_move_list(move_list, move_num=False)
+                # else:
+                variation = self.generate_move_list(move_list, start_move_num=self.chessboard.half_move_num, eval=str(infos[i]["score"])+"/"+str(infos[i]["depth"]))
 
                 # print "variation:"
                 # print variation
@@ -3008,11 +3061,15 @@ class Chess_app(App):
         except IndexError:
             pass
 
-    def fwd(self, obj, refresh=True):
+    def fwd(self, obj, refresh=True, update=False, variation=None):
         try:
-            self.chessboard = self.chessboard.variations[0]
+            if variation:
+                i = self.chessboard.index(variation)
+            else:
+                i = 0
+            self.chessboard = self.chessboard.variations[i]
             if refresh:
-                self.refresh_board(update=False)
+                self.refresh_board(update=update)
 
         except IndexError:
             return False
@@ -3108,6 +3165,7 @@ class Chess_app(App):
     def add_try_variation(self, move):
         try:
             if type(move) is str:
+
                 self.chessboard = self.chessboard.add_variation(Move.from_uci(move))
             else:
                 self.chessboard = self.chessboard.add_variation(move)
@@ -3491,6 +3549,9 @@ class Chess_app(App):
     def update_board_position(self, *args):
         if self.game_analysis:
             self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
+            all_moves = self.chessboard_root.game_score(figurine=True)
+            if all_moves:
+                self.game_score.children[0].text=u"[color=000000]{0}[/color]".format(all_moves)
         else:
             return False
 
