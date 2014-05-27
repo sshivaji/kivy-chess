@@ -281,6 +281,16 @@ class GameControls(BoxLayout):
             # Once expanded to full screen, you no longer have to dismiss the popup
             print e
 
+class GameAnalysisPopup(Popup):
+    def __init__(self, app, **kwargs):
+        super(GameAnalysisPopup, self).__init__(**kwargs)
+        self.app = app
+
+    def start_analyze_game(self):
+        self.dismiss()
+        self.app.game_analysis_thread = KThread(target=self.app.analyze_game)
+        self.app.game_analysis_thread.start()
+        Clock.schedule_interval(self.app.update_board_position, 1)
 
 class EngineControls(BoxLayout):
     def __init__(self, app, **kwargs):
@@ -326,6 +336,8 @@ class EngineControls(BoxLayout):
         print "Engine id: {0} Stopped".format(self.app.cloud_engine_id)
         self.app.cloud_engine_id = None
 
+
+
     def analyze_game(self, bt):
         try:
             bt.parent.parent.dismiss()
@@ -336,10 +348,11 @@ class EngineControls(BoxLayout):
         # Main thread should not do any blocking or long tasks
         # The recommended pattern is that the main thread calls another thread
         # and then does a schedule_interval to react to the actions of the spawned thread
+        p = GameAnalysisPopup(self.app)
+                # self.info_grid.add_widget(EngineControls(self, size_hint=(1,0.15)))
 
-        self.app.game_analysis_thread = KThread(target=self.app.analyze_game)
-        self.app.game_analysis_thread.start()
-        Clock.schedule_interval(self.app.update_board_position, 1)
+        p.open()
+
 
 
 class Annotation(BoxLayout):
@@ -1243,6 +1256,14 @@ class Chess_app(App):
         last_eng_line = None
 
         thresholds = [2, 0.6, 0.35]
+
+        prev_multi_pv = sf.get_options()['MultiPV'][0]
+        sf.set_option('MultiPV', '4')
+        # Set multi-pv to 4 lines in the case of deep analysis
+        # Deep analysis modal:
+        # Confirm - time per move/thresholds, mode, and look for white/black improvements
+        # Bonus - create opening repertoire mode!
+
 
         # self.refresh_engine()
         # sleep(4)

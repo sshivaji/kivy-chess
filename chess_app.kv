@@ -11,6 +11,14 @@
     valign: 'middle'
     halign: 'center'
 
+<LabeledSlider@Slider>:
+    step: 1
+    Label:
+        text: '{}'.format(int(root.value))
+        size: self.texture_size
+        top: root.center_y - sp(20)
+        center_x: root.value_pos[0]
+
 <Annotation>:
     ActionBar:
         size_hint_y: 1
@@ -84,6 +92,79 @@
                 ActionButton:
                     text: 'Setup'
                     on_press: root.go_to_settings(self)
+
+<GameAnalysisPopup>:
+    size_hint: 1, 1
+    auto_dismiss: False
+    title: 'Game Analysis'
+    BoxLayout:
+        orientation: 'vertical'
+        ToggleButton:
+            halign: 'center'
+            group: 'advantage'
+            text: 'Cloud Engine'
+            state: 'normal'
+        Label:
+            text: 'Seconds per move on regular and interesting positions'
+        BoxLayout:
+            orientation: 'horizontal'
+            LabeledSlider:
+                id: regular_seconds_per_move
+                value: 4
+                min: 1
+                max: 600
+                on_value: self.value = int(self.value)
+            LabeledSlider:
+                id: interesting_seconds_per_move
+                value: 60
+                min: 1
+                max: 600
+                on_value: self.value = int(self.value)
+
+        Label:
+            text: 'Dubious/Mistake/Blunder centipawn thresholds'
+        BoxLayout:
+            orientation: 'horizontal'
+            LabeledSlider:
+                id: dubious_threshold
+                value: 35
+                min: 1
+                max: 100
+                on_value: self.value = int(self.value)
+            LabeledSlider:
+                id: mistake_threshold
+                value: 60
+                min: 1
+                max: 200
+                on_value: self.value = int(self.value)
+            LabeledSlider:
+                id: blunder_threshold
+                value: 200
+                min: 1
+                max: 500
+                on_value: self.value = int(self.value)
+        BoxLayout:
+            orientation: 'horizontal'
+            ToggleButton:
+                halign: 'center'
+                group: 'advantage'
+                text: 'Seek White Advantage'
+                state: 'normal'
+            ToggleButton:
+                halign: 'center'
+                group: 'advantage'
+                text: 'Seek Black Advantage'
+                state: 'normal'
+
+        BoxLayout:
+            orientation: 'horizontal'
+            Button:
+                text: 'Start'
+                on_press: root.start_analyze_game()
+            Button:
+                text: 'Cancel'
+                on_press: root.dismiss()
+
 
 <EngineControls>:
     ActionBar:
