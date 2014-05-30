@@ -1422,6 +1422,20 @@ class Chess_app(App):
         uci_engine_exec.bind(on_release=self.open_engine)
         panel.add_widget(uci_engine_exec)
 
+    def process_fen(self, fen):
+        fen = fen.strip()
+        if fen == INITIAL_BOARD_FEN:
+            self.chessboard = Game()
+        else:
+            g = Game()
+            bag = GameHeaderBag(game=g, fen=fen)
+            g.set_headers(bag)
+            self.chessboard = g
+            self.chessboard_root = self.chessboard
+
+            self.start_pos_changed = True
+            self.custom_fen = fen
+
     def generate_settings(self):
         def go_to_setup_board(value):
             self.root.current = 'setup_board'
@@ -1532,32 +1546,10 @@ class Chess_app(App):
 
         def on_fen_input(instance):
             fen = instance.text
+            self.process_fen(fen)
 
-            if fen == INITIAL_BOARD_FEN:
-                # print "new game.."
-                self.chessboard = Game()
-#                self.chessboard.resetBoard()
-                self.refresh_board()
-                self.root.current = 'main'
-            else:
-                g = Game()
-                bag = GameHeaderBag(game=g, fen=fen)
-                g.set_headers(bag)
-                self.chessboard = g
-                self.chessboard_root = self.chessboard
-
-                self.start_pos_changed = True
-                self.custom_fen = fen
-
-                self.refresh_board()
-                self.root.current = 'main'
-
-            # self.chessboard.fen = instance.text
-            # print "fen:"
-            # print self.chessboard.position.fen
-            # self.refresh_board()
-            # self.start_pos_changed = True
-            # self.custom_fen = instance.text
+            self.refresh_board()
+            self.root.current = 'main'
 
         fen_input.bind(on_text_validate=on_fen_input)
         setup_pos_item.add_widget(fen_input)
@@ -2277,24 +2269,10 @@ class Chess_app(App):
 
             # TODO: Support fen positions where castling is not possible even if king and rook are on right squares
             fen = fen.replace("KQkq", castling_fen)
-            if fen == INITIAL_BOARD_FEN:
-                # print "new game.."
-                self.chessboard = Game()
-#                self.chessboard.resetBoard()
-                self.refresh_board()
-                self.root.current = 'main'
-            else:
-                g = Game()
-                bag = GameHeaderBag(game=g, fen=fen)
-                g.set_headers(bag)
-                self.chessboard = g
-                self.chessboard_root = self.chessboard
+            self.process_fen(fen)
 
-                self.start_pos_changed = True
-                self.custom_fen = fen
-
-                self.refresh_board()
-                self.root.current = 'main'
+            self.refresh_board()
+            self.root.current = 'main'
 
         wtm = ToggleButton(text="White to move", state="down", on_press=setup_board_change_tomove)
         setup_widget.add_widget(wtm)
