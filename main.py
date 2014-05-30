@@ -1258,7 +1258,7 @@ class Chess_app(App):
         thresholds = [2, 0.6, 0.35]
 
         prev_multi_pv = sf.get_options()['MultiPV'][0]
-        sf.set_option('MultiPV', '4')
+        # sf.set_option('MultiPV', '4')
         # Set multi-pv to 4 lines in the case of deep analysis
         # Deep analysis modal:
         # Confirm - time per move/thresholds, mode, and look for white/black improvements
@@ -1531,10 +1531,33 @@ class Chess_app(App):
 #        print Clipboard['application/data']
 
         def on_fen_input(instance):
-            if self.chessboard.setFEN(instance.text):
+            fen = instance.text
+
+            if fen == INITIAL_BOARD_FEN:
+                # print "new game.."
+                self.chessboard = Game()
+#                self.chessboard.resetBoard()
                 self.refresh_board()
+                self.root.current = 'main'
+            else:
+                g = Game()
+                bag = GameHeaderBag(game=g, fen=fen)
+                g.set_headers(bag)
+                self.chessboard = g
+                self.chessboard_root = self.chessboard
+
                 self.start_pos_changed = True
-                self.custom_fen = instance.text
+                self.custom_fen = fen
+
+                self.refresh_board()
+                self.root.current = 'main'
+
+            # self.chessboard.fen = instance.text
+            # print "fen:"
+            # print self.chessboard.position.fen
+            # self.refresh_board()
+            # self.start_pos_changed = True
+            # self.custom_fen = instance.text
 
         fen_input.bind(on_text_validate=on_fen_input)
         setup_pos_item.add_widget(fen_input)
