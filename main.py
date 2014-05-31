@@ -1245,12 +1245,13 @@ class Chess_app(App):
     def analyze_game(self, params):
         # print params
         # on_press: root.start_analyze_game({"dubious_threshold": dubious_threshold.value, "mistake_threshold": mistake_threshold.value, "blunder_threshold": bhlunder_treshold.value, "regular_sec_per_move": regular_seconds_per_move.value, "interesting_sec_per_move": interesting_seconds_per_move.value, "use_ext_eng": use_ext_eng.state})
-
+        # "use_medal_positions"
         # self.stop_engine()
-        if params["use_ext_eng"]=="down":
+        if params["use_ext_eng"] == "down":
             use_external_engine = True
         else:
             use_external_engine = False
+
 
         self.engine_mode = ENGINE_ANALYSIS
         self.game_analysis = True
@@ -1262,6 +1263,17 @@ class Chess_app(App):
         self.hint_move = None
         last_eng_score = None
         last_eng_line = None
+
+        interesting_positions = []
+        position_iter = None
+        if params["use_medal_positions"] == "down":
+            for p in self.chessboard.positions.values():
+                comment_lower = p.comment.lower()
+                if comment_lower.find("medal") > -1:
+                    interesting_positions.append(p)
+            position_iter = iter(interesting_positions)
+        # print interesting_positions
+        # print position_iter
 
         thresholds = [params["blunder_threshold"]*1.0/100, params["mistake_threshold"]*1.0/100, params["dubious_threshold"]*1.0/100]
 
@@ -1280,9 +1292,22 @@ class Chess_app(App):
         # print "last_eng_score"
         # print last_eng_score
 
+        # interesting_positions_start = False
+
+
         while True:
+
             self.refresh_engine()
-            sleep(4)
+
+            if position_iter:
+                try:
+                    self.chessboard = next(position_iter)
+                    sleep(params["interesting_sec_per_move"])
+                    # print "position_iter is True"
+                except StopIteration:
+                    break
+            else:
+                sleep(params["regular_sec_per_move"])
             # If played move is worse than best move by > 3, add a double question mark and indicate best move in a variation
             # If played move is worse than best move by > 0.75, add a single question mark and indicate best move in a variation
             # If played move is the best move and better than other moves by 0.5, and is not a recapture, add an !
@@ -1295,23 +1320,6 @@ class Chess_app(App):
 
             try:
                 if last_eng_score:
-
-                # last_eng_line = self.internal_engine_raw_output
-                # curr_eng_score = last_eng_score[0]['score']
-                # print "curr_eng_score[0]"
-                # print last_eng_score[0]
-                # print self.convert_mate_to_score(curr_eng_score)
-                # curr_eng_score = float(self.convert_mate_to_score(curr_eng_score))
-                #
-                #
-                # # last_eng_score = self.internal_engine_raw_scores[0]['score']
-                # print "last_eng_score"
-                # # print self.convert_mate_to_score(last_eng_score)
-                # # last_eng_score = float(self.convert_mate_to_score(last_eng_score))
-                # print "delta: {0}".format(last_eng_score - curr_eng_score)
-                #
-                # print "curr_eng_score: {0}".format(curr_eng_score)
-                # print "last_eng_score: {0}".format(last_eng_score)
                     if abs(last_eng_score - curr_eng_score) >= thresholds[0]:
                         move_symbol = "??"
                         # print "Played move is a blunder"
@@ -1354,8 +1362,9 @@ class Chess_app(App):
             last_eng_score = curr_eng_score
             # print "last_eng_score: {0}".format(last_eng_score)
 
-            if not self.fwd(None, refresh=False, update=False):
-                break
+            if not position_iter:
+                if not self.fwd(None, refresh=False, update=False):
+                    break
 
 
             # Analyze the position
@@ -1811,7 +1820,6 @@ class Chess_app(App):
             # print "game_index: {0}".format(game_index)
             self.load_game_from_index(int(game_index))
             self.go_to_move(None, str(current_pos_hash))
-            print GameNode.interesting_positions
 
             # self.db_sort_criteria = db_sort_criteria
             # print args[0].selection[0].text
