@@ -1,1 +1,2 @@
-spur
+spur==0.3.10
+pyserial
