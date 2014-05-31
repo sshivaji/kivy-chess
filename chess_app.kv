@@ -100,9 +100,16 @@
     BoxLayout:
         orientation: 'vertical'
         ToggleButton:
+            id: use_ext_eng
             halign: 'center'
             group: 'advantage'
-            text: 'Cloud Engine'
+            text: 'External Engine'
+            state: 'normal'
+        ToggleButton:
+            id: use_medal_positions
+            halign: 'center'
+            group: 'advantage'
+            text: 'Medal Positions?'
             state: 'normal'
         Label:
             text: 'Seconds per move on regular and interesting positions'
@@ -160,7 +167,7 @@
             orientation: 'horizontal'
             Button:
                 text: 'Start'
-                on_press: root.start_analyze_game()
+                on_press: root.start_analyze_game({"dubious_threshold": dubious_threshold.value, "mistake_threshold": mistake_threshold.value, "blunder_threshold": blunder_threshold.value, "regular_sec_per_move": regular_seconds_per_move.value, "interesting_sec_per_move": interesting_seconds_per_move.value, "use_ext_eng": use_ext_eng.state, "use_medal_positions": use_medal_positions.state})
             Button:
                 text: 'Cancel'
                 on_press: root.dismiss()

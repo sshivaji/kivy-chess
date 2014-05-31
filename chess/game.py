@@ -24,6 +24,8 @@ class Game(chess.GameNode):
     def __init__(self, start_comment="", headers=None):
         chess.GameNode.__init__(self, None, None, (), start_comment)
         chess.GameNode.positions={}
+        # chess.GameNode.interesting_positions=[]
+
 
         if headers is None:
             self.__headers = chess.GameHeaderBag(self)

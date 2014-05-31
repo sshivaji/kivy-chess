@@ -167,6 +167,10 @@ class GameNode(object):
                 "Expected comment to be string, got: %s." % value)
         self.__comment = value
 
+        # comment_lower = value.lower()
+        # if comment_lower.find("medal") > -1:
+        #     GameNode.interesting_positions.append(self)
+
     @property
     def start_comment(self):
         """The start comment of the variation.

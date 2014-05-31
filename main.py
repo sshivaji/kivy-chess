@@ -286,9 +286,9 @@ class GameAnalysisPopup(Popup):
         super(GameAnalysisPopup, self).__init__(**kwargs)
         self.app = app
 
-    def start_analyze_game(self):
+    def start_analyze_game(self, p, *args, **kwargs):
         self.dismiss()
-        self.app.game_analysis_thread = KThread(target=self.app.analyze_game)
+        self.app.game_analysis_thread = KThread(target=self.app.analyze_game, args=(p,))
         self.app.game_analysis_thread.start()
         Clock.schedule_interval(self.app.update_board_position, 1)
 
@@ -1242,8 +1242,16 @@ class Chess_app(App):
                     break
                 print "Will retry after 5 seconds"
 
-    def analyze_game(self):
+    def analyze_game(self, params):
+        # print params
+        # on_press: root.start_analyze_game({"dubious_threshold": dubious_threshold.value, "mistake_threshold": mistake_threshold.value, "blunder_threshold": bhlunder_treshold.value, "regular_sec_per_move": regular_seconds_per_move.value, "interesting_sec_per_move": interesting_seconds_per_move.value, "use_ext_eng": use_ext_eng.state})
+
         # self.stop_engine()
+        if params["use_ext_eng"]=="down":
+            use_external_engine = True
+        else:
+            use_external_engine = False
+
         self.engine_mode = ENGINE_ANALYSIS
         self.game_analysis = True
 
@@ -1255,7 +1263,7 @@ class Chess_app(App):
         last_eng_score = None
         last_eng_line = None
 
-        thresholds = [2, 0.6, 0.35]
+        thresholds = [params["blunder_threshold"]*1.0/100, params["mistake_threshold"]*1.0/100, params["dubious_threshold"]*1.0/100]
 
         prev_multi_pv = sf.get_options()['MultiPV'][0]
         # sf.set_option('MultiPV', '4')
@@ -1279,8 +1287,10 @@ class Chess_app(App):
             # If played move is worse than best move by > 0.75, add a single question mark and indicate best move in a variation
             # If played move is the best move and better than other moves by 0.5, and is not a recapture, add an !
             move_symbol = None
-
-            curr_eng_score = self.convert_mate_to_score(self.internal_engine_raw_scores[0]['score'])
+            if use_external_engine:
+                curr_eng_score = self.convert_mate_to_score(self.external_engine_raw_scores[0]['score'])
+            else:
+                curr_eng_score = self.convert_mate_to_score(self.internal_engine_raw_scores[0]['score'])
 
 
             try:
@@ -1337,7 +1347,10 @@ class Chess_app(App):
 
 
                 # print "played move: {0}{1}".format(self.chessboard.san, move_symbol)
-            last_eng_line = self.internal_engine_raw_output
+            if use_external_engine:
+                last_eng_line = self.external_engine_raw_output
+            else:
+                last_eng_line = self.internal_engine_raw_output
             last_eng_score = curr_eng_score
             # print "last_eng_score: {0}".format(last_eng_score)
 
@@ -1798,6 +1811,8 @@ class Chess_app(App):
             # print "game_index: {0}".format(game_index)
             self.load_game_from_index(int(game_index))
             self.go_to_move(None, str(current_pos_hash))
+            print GameNode.interesting_positions
+
             # self.db_sort_criteria = db_sort_criteria
             # print args[0].selection[0].text
         # self.selected_item = args[0].selection[0].text
@@ -1963,6 +1978,9 @@ class Chess_app(App):
         self.internal_engine_output = ""
         self.internal_engine_raw_output = ""
         self.internal_engine_raw_scores = []
+        self.external_engine_raw_output = ""
+        self.external_engine_raw_scores = []
+
         self.internal_engine_info = self.get_internal_engine_info()
 
         self.use_uci_engine = False
@@ -2907,6 +2925,9 @@ class Chess_app(App):
                         cleaned_line, infos = self.parse_analysis(line)
                         if cleaned_line:
                             external_engine_output = u"\n[color=3333ff]{0}[/color]".format(self.uci_engine.engine_info['name']) + ': ' + cleaned_line
+
+                            self.external_engine_raw_output, self.external_engine_raw_scores = self.parse_analysis(line, figurine=False, raw=True)
+
                             if external_engine_output:
                                 # print "enternal_output: "
                                 # print external_engine_output
