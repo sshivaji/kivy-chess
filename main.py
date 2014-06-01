@@ -2479,6 +2479,11 @@ class Chess_app(App):
         self.chessboard = games[0]
         # print self.chessboard.headers.headers
         self.chessboard_root = self.chessboard
+        if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
+            self.custom_fen = self.chessboard_root.headers.headers['FEN']
+        else:
+            self.custom_fen = 'startpos'
+
         self.refresh_board()
 
         # self.game_score = games[0]
