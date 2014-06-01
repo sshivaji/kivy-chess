@@ -1093,6 +1093,7 @@ class Chess_app(App):
         uci_engine.start()
         if cloud:
             uci_engine.configure({'Threads': 32, 'Hash': 2048})
+            # 'Min Split Depth': 12, 'Max Threads per Split Point':8, 'Idle Threads Sleep': 'false'
             # print uci_engine.engine_info
         else:
             uci_engine.configure({})
@@ -2639,6 +2640,7 @@ class Chess_app(App):
     def new(self, obj):
         self.chessboard = Game()
         self.chessboard_root = self.chessboard
+        self.custom_fen = 'startpos'
         self.refresh_board(update=True)
 
     def back(self, obj):
