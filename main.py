@@ -1301,6 +1301,22 @@ class Chess_app(App):
             self.refresh_engine()
 
             if position_iter:
+
+                # Objective Algorithm:
+
+                # 1. Investigate position for 2 minutes, if score is going up for side you want, keep adding time.
+                # 2. Switch to PV 1,2,3,4 and go deeper to help search if the score is not converging.
+                # 2. Stop after N iterations (of analysis) of if score score is more than 0.50.
+
+
+                # Practical Algorithm:
+
+                # 1. Get output of PVs 1-4
+                # 2. If there is advantage for the side you are looking for beyond 0.50, stop.
+                # 3. If the score is less than 0.50 for the side you want, then compare score of opponent's PV 1 to 2,3,4. If there is a disparity and its not an obvious move, go deeper.
+                # 4. If opponent has to make N accurate moves in a row to keep score below 0.50, promote and publish line.
+
+
                 try:
                     self.chessboard = next(position_iter)
                     sleep(params["interesting_sec_per_move"])
