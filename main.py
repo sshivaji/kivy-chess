@@ -1871,6 +1871,9 @@ class Chess_app(App):
                 'size_hint_x': 0.5,
                 'height': 30,
                 'cls_dicts': [{'cls': CustomListItemButton,
+                               'kwargs': {'id': rec.id, 'text': '[color=000000]' + rec.id + '[/color]'}},
+
+                              {'cls': CustomListItemButton,
                                'kwargs': {'id': rec.id, 'text': '[color=000000]' + white + '[/color]'}},
                               {'cls': CustomListItemButton,
                                'kwargs': {'id': rec.id, 'text': '[color=000000]' + whiteelo + '[/color]'}},
@@ -2132,7 +2135,9 @@ class Chess_app(App):
 
         # self.add_widget(list_view)
 
-        self.database_panel = ScrollableGrid([['White', 'center', 'center', 'string', 0.1, 'hidden'],
+        self.database_panel = ScrollableGrid([
+                                         ['ID', 'center', 'center', 'string', 0.1, 'hidden'],
+                                         ['White', 'center', 'center', 'string', 0.1, 'hidden'],
                                          ['Elo', 'center', 'center', 'string', 0.1, 'visible'],
 
                                          ['Black', 'center', 'left', 'option', 0.1, 'visible'],
@@ -2146,7 +2151,7 @@ class Chess_app(App):
                                          ['Eco', 'center', 'left', 'option', 0.1, 'visible'],
                                          # ['Round', 'center', 'left', 'option', 0.1, 'visible'],
                                          ['Ply', 'center', 'left', 'option', 0.1, 'visible']
-                                             ],
+                                         ],
                                          '',
                                          '',
                                          top_level_header=['Database', 'center', 'center', 'string', 0.1, 'hidden'], callback=self.update_database_display)
@@ -2182,6 +2187,10 @@ class Chess_app(App):
 
         database_header = BoxLayout(size_hint=(1, 0.15))
         self.db_header_buttons = []
+        database_id_bt = DBHeaderButton("id", markup=True, text="ID", on_press=self.update_db_sort_criteria)
+        self.db_header_buttons.append(database_id_bt)
+
+
         database_white_bt = DBHeaderButton("white", markup=True, text="White", on_press=self.update_db_sort_criteria)
         self.db_header_buttons.append(database_white_bt)
         database_whiteelo_bt = DBHeaderButton("whiteelo", markup=True, text="Elo", on_press=self.update_db_sort_criteria)
@@ -3412,7 +3421,12 @@ class Chess_app(App):
 
 
             if self.db_sort_criteria:
-                db_game_list = sorted(db_game_list, reverse = not self.db_sort_criteria[0].asc, key=attrgetter(self.db_sort_criteria[0].key))
+                # print self.db_sort_criteria[0].key
+                sort_key = attrgetter(self.db_sort_criteria[0].key)
+                if self.db_sort_criteria[0].key == 'id':
+                    sort_key = lambda v: int(v.id)
+
+                db_game_list = sorted(db_game_list, reverse = not self.db_sort_criteria[0].asc, key=sort_key)
 
             self.db_stat_label.text = "{0} games".format(len(game_ids))
 #            self.db_adapter.data = {str(i): {'text': str(g.id), 'is_selected': False} for i, g in enumerate(db_game_list)}
