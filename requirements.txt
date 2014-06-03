@@ -1,2 +1,5 @@
 spur==0.3.10
 pyserial
+boto
+python-dateutil
+leveldb==0.193
