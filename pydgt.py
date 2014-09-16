@@ -1,13 +1,23 @@
+from Queue import Queue
 import serial
 import sys
 import time
 from threading import Thread
 from threading import RLock
+from threading import Condition
 from struct import unpack
+import signal
+import glob
+
+from itertools import cycle
+clock_blink_iterator = cycle(range(2))
 
 BOARD = "Board"
 
 FEN = "FEN"
+CLOCK_BUTTON_PRESSED = "CLOCK_BUTTON_PRESSED"
+CLOCK_ACK = "CLOCK_ACK"
+CLOCK_LEVER = "CLOCK_LEVER"
 
 DGTNIX_MSG_UPDATE = 0x05
 _DGTNIX_SEND_BRD = 0x42
@@ -87,16 +97,22 @@ dgt_send_message_list = [_DGTNIX_CLOCK_MESSAGE, _DGTNIX_SEND_CLK, _DGTNIX_SEND_B
                          _DGTNIX_SEND_UPDATE_BRD, _DGTNIX_SEND_SERIALNR, _DGTNIX_SEND_BUSADDRESS, _DGTNIX_SEND_TRADEMARK,
                          _DGTNIX_SEND_VERSION, _DGTNIX_SEND_UPDATE_NICE, _DGTNIX_SEND_EE_MOVES, _DGTNIX_SEND_RESET]
 
+def scan():
+   # scan for available ports. return a list of device names.
+    return glob.glob('/dev/tty.usb*') + glob.glob('/dev/ttyUSB*')
+
 class Event(object):
     pass
-
-
 
 class DGTBoard(object):
     def __init__(self, device, virtual = False, send_board = True):
         self.board_reversed = False
         self.clock_ack_recv = False
+        # self.clock_queue = Queue()
+        self.dgt_clock = False
         self.dgt_clock_lock = RLock()
+        # self.dgt_clock_ack_lock = RLock()
+        # self.dgt_clock_ack_queue = Queue()
 
         if not virtual:
             self.ser = serial.Serial(device,stopbits=serial.STOPBITS_ONE)
@@ -105,6 +121,9 @@ class DGTBoard(object):
                 self.write(chr(_DGTNIX_SEND_BRD))
 
         self.callbacks = []
+
+    def get_board(self):
+        self.write(chr(_DGTNIX_SEND_BRD))
 
     def subscribe(self, callback):
         self.callbacks.append(callback)
@@ -289,17 +308,170 @@ class DGTBoard(object):
             return 0x01 | 0x40 | 0x08 | 0x02 | 0x10
         return 0
 
-    def send_message_to_clock(self, message, beep, dots):
+    @staticmethod
+    def compute_dgt_time_string(t):
+        if t < 0:
+            return "   "
+        t /= 1000
+
+        if t < 1200:
+        #minutes.seconds mode
+
+            minutes = t / 60
+            seconds = t - minutes * 60
+            if minutes >= 10:
+                minutes -= 10
+            # print "seconds : {0}".format(seconds)
+            return "{0}{1:02d}".format(minutes, seconds)
+            # oss << minutes << setfill ('0') << setw (2) << seconds;
+
+        else:
+        #hours:minutes mode
+            hours = t / 3600
+            minutes = (t - (hours * 3600)) / 60
+            return "{0}{1:02d}".format(hours, minutes)
+
+
+    def print_time_on_clock(self, w_time, b_time, w_blink=True, b_blink=True):
+        dots = 0
+        w_dots = True
+        b_dots = True
+        if w_blink and w_time >= 1200000:
+            w_dots = clock_blink_iterator.next()
+        if b_blink and b_time >= 1200000:
+            b_dots = clock_blink_iterator.next()
+
+        if not self.board_reversed:
+            s = self.compute_dgt_time_string(w_time) + self.compute_dgt_time_string(b_time)
+            if w_time < 1200000: #minutes.seconds mode
+                if w_dots:
+                    dots |= DGTNIX_LEFT_DOT
+                if w_time >= 600000:
+                    dots |= DGTNIX_LEFT_1
+            elif w_dots:
+                dots |= DGTNIX_LEFT_SEMICOLON #hours:minutes mode
+            #black
+            if b_time < 1200000:
+            #minutes.seconds mode
+
+                if b_dots:
+                    dots |= DGTNIX_RIGHT_DOT
+                if b_time >= 600000:
+                    dots |= DGTNIX_RIGHT_1
+
+            elif b_dots:
+                dots |= DGTNIX_RIGHT_SEMICOLON #hours:minutes mode
+
+        else:
+            s = self.compute_dgt_time_string(b_time) + self.compute_dgt_time_string(w_time)
+            if b_time < 1200000: #minutes.seconds mode
+                if b_dots:
+                    dots |= DGTNIX_LEFT_DOT
+                if b_time >= 600000:
+                    dots |= DGTNIX_LEFT_1
+            elif b_dots:
+                dots |= DGTNIX_LEFT_SEMICOLON #hours:minutes mode
+            #black
+            if w_time < 1200000:
+            #minutes.seconds mode
+
+                if w_dots:
+                    dots |= DGTNIX_RIGHT_DOT
+                if w_time >= 600000:
+                    dots |= DGTNIX_RIGHT_1
+
+            elif w_dots:
+                dots |= DGTNIX_RIGHT_SEMICOLON #hours:minutes mode
+    #       }
+    # else
+    #   {
+    #     s = getDgtTimeString (bClockTime) + getDgtTimeString (wClockTime);
+    #     //black
+    #     if (bClockTime < 1200000) //minutes.seconds mode
+    #       {
+    #         if (bDots) dots |= DGTNIX_LEFT_DOT;
+    #         if (bClockTime >= 600000) dots |= DGTNIX_LEFT_1;
+    #       }
+    #     else if (bDots) dots |= DGTNIX_LEFT_SEMICOLON; //hours:minutes mode
+    #     //white
+    #     if (wClockTime < 1200000) //minutes.seconds mode
+    #       {
+    #         if (wDots) dots |= DGTNIX_RIGHT_DOT;
+    #         if (wClockTime >= 600000) dots |= DGTNIX_RIGHT_1;
+    #       }
+    #     else if (wDots) dots |= DGTNIX_RIGHT_SEMICOLON; //hours:minutes mode
+    #   }
+    #     dgtnixPrintMessageOnClock (s.c_str (), false, dots);
+        self.send_message_to_clock(s, False, dots)
+
+    def send_message_to_clock(self, message, beep, dots, move=False, test_clock=False, max_num_tries = 5):
         # Todo locking?
+        print "Got message to clock: {0}".format(message)
+        if move:
+            message = self.format_move_for_dgt(message)
+        else:
+            message = self.format_str_for_dgt(message)
         with self.dgt_clock_lock:
+            # self.clock_ack_recv = False
+                  #     time.sleep(5)
             self._sendMessageToClock(self.char_to_lcd_code(message[0]), self.char_to_lcd_code(message[1]),
                                 self.char_to_lcd_code(message[2]), self.char_to_lcd_code(message[3]),
                                 self.char_to_lcd_code(message[4]), self.char_to_lcd_code(message[5]),
-                                beep, dots)
+                                beep, dots, test_clock=test_clock, max_num_tries = max_num_tries)
+            # self.clock_ack_recv = False
+            if test_clock and not self.dgt_clock:
+                tries = 1
+                while True:
+                    time.sleep(1)
+                    if not self.dgt_clock:
+                        tries += 1
+                        if tries > max_num_tries:
+                            break
+                        self._sendMessageToClock(self.char_to_lcd_code(message[0]), self.char_to_lcd_code(message[1]),
+                                    self.char_to_lcd_code(message[2]), self.char_to_lcd_code(message[3]),
+                                    self.char_to_lcd_code(message[4]), self.char_to_lcd_code(message[5]),
+                                    beep, dots, test_clock=test_clock, max_num_tries = max_num_tries)
+                    else:
+                        break
 
 
 
-    def _sendMessageToClock(self, a, b, c, d, e, f, beep, dots):
+
+    def test_for_dgt_clock(self, message="pic023", wait_time = 5):
+    # try:
+    #     signal.signal(signal.SIGALRM, self.dgt_clock_test_post_handler)
+
+        # signal.alarm(wait_time)
+        self.send_message_to_clock(message, True, False, test_clock=True, max_num_tries=wait_time)
+
+        # signal.alarm(0)
+        # except serial.serialutil.SerialException:
+        #     return False
+        # return True
+
+    def dgt_clock_test_post_handler(self, signum, frame):
+        if self.dgt_clock:
+            print "Clock found"
+            # self.dgt_clock = True
+        else:
+            print "No DGT Clock found"
+            # self.dgt_clock = False
+
+    def format_str_for_dgt(self, s):
+        if len(s)>6:
+            s = s[:6]
+        if len(s) < 6:
+            remainder = 6 - len(s)
+            s = " "*remainder + s
+        return s
+
+    def format_move_for_dgt(self, s):
+        mod_s = s[:2]+' '+s[2:]
+        if len(mod_s)<6:
+            mod_s+=" "
+        return mod_s
+
+    def _sendMessageToClock(self, a, b, c, d, e, f, beep, dots, test_clock = False, max_num_tries = 5):
         # pthread_mutex_lock (&clock_ack_mutex);
 
         # if(!(g_debugMode == DGTNIX_DEBUG_OFF))
@@ -312,9 +484,15 @@ class DGTBoard(object):
         #       }
         #   }
         print "Sending Message to Clock.."
-        num_tries = 0
+        # num_tries = 0
+        # self.clock_queue.empty()
+        # self.dgt_clock_ack_lock.acquire()
         # while not self.clock_ack_recv:
-        num_tries +=1
+        #     num_tries += 1
+        #     if num_tries > 1:
+        #         time.sleep(1) # wait a bit longer for ack
+        #         if self.clock_ack_recv:
+        #             break
         self.ser.write(chr(_DGTNIX_CLOCK_MESSAGE))
         self.ser.write(chr(0x0b))
         self.ser.write(chr(0x03))
@@ -331,24 +509,33 @@ class DGTBoard(object):
         else:
             self.ser.write(chr(0))
         if beep:
-          self.ser.write(chr(0x03))
+            self.ser.write(chr(0x03))
         else:
-          self.ser.write(chr(0x01))
+            self.ser.write(chr(0x01))
         self.ser.write(chr(0x00))
-        # time.sleep(1)
-        self.read_message_from_board()
+
+        # if test_clock:
+        #     time.sleep(5)
+
+            # time.sleep(1)
             # if num_tries>1:
             #     print "try : {0}".format(num_tries)
-            # if num_tries>=5:
+
+            # if self.dgt_clock and num_tries>=5:
             #     break
-        # self.clock_ack_recv = False
+            # if num_tries>=max_num_tries:
+            #     break
+        # if not test_clock:
+
         # Retry logic?
         # time.sleep(1)
         # Check clock ack?
 
 
     def read_message_from_board(self, head=None):
-        # print "got message"
+        # print "acquire"
+        # self.dgt_clock_ack_lock.acquire()
+        print "got DGT message"
         header_len = 3
         if head:
             header = head + self.read(header_len-1)
@@ -393,11 +580,36 @@ class DGTBoard(object):
 
             pattern = '>'+'B'*message_length
             buf = unpack(pattern, message)
+            # print buf
 
             if buf:
-                if buf[3] & 15==10 or buf[6] & 15 == 10:
-                    self.clock_ack_recv = True
+                if buf[0] == buf[1] == buf[2] == buf[3] == buf[4] == buf[5] == 0:
+                    self.fire(type=CLOCK_LEVER, message=buf[6])
+                if buf[0] == 10 and buf[1] == 16 and buf[2] == 1 and buf[3] == 10 and not buf[4] and not buf[5] and not buf[6]:
                     # print "clock ACK received!"
+
+                    # self.clock_ack_recv = True
+                    # self.dgt_clock_ack_lock.acquire()
+                    # self.clock_queue.get()
+                    # self.clock_queue.task_done()
+                    if not self.dgt_clock:
+                        self.dgt_clock = True
+                    self.fire(type=CLOCK_ACK, message='')
+                if 5 <= buf[4] <= 6 and buf[5] == 49:
+                    self.fire(type=CLOCK_BUTTON_PRESSED, message=0)
+
+                if 33 <= buf[4] <= 34 and buf[5] == 52:
+                    self.fire(type=CLOCK_BUTTON_PRESSED, message=1)
+
+                if 17 <= buf[4] <= 18 and buf[5] == 51:
+                    self.fire(type=CLOCK_BUTTON_PRESSED, message=2)
+
+                if 9 <= buf[4] <= 10 and buf[5] == 50:
+                    self.fire(type=CLOCK_BUTTON_PRESSED, message=3)
+
+                if 65 <= buf[4] <= 66 and buf[5] == 53:
+                    self.fire(type=CLOCK_BUTTON_PRESSED, message=4)
+
 
         elif command_id == _DGTNIX_EE_MOVES:
             print "Received _DGTNIX_EE_MOVES from the board\n"
@@ -472,6 +684,7 @@ class DGTBoard(object):
             # self.send_message_to_clock(['b','o','a','r','d','c'], False, False)
 
 
+
 class VirtualDGTBoard(DGTBoard):
     def __init__(self, device, virtual = True):
         super(VirtualDGTBoard, self).__init__(device, virtual = virtual)
@@ -502,13 +715,27 @@ def poll_dgt(dgt):
     thread.start()
 
 if __name__ == "__main__":
+    for port in scan():
+        if port.startswith("/dev/tty.usbmodem"):
+            device = port
+            break
+        device = port
+
+    print "device : {0}".format(device)
+
     if len(sys.argv)> 1:
         device = sys.argv[1]
-    else:
-        device = "/dev/cu.usbserial-00001004"
+    # else:
+    #     device = "/dev/cu.usbserial-00001004"
     board = DGTBoard(device, send_board=False)
     board.subscribe(board._dgt_observer)
+
     # poll_dgt(board)
+    # if board.test_for_dgt_clock():
+    #     print "Clock found!"
+    # else:
+    #     print "Clock not present"
+
     # board.send_message_to_clock(['a','y',' ','d','g', 't'], False, False)
     board.poll()
     # poll_dgt(board)

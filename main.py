@@ -98,6 +98,10 @@ import leveldb
 import uuid
 from pydgt import DGTBoard
 from pydgt import FEN
+from pydgt import CLOCK_BUTTON_PRESSED
+from pydgt import CLOCK_LEVER
+from pydgt import CLOCK_ACK
+from pydgt import scan as dgt_port_scan
 
 INDEX_TOTAL_GAME_COUNT = "total_game_count"
 
@@ -216,6 +220,18 @@ except ImportError:
     arduino = False
 
 config = ConfigParser()
+
+class ButtonEvent:
+    def __init__(self, pin_num):
+        self.pin_num = pin_num
+
+class DGT_Clock_Message(object):
+    def __init__(self, message, move=False, dots=False, beep=True, max_num_tries=5):
+        self.message = message
+        self.move = move
+        self.dots = dots
+        self.beep = beep
+        self.max_num_tries = max_num_tries
 
 class KThread(Thread):
     """A subclass of threading.Thread, with a kill()
@@ -1031,6 +1047,10 @@ class Chess_app(App):
         if self.cloud_engine_id:
            cloud_eng.process_request_api(self.cloud_engine_id, image_prefix="HighCPU", debug=True,
                 stop=True, dryrun=False)
+        if self.dgtnix:
+            self.dgt_connected = False
+            self.dgt_thread.kill()
+        # print "after killing dgt thread"
         if self.uci_engine:
             if not self.uci_engine.cloud:
                 self.uci_engine.eng_process._subprocess.kill()
@@ -1475,6 +1495,28 @@ class Chess_app(App):
             self.start_pos_changed = True
             self.custom_fen = fen
 
+    def dgt_clock_msg_handler(self):
+        while True:
+            # print "dgt_clock_msg handler started!!"
+            with self.dgt_clock_lock:
+                # Wait for dgt clock ack after sending a message
+                # print "clock_msg hanlder started.."
+                msg = self.dgt_clock_msg_queue.get()
+                # print "got message!"
+                while True:
+                    self.dgtnix.send_message_to_clock(msg.message, move=msg.move, dots=msg.dots, beep=msg.beep, max_num_tries=msg.max_num_tries)
+                    sleep(1)
+                    ack_msg = self.clock_ack_queue.get(1)
+                    if ack_msg:
+                        break
+
+
+    def dgt_clock_ack_thread(self):
+        # print "starting dgt clock_msg_handler thread"
+        self.dgt_clock_ack_th = KThread(target=self.dgt_clock_msg_handler)
+        self.dgt_clock_ack_th.daemon = True
+        self.dgt_clock_ack_th.start()
+
     def generate_settings(self):
         def go_to_setup_board(value):
             self.root.current = 'setup_board'
@@ -1499,6 +1541,9 @@ class Chess_app(App):
         #            print value
         #            print self.dgt_dev_input.text
         # Load the library
+
+
+
             if not value:
                 # if self.dgtnix:
                 #     self.dgtnix.Close()
@@ -1508,9 +1553,22 @@ class Chess_app(App):
                 #     self.dgt_thread._Thread__stop()
 
             else:
-                self.dgtnix = DGTBoard(self.dgt_dev_input.text, send_board=False)
+                self.dgtnix = DGTBoard(self.dgt_dev_input.text)
+                # self.dgtnix.subscribe(self.dgt_probe)
+                # poll_dgt()
                 self.dgtnix.subscribe(self.dgt_probe)
                 poll_dgt()
+                # sleep(1)
+                self.dgtnix.test_for_dgt_clock()
+                # p
+                if self.dgtnix.dgt_clock:
+                    print "Found DGT Clock"
+                    self.dgt_clock_ack_thread()
+                else:
+                    print "No DGT Clock found"
+                self.dgtnix.get_board()
+
+
                 if arduino:
                     try:
                         from nanpy.lcd import Lcd
@@ -1526,6 +1584,8 @@ class Chess_app(App):
                     except OSError:
                         self.lcd = None
                         print "No LCD found"
+
+
                 if not self.dgtnix:
                     print "Unable to connect to the device on {0}".format(self.device)
                 else:
@@ -1557,7 +1617,16 @@ class Chess_app(App):
         dgt_panel = SettingsPanel(title="DGT")
         setup_dgt_item = SettingItem(panel=dgt_panel, title="Input DGT Device (/dev/..)") #create instance of one item in left side panel
 #        setup_dgt_item.bind(on_release=on_dgt_dev_input)
-        self.dgt_dev_input = TextInput(text="/dev/cu.usbserial-00004006", focus=True, multiline=False, use_bubble = True)
+        device = ""
+        for port in dgt_port_scan():
+            if port.startswith("/dev/tty.usbmodem"):
+                device = port
+                break
+            device = port
+
+        print "DGT device found: {0}".format(device)
+
+        self.dgt_dev_input = TextInput(text=device, focus=True, multiline=False, use_bubble = True)
         self.dgt_dev_input.bind(on_text_validate=on_dgt_dev_input)
 
         setup_dgt_item.add_widget(self.dgt_dev_input)
@@ -1752,16 +1821,37 @@ class Chess_app(App):
     def write_lcd_prev_move(self):
         if self.chessboard.san:
             if len(self.chessboard.variations) > 0:
-                message = " (Game)"
+                message = "(Game)"
             else:
                 message = " (New)"
-            self.write_to_lcd(self.get_prev_move(figurine=False) + message, clear=True)
-
+            if self.lcd:
+                self.write_to_lcd(self.get_prev_move(figurine=False) + message, clear=True)
+            else:
+                self.write_to_dgt(str(self.chessboard.move), move=True, beep=False)
             # if self.chessboard.previous_node:
             #     self.write_to_lcd(self.chessboard.san, clear=True)
             # if len(self.chessboard.variations)>0:
             #     if self.lcd:
             #         self.write_to_lcd(str(self.chessboard.variations[0].san),clear=True)
+
+    def dgt_button_event(self, event):
+         print "You pressed",
+         button = event.pin_num
+
+         if button == 4:
+            # print "variations: {0}".format(len(self.chessboard.variations))
+            self.dgt_show_next_move = not self.dgt_show_next_move
+            if not self.dgt_show_next_move:
+                self.write_to_dgt("hide  ", move=True, beep=False)
+            else:
+                if len(self.chessboard.variations)>0:
+                    self.write_to_dgt(str(self.chessboard.variations[0].move), move=True, beep=False)
+         elif button == 0:
+            self.write_lcd_prev_move()
+         elif button == 2:
+            self.add_eng_moves(None, ENGINE_ANALYSIS)
+            if not self.use_internal_engine:
+                self.write_to_dgt("  stop")
 
     def dgt_probe(self, attr, *args):
         if attr.type == FEN:
@@ -1789,6 +1879,22 @@ class Chess_app(App):
 
             elif new_dgt_fen:
                 self.dgt_fen = new_dgt_fen
+        if attr.type == CLOCK_BUTTON_PRESSED:
+            print "Clock button {0} pressed".format(attr.message)
+            e = ButtonEvent(attr.message)
+            self.dgt_button_event(e)
+        if attr.type == CLOCK_ACK:
+            self.clock_ack_queue.put('ack')
+            print "Clock ACK Received"
+        if attr.type == CLOCK_LEVER:
+            if self.clock_lever != attr.message:
+                if self.clock_lever:
+                    # not first clock level read
+                    # print "clock level changed to {0}!".format(attr.message)
+                    e = ButtonEvent(5)
+                    self.dgt_button_event(e)
+
+                self.clock_lever = attr.message
 
     def update_grid_border(self, instance, width, height):
         with self.grid.canvas.before:
@@ -2041,6 +2147,13 @@ class Chess_app(App):
         self.dgtnix = None
         self.dgt_fen = None
         self.dgt_clock_sound = False
+        self.dgt_show_next_move = True
+
+        self.clock_ack_queue = Queue()
+        self.clock_lever = None
+        self.dgt_clock_lock = RLock()
+        self.dgt_pause_clock = False
+        self.dgt_clock_msg_queue = Queue()
 
         # user book
         try:
@@ -3079,6 +3192,10 @@ class Chess_app(App):
                         output.children[0].text = TRAIN_MENU.format(san, "")
                     self.train_eng_score = {}
 
+    def write_to_dgt(self, message, move=False, dots=False, beep=True, max_num_tries = 5):
+        if self.dgtnix:
+            print "sending message"
+            self.dgt_clock_msg_queue.put(DGT_Clock_Message(message, move=move, dots=dots, beep=beep, max_num_tries=max_num_tries))
 
     def write_to_lcd(self, message, clear = False):
         with self.lcd_lock:
@@ -3392,6 +3509,10 @@ class Chess_app(App):
         if db_index is not None and self.database_display:
             try:
                 game_ids = db_index.Get(pos_hash).split(',')[:-1]
+                # print "frequency: {0}".format(db_index.Get(pos_hash+"_freq"))
+                # print "score: {0}".format(db_index.Get(pos_hash+"_score"))
+                # print "draws: {0}".format(db_index.Get(pos_hash+"_draws"))
+                # print "moves: {0}".format(db_index.Get(pos_hash+"_white_score"))
 
             except KeyError, e:
                 print "key not found!"
@@ -3713,6 +3834,8 @@ class Chess_app(App):
 
         self.refresh_engine()
         self.update_book_panel()
+        if self.dgt_show_next_move and len(self.chessboard.variations)>0:
+            self.write_to_dgt(str(self.chessboard.variations[0].move), move=True, beep=False)
         # print self.speak_move_queue
         if spoken:
             if len(self.speak_move_queue)>0:
