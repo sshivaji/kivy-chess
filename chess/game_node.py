@@ -395,13 +395,16 @@ class GameNode(object):
                     # tree_depth +=1
 
                 if format == "ref":
-                    score += "[ref={0}][size={1}]".format(el.__position.__hash__(), 16-len(q))
+                    font_size = 16-len(q)
+                    if font_size < 10:
+                        font_size = 10
+                    score += "[ref={0}][size={1}]".format(el.__position.__hash__(), font_size)
                     if el.is_main_line():
                         score +="[b]"
 
                 if not el.is_main_variation():
                     # score += " ("*tree_depth
-                    score += "{0} ".format("(",)
+                    score += "\n{0} {1} ".format(" "*len(q)*2, " (",)
 
                 move = el.half_move_num
                 if move % 2 == 0:
@@ -453,7 +456,7 @@ class GameNode(object):
 
                 if not el.is_main_line() and len(el.__variations) == 0:
                     # print "move: {0} is a leaf".format(el.__san)
-                    score += " )"
+                    score += " )\n "
                     # len -=1
 
                 if format == "ref":
