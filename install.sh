@@ -1,7 +1,7 @@
 python virtualenv.py --system-site-packages chesspython
 chesspython/bin/pip install setuptools --no-use-wheel --upgrade
 chesspython/bin/pip install cython==0.20.2
-#chesspython/bin/pip install hg+http://bitbucket.org/pygame/pygame
+chesspython/bin/pip install hg+http://bitbucket.org/pygame/pygame
 chesspython/bin/pip install kivy
 chesspython/bin/pip install git+https://github.com/kivy/buildozer.git@master
 chesspython/bin/pip install git+https://github.com/kivy/plyer.git@master
