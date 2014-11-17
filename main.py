@@ -1265,7 +1265,7 @@ class ChessProgram_app(App):
         curr_eng_score = curr_eng_score.strip()
         if curr_eng_score.startswith('mate'):
             curr_eng_score = 1000
-            if self.chessboard.position.turn == 'b':
+            if self.chessboard.board().turn == chess.BLACK:
                 curr_eng_score *= -1
         curr_eng_score = float(curr_eng_score)
 
@@ -2970,11 +2970,14 @@ class ChessProgram_app(App):
             l = tokens[info_indices[-1]:]
             # print l
             info = self.get_score(l, str_line=False)
+            # print info
             infos.append(info)
 
+        # print infos
         return infos
 
     def get_score(self, line, str_line=True):
+        # print line
         if str_line:
             tokens = line.split()
         else:
@@ -3018,13 +3021,14 @@ class ChessProgram_app(App):
                 except ValueError, e:
                     print "Cannot convert Mate number of moves to a int"
                     print e
-            # print self.chessboard.position.turn
-            if self.chessboard.position.turn == 'b':
+            # print self.chessboard.board().turn
+            if self.chessboard.board().turn == chess.BLACK:
                 if score:
                     score *= -1
             if score_type == "mate":
                 score = score_type + " " + str(score)
-
+        # print score
+        # print depth
         return {"nps":nps, "depth":depth, "score":score}
 
     def get_can(self, moves):
@@ -3034,7 +3038,8 @@ class ChessProgram_app(App):
         return move_list
 
     def get_san(self, moves, figurine=False):
-        prev_fen = sf.get_fen(self.pyfish_fen,  self.chessboard.get_prev_moves())
+        prev_fen = sf.get_fen(self.pyfish_fen,  self.get_prev_moves(self.chessboard))
+
 
         move_list = sf.to_san(prev_fen, moves)
         if figurine:
@@ -3090,7 +3095,6 @@ class ChessProgram_app(App):
                     else:
                         move_lists.append(self.get_san(tokens[p+1:info_indices[i]], figurine = figurine))
                         can_move_lists.append(tokens[p+1:info_indices[i]])
-
                 # print "tokens: "
                 # print pv_tokens[:info_index]
                 # move_lists.append(self.get_san(pv_tokens[:info_index], figurine=figurine))
@@ -3128,7 +3132,7 @@ class ChessProgram_app(App):
                 # if raw:
                 #     variation = self.generate_move_list(move_list, move_num=False)
                 # else:
-                variation = self.generate_move_list(move_list, start_move_num=self.chessboard.half_move_num, eval=str(infos[i]["score"])+"/"+str(infos[i]["depth"]))
+                variation = self.generate_move_list(move_list, start_move_num=self.chessboard.board().fullmove_number, eval=str(infos[i]["score"])+"/"+str(infos[i]["depth"]))
 
                 # print "variation:"
                 # print variation
@@ -3259,8 +3263,6 @@ class ChessProgram_app(App):
                 cleaned_line, infos = self.parse_analysis(line)
 
                 if cleaned_line:
-                    # print "cleaned_line:"
-                    # print cleaned_line
                     self.internal_engine_output = u"\n[color=000000]{0}[/color]".format(self.get_internal_engine_info()[0]) + ' ' + cleaned_line
                     self.internal_engine_raw_output, self.internal_engine_raw_scores = self.parse_analysis(line, figurine=False, raw=True)
 
@@ -3885,11 +3887,31 @@ class ChessProgram_app(App):
             san = san.replace(k, v)
         return san
 
+    def get_prev_moves(self, board, format="raw"):
+        # temp_board = self.chessboard
+
+        if board:
+            if format == "raw":
+                move = []
+                if board.move:
+                    move = [str(board.move)]
+
+
+            if board.parent:
+                # print board.parent
+
+                move = self.get_prev_moves(board.parent) + move
+            # print move
+            return move
+
+        return []
+
+
     def get_prev_move(self, figurine = True):
         filler = ''
         # current turn is toggle from previous
         # add in a dot if is now white to move
-        if self.chessboard.board().turn == 'w':
+        if self.chessboard.board().turn == chess.WHITE:
             filler = '.'
         if self.chessboard.parent:
             san = self.chessboard.san()
@@ -3904,7 +3926,7 @@ class ChessProgram_app(App):
 
     def update_board_position(self, *args):
         if self.game_analysis:
-            self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
+            self.grid._update_position(self.chessboard.move, self.chessboard.board().fen)
             all_moves = self.chessboard_root.game_score(figurine=True)
             if all_moves:
                 self.game_score.children[0].text=u"[color=000000]{0}[/color]".format(all_moves)
@@ -3925,15 +3947,16 @@ class ChessProgram_app(App):
         if self.use_internal_engine:
             if self.engine_mode == ENGINE_ANALYSIS:
                 # if self.engine_running:
-                sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), infinite=True)
+                # print self.get_prev_moves(self.chessboard)
+                sf.go(fen=self.pyfish_fen, moves=self.get_prev_moves(self.chessboard), infinite=True)
                 # print "Started engine"
                 # self.engine_running = True
             elif self.engine_mode == ENGINE_TRAINING:
                 sf.set_option('skill level', '17')
-                sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), depth=15)
+                sf.go(fen=self.pyfish_fen, moves=self.get_prev_moves(self.chessboard), depth=15)
             else:
                 if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
-                    sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(),
+                    sf.go(fen=self.pyfish_fen, moves=self.get_prev_moves(self.chessboard),
                           wtime=int(self.time_white * 1000), btime=int(self.time_black * 1000),
                           winc=int(self.time_inc_white * 1000), binc=int(self.time_inc_black * 1000))
         if self.uci_engine:
@@ -3952,7 +3975,7 @@ class ChessProgram_app(App):
     def refresh_board(self, update=True, spoken=False):
         self.grid._update_position(self.chessboard.move, self.chessboard.board().fen())
 
-        if self.chessboard.san:
+        if self.chessboard.move:
             self.prev_move.text = self.get_prev_move()
             # if self.chessboard.evaluation.has_key('move_eval'):
             #     self.prev_move.text += ' ' + NAG_TO_READABLE_MAP[self.chessboard.evaluation['move_eval']]
@@ -3961,7 +3984,12 @@ class ChessProgram_app(App):
 
         if update:
             # all_moves = self.chessboard_root.game_score(figurine=True)
-            all_moves = None
+            exporter = chess.pgn.StringExporter()
+            self.chessboard_root.export(exporter)
+            # print str(exporter)
+            all_moves = str(exporter)
+            # print all_moves
+
             if all_moves:
                 self.game_score.children[0].text=u"[color=000000]{0}[/color]".format(all_moves)
         if self.variation_dropdown:
