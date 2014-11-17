@@ -3090,10 +3090,10 @@ class ChessProgram_app(App):
 
                 for i, p in enumerate(pv_indices):
                     if i > len(info_indices)-1:
-                        move_lists.append(self.get_san(tokens[p+1:], figurine = figurine))
+                        move_lists.append(self.get_san(tokens[p+1:], figurine=figurine))
                         can_move_lists.append(tokens[p+1:])
                     else:
-                        move_lists.append(self.get_san(tokens[p+1:info_indices[i]], figurine = figurine))
+                        move_lists.append(self.get_san(tokens[p+1:info_indices[i]], figurine=figurine))
                         can_move_lists.append(tokens[p+1:info_indices[i]])
                 # print "tokens: "
                 # print pv_tokens[:info_index]
@@ -3124,7 +3124,7 @@ class ChessProgram_app(App):
                 # print "move_list:"
                 # print move_list
                 try:
-                    tail =" {0} Knps".format(infos[i]["nps"]/1000)
+                    tail = " {0} Knps".format(infos[i]["nps"]/1000)
                 except KeyError:
                     tail = ""
                 # print "infos:"
@@ -3132,7 +3132,10 @@ class ChessProgram_app(App):
                 # if raw:
                 #     variation = self.generate_move_list(move_list, move_num=False)
                 # else:
-                variation = self.generate_move_list(move_list, start_move_num=self.chessboard.board().fullmove_number, eval=str(infos[i]["score"])+"/"+str(infos[i]["depth"]))
+                move_number = self.chessboard.board().fullmove_number*2
+                if self.chessboard.board().turn == chess.WHITE:
+                    move_number -= 1
+                variation = self.generate_move_list(move_list, start_move_num=move_number, eval=str(infos[i]["score"])+"/"+str(infos[i]["depth"]))
 
                 # print "variation:"
                 # print variation
@@ -3152,8 +3155,8 @@ class ChessProgram_app(App):
         # print outputs
         return outputs
 
-    def format_time_str(self, time_a):
-
+    @staticmethod
+    def format_time_str(time_a):
         seconds = time_a
         # print "seconds: {0}".format(seconds)
         m, s = divmod(seconds, 60)
@@ -3920,7 +3923,8 @@ class ChessProgram_app(App):
                 # print san
                 san = self.convert_san_to_figurine(san)
             # return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
-            return u"{0}.{1} {2}".format(self.chessboard.board().fullmove_number, filler, san)
+
+            return u"[size=19][color=000000]{0}.{1} {2}[/color][/size]".format(self.chessboard.board().fullmove_number, filler, san)
 
         return ' '
 
