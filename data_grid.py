@@ -36,14 +36,18 @@ Builder.load_string('''
 
 ''')
 
+
 class TopTableHeader(ToggleButton):
     cell_pos = [None, None]
+
 
 class TableHeader(ToggleButton):
     cell_pos = [None, None]
 
+
 class TableFooter(ToggleButton):
     cell_pos = [None, None]
+
 
 class TableCell(ToggleButton):
     cell_pos = []
@@ -64,10 +68,11 @@ class TableCell(ToggleButton):
 
 
 class DataGrid(GridLayout):
-    def process_header_cell(self, cell, top_header = False, top_header_id = "Top_Header", callback = None):
+    def process_header_cell(self, cell, top_header=False, top_header_id="Top_Header", callback=None):
         if top_header:
-            cell_str = '[color=000000][b][ref='+cell[0] +']'+ cell[0] + '[/ref][/b][/color]'
-            tmp = TopTableHeader(text=cell_str, markup=True, id=top_header_id, size_hint_x=None, size_hint_y=None, height=20)
+            cell_str = '[color=000000][b][ref=' + cell[0] + ']' + cell[0] + '[/ref][/b][/color]'
+            tmp = TopTableHeader(text=cell_str, markup=True, id=top_header_id, size_hint_x=None, size_hint_y=None,
+                                 height=20)
 
         else:
             cell_str = "[b]" + str(cell[0]) + "[/b]"
@@ -94,11 +99,11 @@ class DataGrid(GridLayout):
 
     def __init__(self, header, body, footer, editable, top_level_header=None, callback=None, **kwargs):
         super(DataGrid, self).__init__(**kwargs)
-        self.size_hint_y=None
+        self.size_hint_y = None
         self.bind(minimum_height=self.setter('height'))
 
         self.cols = len(header)
-        self.rows = max(len(body) + 1,10)
+        self.rows = max(len(body) + 1, 10)
 
         self.spacing = [1, 1]
         self.size_hint_x = 1
@@ -123,23 +128,25 @@ class DataGrid(GridLayout):
             for cell in footer:
                 pass
 
-    def add_row(self, row_data, callback = None, **kwargs):
+    def add_row(self, row_data, callback=None, **kwargs):
         n = 0
         # print "add_row"
         # print row_data
         for cell_data in row_data:
             cell_height = 30
-#            cell_width = 10
+            # cell_width = 10
             if type(cell_data) is tuple:
                 cell_data, cell_height = cell_data
 
-#            print cell_height
+            #            print cell_height
 
             cell_text = '[color=000000]' + cell_data + '[/color]'
             if cell_height:
-                tmp = TableCell(text=cell_text, id="Body", size_hint_y = None, size_hint_x = None, height=cell_height, padding=(5,5), spacing = 1)
+                tmp = TableCell(text=cell_text, id="Body", size_hint_y=None, size_hint_x=None, height=cell_height,
+                                padding=(5, 5), spacing=1)
             else:
-                tmp = TableCell(text=cell_text, id="Body", size_hint_y = None, size_hint_x = None, padding=(5,5), spacing = 1)
+                tmp = TableCell(text=cell_text, id="Body", size_hint_y=None, size_hint_x=None, padding=(5, 5),
+                                spacing=1)
 
             tmp.bind(size=(tmp.setter('text_size')), on_press=callback, on_ref_press=callback)
 

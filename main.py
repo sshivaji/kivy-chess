@@ -1,3 +1,8 @@
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+import textwrap
 from threading import Thread, RLock
 import traceback
 import sys
@@ -58,7 +63,7 @@ from sets import Set
 import itertools as it
 from operator import attrgetter
 from time import sleep
-from chess import polyglot_opening_book
+# from chess import polyglot_opening_book
 import cloud_eng
 from uci import UCIEngine
 from Queue import Queue
@@ -71,24 +76,27 @@ CLOUD_ENGINE_EXEC = './stockfish'
 THINKING_TIME = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]"
 THINKING = "[color=000000][b][size=16]Thinking..[/size][/b][/color]"
 
-try:
-    import libchess
-except ImportError:
-    from chess import libchess
-
-from libchess import Position
-# from chess.libchess import SanNotation
-# from chess.libchess import MoveError
-from libchess import Move
-from chess.game import Game
-from chess.game_node import PIECE_FONT_MAP
-from chess import PgnFile
-#from chess import PgnIndex
-from chess.game_node import GameNode
-from chess.game_node import NAG_TO_READABLE_MAP, READABLE_TO_NAG_MAP
-from libchess import Piece
-from libchess import Square
-from chess.game_header_bag import GameHeaderBag
+# try:
+#     import libchess
+# except ImportError:
+#     from chess import libchess
+#
+# from libchess import Position
+# # from chess.libchess import SanNotation
+# # from chess.libchess import MoveError
+# from libchess import Move
+# from chess.game import Game
+# from chess.game_node import PIECE_FONT_MAP
+# from chess import PgnFile
+# #from chess import PgnIndex
+# from chess.game_node import GameNode
+# from chess.game_node import NAG_TO_READABLE_MAP, READABLE_TO_NAG_MAP
+# # from libchess import Piece
+# # from libchess import Square
+# from chess.game_header_bag import GameHeaderBag
+import chess
+import chess.pgn
+import chess.polyglot
 import stockfish as sf
 
 # DGT
@@ -104,7 +112,6 @@ from pydgt import CLOCK_ACK
 from pydgt import scan as dgt_port_scan
 
 INDEX_TOTAL_GAME_COUNT = "total_game_count"
-
 
 DELETE_FROM_USER_BOOK = "delete_from_user_book"
 
@@ -211,6 +218,37 @@ INDEX_FILE_POS = "last_pos"
 DB_HEADER_MAP = {"White": 0, "WhiteElo": 1, "Black": 2,
                  "BlackElo": 3, "Result": 4, "Date": 5, "Event": 6, "Site": 7,
                  "ECO": 8, INDEX_FILE_POS:9, "FEN":10}
+
+# Chess assistant free ttf map
+PIECE_FONT_MAP = {
+    "K": u'\u00a2',
+    "Q": u'\u00a3',
+    "B": u'\u00a5',
+    "N": u'\u00a4',
+    "R": u'\u00a6',
+    "P": u'\u00a7'
+}
+
+NAG_TO_READABLE_MAP = {
+    0: "",
+    1: "!",
+    2: "?",
+    3: "!!",
+    4: "??",
+    5: "!?",
+    6: "?!",
+    10: "=",
+    14: "+=",
+    15: "=+",
+    16: "+-",
+    17: "-+",
+    18: "+ -",
+    19: "- +"
+}
+
+READABLE_TO_NAG_MAP = {v:k for k, v in NAG_TO_READABLE_MAP.iteritems()}
+
+Window.clearcolor = (1, 1, 1, 1)
 
 arduino = False
 try:
@@ -445,7 +483,7 @@ class ChessBoardWidget(Widget):
             # print('ANIMMOVE : ' + anim.move)
             # self.fen = sf.get_fen(self._game.start_position, self._game.moves+[anim.move])
             # self._game.moves.append(anim.move)
-            self.set_position(self.app.chessboard.position.fen)
+            self.set_position(self.app.chessboard.board().fen())
             self.app.process_move(anim.move)
 
             # if self.to_x and self.to_y:
@@ -659,16 +697,21 @@ class ChessBoardWidget(Widget):
 
     def __init__(self, app, **kwargs):
         super(ChessBoardWidget, self).__init__(**kwargs)
+        self.size_hint = (0.95,0.95)
         self.app = app
         self.light = (1, 0.808, 0.620)
         # self.light =  (Image(LIGHT_SQUARE+"fir-lite.jpg"))
         self.dark =(0.821, 0.545, 0.278)
-        self.light_img =  Image(source=LIGHT_SQUARE+"fir-lite.jpg")
-        self.dark_img = Image(source=DARK_SQUARE+"wood-chestnut-oak2.jpg")
+        self.light_img =  Image(source=LIGHT_SQUARE+"marble_166.jpg")
+        # self.dark_img = Image(source=DARK_SQUARE+"wood-chestnut-oak2.jpg")
+        self.dark_img = Image(source=DARK_SQUARE+"marble_252.jpg")
 
         self.black = (0, 0, 0)
         self.white = (1, 1, 1)
-        self.highlight_color = (0.2, 0.710, 0.898)
+        self.highlight_color = get_color_from_hex('#ffffe0')
+
+        # self.highlight_color = (0.5, 0.5, 0.5)
+        # SHIV2
         self.fen='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
         self.set_position(self.fen)
         self._background_textures = { 'K':'k', 'Q':'l', 'R':'m', 'B':'n', 'N':'o', 'P':'p', 'k':'q', 'q':'r', 'r':'s', 'b':'t', 'n':'u', 'p':'v'}
@@ -678,7 +721,7 @@ class ChessBoardWidget(Widget):
         self.from_y = None
         self.to_x = None
         self.to_y = None
-        Window.bind(mouse_pos=self.mouse_callback)
+        # Window.bind(mouse_pos=self.mouse_callback)
 
 
     @property
@@ -697,6 +740,8 @@ class ChessBoardWidget(Widget):
 #TODO http://kivy.org/docs/guide/inputs.html
 
     def on_touch_down(self, touch):
+        # print touch
+
         # push the current coordinate, to be able to restore it later
         touch.push()
 
@@ -733,6 +778,8 @@ class ChessBoardWidget(Widget):
 
         if self._moving_piece == '.':
             return
+        self.mouse_callback(None, touch.pos)
+
         # print "moving_piece:"
         # print self._moving_piece
         self._moving_piece_from = square
@@ -910,9 +957,12 @@ class CustomListItemButton(ListItemButton):
             # Rectangle(size=Window.size)
         self.markup = True
         self.selected_color = get_color_from_hex('#add8e6')
+        # Color(*get_color_from_hex('#ffffe0'), mode='rgba')
+
         self.border = (0,0,0,0)
         self.deselected_color = (1,1,1, 1)
         self.background_color = (1,1,1, 1)
+
         self.background_normal = 'img/background_normal.png'
         # self.background_down = 'img/background_pressed.png'
         # self.background_down = 'img/background_pressed.png'
@@ -1036,7 +1086,7 @@ class DataItem(object):
         self.is_selected = is_selected
 
 
-class Chess_app(App):
+class ChessProgram_app(App):
     # def on_start(self):
     #     if os.path.isfile(CLOUD_ENGINE_EXEC):
     #         self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True)
@@ -1899,7 +1949,12 @@ class Chess_app(App):
     def update_grid_border(self, instance, width, height):
         with self.grid.canvas.before:
             # grid.canvas.clear()
-            Color(0.5, 0.5, 0.5)
+            # Color(0.7, 0.7, 0.7)
+            Color(*get_color_from_hex('#f5f5f5'), mode='rgba')
+
+            # Color(*color, mode='hsv')
+
+            # Color('#8a2be2')
             Rectangle(size=Window.size)
 
     def update_database_display(self, game, ref_game=None):
@@ -1933,7 +1988,11 @@ class Chess_app(App):
         # print '    args when selection changes gets you the adapter', args
         if len(args[0].selection) == 1:
             game_index = args[0].selection[0].id
-            current_pos_hash = self.chessboard.position.__hash__()
+            # current_pos_hash = self.chessboard.position.__hash__()
+            current_pos_hash = self.chessboard.board().zobrist_hash()
+                    # pos_hash = str(self.chessboard.board().zobrist_hash())
+
+
             # reset sort criteria if a game is being loaded
             # db_sort_criteria = self.db_sort_criteria
             # self.reset_db_sort_criteria()
@@ -2086,7 +2145,7 @@ class Chess_app(App):
         # games = PgnFile.open("test/french_watson.pgn")
 ##        first_game = games[5]
 #
-        self.chessboard = Game()
+        self.chessboard = chess.pgn.Game()
         self.chessboard_root = self.chessboard
         self.ponder_move = None
         self.hint_move = None
@@ -2103,8 +2162,8 @@ class Chess_app(App):
         # self.curr_train_eng_score = None
         self.analysis_queue = Queue()
 
-        self.setup_chessboard = Position()
-        self.setup_chessboard.clear_board()
+        self.setup_chessboard = chess.Bitboard()
+        self.setup_chessboard.clear()
 
         self.squares = []
         self.setup_board_squares = []
@@ -2140,8 +2199,8 @@ class Chess_app(App):
         self.last_touch_up_move = None
         self.last_touch_down_setup = None
         self.last_touch_up_setup = None
-        self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin')
-        # self.book = PolyglotOpeningBook("book.bin")
+        # self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin')
+        self.book = chess.polyglot.open_reader("book.bin")
 
         self.dgt_connected = False
         self.dgtnix = None
@@ -2157,7 +2216,7 @@ class Chess_app(App):
 
         # user book
         try:
-            from chess.leveldict import LevelJsonDict
+            from leveldict import LevelJsonDict
             # import leveldb
             # from chess.leveldict import LevelDict
             self.user_book = LevelJsonDict('book/custom/watson.db')
@@ -2176,7 +2235,7 @@ class Chess_app(App):
         # Clock.schedule_interval(self.dgt_probe, 1)
         Clock.schedule_interval(self.update_clocks, 1)
 
-        grandparent = GridLayout(size_hint=(1,1), cols=1, orientation = 'vertical')
+        grandparent = GridLayout(size_hint=(1,1), cols=1, orientation = 'vertical', spacing=20)
         parent = BoxLayout(spacing=10)
         # box = BoxLayout(spacing=10, padding=(10,10))
         self.grid = ChessBoardWidget(self)
@@ -2226,17 +2285,23 @@ class Chess_app(App):
         # box.add_widget()
         parent.add_widget(self.grid)
 
-        self.info_grid = GridLayout(cols=1, rows=5, spacing=5, padding=(8, 8), orientation='vertical')
+        self.info_grid = GridLayout(cols=1, rows=4, spacing=20, padding=(8, 8), orientation='vertical')
         self.info_grid.add_widget(self.b)
 
         self.game_score = ScrollableLabel('[color=000000][b]%s[/b][/color]' % GAME_HEADER, font_name='img/CAChess.ttf',
                                           font_size=17, ref_callback=self.go_to_move)
 
         self.info_grid.add_widget(self.game_score)
-        self.info_grid.add_widget(EngineControls(self, size_hint=(1,0.15)))
+
+        self.engine_box = GridLayout(cols=1, rows=2, spacing=10, orientation='vertical')
+
+                # self.info_grid.add_widget(EngineControls(self, size_hint=(1,0.15)))
+
+        self.engine_box.add_widget(EngineControls(self, size_hint=(1,0.15)))
 
         self.engine_score = ScrollableLabel(ENGINE_HEADER, font_name='img/CAChess.ttf', font_size=17, ref_callback=self.add_eng_moves)
-        self.info_grid.add_widget(self.engine_score)
+        self.engine_box.add_widget(self.engine_score)
+        self.info_grid.add_widget(self.engine_box)
 
         # book_grid = GridLayout(cols = 2, rows = 1, spacing = 1, size_hint=(0.3, 1))
 
@@ -2244,7 +2309,7 @@ class Chess_app(App):
                                          ['Weight', 'center', 'left', 'option', 0.3, 'visible']],
                                          '',
                                          '',
-                                         top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display)
+                                         top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display, no_color=True)
 
         self.info_grid.add_widget(self.book_panel)
         integers_dict = \
@@ -2468,10 +2533,11 @@ class Chess_app(App):
     def go_to_move(self, label, pos_hash):
         # print pos_hash
         # print "finding move"
-        if GameNode.positions.has_key(pos_hash):
-            # print "Move found!"
-            self.chessboard = GameNode.positions[pos_hash]
-            self.refresh_board()
+        # if GameNode.positions.has_key(pos_hash):
+        #     # print "Move found!"
+        #     self.chessboard = GameNode.positions[pos_hash]
+        #     self.refresh_board()
+        pass
 
     def is_position_inf_eval(self, mv):
         for p in pos_evals:
@@ -2582,6 +2648,7 @@ class Chess_app(App):
         self.load_game_from_index(rand_game_num)
 
     def get_game(self, db_index, game_num):
+        # db_index = self.ref_db_index_book
         if self.use_ref_db:
             db_index = self.ref_db_index_book
         first = db_index.Get("game_{0}_data".format(game_num)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
@@ -2593,33 +2660,96 @@ class Chess_app(App):
             second = int(second)
         except KeyError:
             second = None
-        with open(db_index.Get("pgn_filename")) as f:
+
+        file_name = db_index.Get("pgn_filename")
+        if not os.path.isfile(file_name):
+            file_name = file_name.replace("home", "Users")
+
+        with open(file_name) as f:
             first = int(first)
 
             f.seek(first)
             line = 1
             lines = []
+            first_line = False
             while line:
                 line = f.readline()
+                temp = line.strip()
+                if not first_line:
+                    temp = '[' + temp
+                first_line = True
+                # line = line.strip()
                 pos = f.tell()
                 if second and pos >= second:
                     break
-                # print pos
-                lines.append(line)
-        # f.close()
+                    # print pos
+                if temp:
+                    lines.append(temp)
+            # f.close()
         # print lines
-        games = PgnFile.open_text(lines)
-        return games
+        return lines
+
+    # def get_game(self, db_index, game_num):
+    #     if self.use_ref_db:
+    #         db_index = self.ref_db_index_book
+    #     first = db_index.Get("game_{0}_data".format(game_num)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
+    #     #        if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
+    #     #            second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
+    #     #        second = self.pgn_index["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
+    #     try:
+    #         second = db_index.Get("game_{0}_data".format(game_num + 1)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
+    #         second = int(second)
+    #     except KeyError:
+    #         second = None
+    #     with open(db_index.Get("pgn_filename")) as f:
+    #         first = int(first)
+    #
+    #         f.seek(first)
+    #         line = 1
+    #         lines = []
+    #         first_line = False
+    #         while line:
+    #             line = f.readline()
+    #             temp = line.strip()
+    #             if not first_line:
+    #                 temp = '[' + temp
+    #
+    #             line = f.readline()
+    #             pos = f.tell()
+    #             if second and pos >= second:
+    #                 break
+    #             # print pos
+    #             lines.append(line)
+    #     # f.close()
+    #     # print lines
+    #     game_text = "\n".join(lines)
+    #
+    #     pgn = StringIO(textwrap.dedent(game_text))
+    #     # print game_text
+    #     games = chess.pgn.read_game(pgn)
+    #     print games.variations
+    #     # print games.variation(0).san()
+    #     # games = PgnFile.open_text(lines)
+    #     return games
 
     def load_game_from_index(self, game_num):
         db_index = self.db_index_book
-        games = self.get_game(db_index, game_num)
+        # games = self.get_game(db_index, game_num)
+
+        game_text = "\n".join(self.get_game(db_index, game_num))
+        # g = chess.pgn.read_game(game_text)
+        # print g
+        pgn = StringIO(textwrap.dedent(game_text))
+        g = chess.pgn.read_game(pgn)
         # print games[0].'White'
-        self.chessboard = games[0]
+        self.chessboard = g
+        # print g.headers
+        # print games
+        # print g
         # print self.chessboard.headers.headers
         self.chessboard_root = self.chessboard
-        if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
-            self.custom_fen = self.chessboard_root.headers.headers['FEN']
+        if self.chessboard_root.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
+            self.custom_fen = self.chessboard_root.headers['FEN']
         else:
             self.custom_fen = 'startpos'
 
@@ -2782,8 +2912,10 @@ class Chess_app(App):
         self.refresh_board(update=True)
 
     def back(self, obj):
-        if self.chessboard.previous_node:
-            self.chessboard = self.chessboard.previous_node
+        # if self.chessboard.previous_node:
+        if self.chessboard.parent:
+
+            self.chessboard = self.chessboard.parent
             self.refresh_board(update=False)
 
     def _keyboard_closed(self):
@@ -3365,7 +3497,7 @@ class Chess_app(App):
         try:
             if type(move) is str:
 
-                self.chessboard = self.chessboard.add_variation(Move.from_uci(move))
+                self.chessboard = self.chessboard.add_variation(chess.Move.from_uci(move))
             else:
                 self.chessboard = self.chessboard.add_variation(move)
         except ValueError:
@@ -3500,7 +3632,9 @@ class Chess_app(App):
             return "Unknown"
 
     def update_database_panel(self):
-        pos_hash = str(self.chessboard.position.__hash__())
+        # pos_hash = str(self.chessboard.position.__hash__())
+        pos_hash = str(self.chessboard.board().zobrist_hash())
+
         # pos_hash = str(sf.key())
         if self.use_ref_db:
             db_index = self.ref_db_index_book
@@ -3585,11 +3719,12 @@ class Chess_app(App):
 
     def update_book_panel(self, ev=None):
         # print "ev:"+str(ev)
-        fen = self.chessboard.position.fen
+        fen = self.chessboard.board().fen()
 
         if self.book_display:
             user_book_moves_set = set()
-            pos_hash = str(self.chessboard.position.__hash__())
+            # pos_hash = str(self.chessboard.position.__hash__())
+            pos_hash = str(self.chessboard.board().zobrist_hash())
 
             # print pos_hash
             user_book_moves = None
@@ -3637,7 +3772,7 @@ class Chess_app(App):
                         self.user_book[pos_hash] = {"moves":[], "annotation":"", "color": [],
                                                                       "eval":5, "games":[], "misc":""}
 
-            p = Position(fen)
+            p = chess.Bitboard(fen)
             # print p
             # self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
             book_entries = 0
@@ -3648,21 +3783,22 @@ class Chess_app(App):
 #                for m in user_book_moves:
 #                    print m
             for p in polyglot_entries:
+                # print p
                 # print p.raw_move
                 p.in_user_book = False
 #                print str(p.move)
 #                print user_book_moves
-                if user_book_moves and str(p.move) in user_book_moves:
+                if user_book_moves and str(p.move()) in user_book_moves:
                     p.in_user_book = True
-                    user_book_moves_set.remove(str(p.move))
+                    user_book_moves_set.remove(str(p.move()))
 
             polyglot_entries = sorted(polyglot_entries, key=lambda p: p.in_user_book, reverse = True)
 
             # print user_book_moves_set
             for m in user_book_moves_set:
                 try:
-                    pos = Position(fen)
-                    move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
+                    pos = chess.Bitboard(fen)
+                    move_info = pos.push(Move.from_uci(m.encode("utf-8")))
                     san = move_info.san
 
                     # print "color:{0}".format(color)
@@ -3673,32 +3809,38 @@ class Chess_app(App):
                         self.book_panel.grid.add_row(["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(m, san, color), ''], callback=self.add_book_moves)
 
                 except Exception, ex:
-                    pass
+                    raise
 
              # 'key', 'learn', 'move', 'raw_move', 'weight'
             for e in polyglot_entries:
                 # print e.move
                 try:
-                    pos = Position(fen)
-                    move_info = pos.make_move(Move.from_uci(e.move.uci))
-                    san = move_info.san
+                    pos = chess.Bitboard(fen)
+                    # print fen
+                    # move_info = pos.make_move(Move.from_uci(e.move.uci))
+                    mv = e.move()
+                    san = pos.san(mv)
+
+                    pos.push(mv)
+
 
                     if e.in_user_book:
                         weight = str(e.weight)
                         if color == "bold":
-                            self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
+                            self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(mv, san), weight], callback=self.add_book_moves)
                         else:
-                            self.book_panel.grid.add_row(["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(e.move.uci, san, color), weight], callback=self.add_book_moves)
+                            self.book_panel.grid.add_row(["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(mv, san, color), weight], callback=self.add_book_moves)
                         # self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
                     else:
-                        self.book_panel.grid.add_row(["[ref={0}]{1}[/ref]".format(e.move.uci, san), str(e.weight)], callback=self.add_book_moves)
+                        self.book_panel.grid.add_row(["[ref={0}]{1}[/ref]".format(mv, san), str(e.weight)], callback=self.add_book_moves)
                     book_entries += 1
                     if book_entries >= 5:
                         break
                 except Exception, ex:
-                    pass
+                    raise
 
-            current_eval = self.user_book[pos_hash]["eval"]
+            # current_eval = self.user_book[pos_hash]["eval"]
+            current_eval = None
             # print "current_eval:"+str(current_eval)
             weight = self.convert_int_eval_to_inf(current_eval)
             # print weight
@@ -3747,12 +3889,18 @@ class Chess_app(App):
         filler = ''
         # current turn is toggle from previous
         # add in a dot if is now white to move
-        if self.chessboard.position.turn == 'w':
+        if self.chessboard.board().turn == 'w':
             filler = '.'
-        san = self.chessboard.san
-        if figurine:
-            san = self.convert_san_to_figurine(san)
-        return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
+        if self.chessboard.parent:
+            san = self.chessboard.san()
+            # print san
+            if figurine:
+                # print san
+                san = self.convert_san_to_figurine(san)
+            # return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
+            return u"{0}.{1} {2}".format(self.chessboard.board().fullmove_number, filler, san)
+
+        return ' '
 
     def update_board_position(self, *args):
         if self.game_analysis:
@@ -3766,8 +3914,8 @@ class Chess_app(App):
     def refresh_engine(self):
         if self.engine_mode != ENGINE_PLAY:
             self.sf_stop()
-        if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
-            self.custom_fen = self.chessboard_root.headers.headers['FEN']
+        if self.chessboard_root.headers.has_key('FEN') and len(self.chessboard_root.headers['FEN']) > 1:
+            self.custom_fen = self.chessboard_root.headers['FEN']
         if self.custom_fen:
             self.pyfish_fen = self.custom_fen
             # sf.position(self.custom_fen, self.chessboard.get_prev_moves())
@@ -3802,17 +3950,18 @@ class Chess_app(App):
             self.start_pos_changed = False
 
     def refresh_board(self, update=True, spoken=False):
-        self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
+        self.grid._update_position(self.chessboard.move, self.chessboard.board().fen())
 
         if self.chessboard.san:
             self.prev_move.text = self.get_prev_move()
-            if self.chessboard.evaluation.has_key('move_eval'):
-                self.prev_move.text += ' ' + NAG_TO_READABLE_MAP[self.chessboard.evaluation['move_eval']]
-            if self.chessboard.evaluation.has_key('pos_eval'):
-                self.prev_move.text += ' ' + NAG_TO_READABLE_MAP[self.chessboard.evaluation['pos_eval']]
+            # if self.chessboard.evaluation.has_key('move_eval'):
+            #     self.prev_move.text += ' ' + NAG_TO_READABLE_MAP[self.chessboard.evaluation['move_eval']]
+            # if self.chessboard.evaluation.has_key('pos_eval'):
+            #     self.prev_move.text += ' ' + NAG_TO_READABLE_MAP[self.chessboard.evaluation['pos_eval']]
 
         if update:
-            all_moves = self.chessboard_root.game_score(figurine=True)
+            # all_moves = self.chessboard_root.game_score(figurine=True)
+            all_moves = None
             if all_moves:
                 self.game_score.children[0].text=u"[color=000000]{0}[/color]".format(all_moves)
         if self.variation_dropdown:
@@ -3844,4 +3993,4 @@ class Chess_app(App):
                     os.system("say "+e)
 
 if __name__ == '__main__':
-    Chess_app().run()
+    ChessProgram_app().run()

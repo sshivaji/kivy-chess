@@ -4,6 +4,7 @@ from kivy.graphics import Rectangle
 from kivy.graphics import Color
 from kivy.graphics import InstructionGroup
 from kivy.graphics import Line
+from kivy.utils import get_color_from_hex
 from data_grid import DataGrid
 from math import atan2, sin, cos
 
@@ -29,7 +30,9 @@ class ScrollableLabel(ScrollView):
     def __init__(self, text, ref_callback=None, font_size=13, font_name='DroidSans', *args, **kwargs):
         super(ScrollableLabel, self).__init__(*args, **kwargs)
         with self.canvas.before:
-            Color(0.7, .02, 0.91, mode="hsv")
+            Color(*get_color_from_hex('#ffffe0'), mode='rgba')
+
+            # Color(0.7, .02, 0.91, mode="hsv")
             # Color(.69, .93, .93)
             self.background = Rectangle(size_hint=(1,1))
 
@@ -54,10 +57,11 @@ class ScrollableLabel(ScrollView):
 
 class ScrollableGrid(ScrollView):
     def __init__(self, table_header, footer, editable, top_level_header=None, callback=None, *args, **kwargs):
-        super(ScrollableGrid, self).__init__()
+        super(ScrollableGrid, self).__init__(**kwargs)
 
         with self.canvas.before:
-            Color(0.7, .02, 0.91, mode="hsv")
+            if not kwargs.has_key('no_color'):
+                Color(*get_color_from_hex('#ffffe0'), mode='rgba')
             self.background = Rectangle(size_hint=(1,1))
 
         self.table_header = table_header
