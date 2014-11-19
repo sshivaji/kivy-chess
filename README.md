@@ -11,7 +11,7 @@ Features
    5. DGT board support.
 
 Screenshots
-  1. Main Screen ![Main Screen](/doc/screenshots/kivy-chess-main.jpg "Main Screen")
+  1. Main Screen ![Main Screen](/doc/screenshots/kivy-chess-main.png "Main Screen")
   1. DGT Options ![DGT](/doc/screenshots/kivy-chess-dgt.png "DGT")
 
 Techical Information:
