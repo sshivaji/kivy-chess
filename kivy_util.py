@@ -5,6 +5,7 @@ from kivy.graphics import Color
 from kivy.graphics import InstructionGroup
 from kivy.graphics import Line
 from kivy.utils import get_color_from_hex
+from kivy.uix.button import Button
 from data_grid import DataGrid
 from math import atan2, sin, cos
 
@@ -54,6 +55,23 @@ class ScrollableLabel(ScrollView):
     def change_size(self, instance, size):
         self.background.size = size
         self.label.text_size = (size[0]-50, None)
+
+class BlueButton(Button):
+    def __init__(self, *args, **kwargs):
+        super(Button, self).__init__(*args, **kwargs)
+        self.background_down = 'img/background_pressed.png'
+        self.background_normal = 'img/background_header.png'
+
+        # self.background_normal =
+        # with self.canvas.before:
+        #     Color(*get_color_from_hex('#ffffe0'), mode='rgba')
+        #     self.color =  (43./255., 153./255., 1.0)
+        #
+        #     # Color(0.7, .02, 0.91, mode="hsv")
+        #     # Color(.69, .93, .93)
+        #     self.background = Rectangle(size_hint=(1,1))
+
+
 
 class ScrollableGrid(ScrollView):
     def __init__(self, table_header, footer, editable, top_level_header=None, callback=None, *args, **kwargs):

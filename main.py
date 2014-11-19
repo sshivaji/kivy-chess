@@ -20,6 +20,7 @@ from kivy.uix.checkbox import CheckBox
 from kivy_util import ScrollableLabel
 from kivy_util import ScrollableGrid
 from kivy_util import Arrow
+from kivy_util import BlueButton
 
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
@@ -258,6 +259,76 @@ except ImportError:
     arduino = False
 
 config = ConfigParser()
+
+
+class ExtendedGame(chess.pgn.Game):
+    def __init__(self, *args, **kwargs):
+        chess.pgn.Game.__init__(self, *args, **kwargs)
+
+    def export(self, exporter, comments=True, variations=True, _board=None, _after_variation=False):
+        if _board is None:
+            _board = self.board()
+
+        # The mainline move goes first.
+        if self.variations:
+            main_variation = self.variations[0]
+
+            # Append fullmove number.
+            exporter.put_fullmove_number(_board.turn, _board.fullmove_number, _after_variation)
+
+            # Append SAN.
+            exporter.put_move(_board, main_variation.move)
+
+            if comments:
+                # Append NAGs.
+                exporter.put_nags(main_variation.nags)
+
+                # Append the comment.
+                if main_variation.comment:
+                    exporter.put_comment(main_variation.comment)
+
+        # Then export sidelines.
+        if variations:
+            for variation in it.islice(self.variations, 1, None):
+                # Start variation.
+                exporter.start_variation()
+
+                # Append starting comment.
+                if comments and variation.starting_comment:
+                    exporter.put_starting_comment(variation.starting_comment)
+
+                # Append fullmove number.
+                exporter.put_fullmove_number(_board.turn, _board.fullmove_number, True)
+
+                # Append SAN.
+                exporter.put_move(_board, variation.move)
+
+                if comments:
+                    # Append NAGs.
+                    exporter.put_nags(variation.nags)
+
+                    # Append the comment.
+                    if variation.comment:
+                        exporter.put_comment(variation.comment)
+
+                # Recursively append the next moves.
+                _board.push(variation.move)
+                variation.export(exporter, comments, variations, _board, False)
+                _board.pop()
+
+                # End variation.
+                exporter.end_variation()
+
+        # The mainline is continued last.
+        if self.variations:
+            main_variation = self.variations[0]
+
+            # Recursively append the next moves.
+            _board.push(main_variation.move)
+            main_variation.export(exporter, comments, variations, _board, variations and len(self.variations) > 1)
+            _board.pop()
+
+
 
 class ButtonEvent:
     def __init__(self, pin_num):
@@ -740,8 +811,7 @@ class ChessBoardWidget(Widget):
 #TODO http://kivy.org/docs/guide/inputs.html
 
     def on_touch_down(self, touch):
-        # print touch
-
+        self.mouse_callback(None, touch.pos)
         # push the current coordinate, to be able to restore it later
         touch.push()
 
@@ -778,7 +848,6 @@ class ChessBoardWidget(Widget):
 
         if self._moving_piece == '.':
             return
-        self.mouse_callback(None, touch.pos)
 
         # print "moving_piece:"
         # print self._moving_piece
@@ -1534,9 +1603,9 @@ class ChessProgram_app(App):
     def process_fen(self, fen):
         fen = fen.strip()
         if fen == INITIAL_BOARD_FEN:
-            self.chessboard = Game()
+            self.chessboard = ExtendedGame()
         else:
-            g = Game()
+            g = ExtendedGame()
             bag = GameHeaderBag(game=g, fen=fen)
             g.set_headers(bag)
             self.chessboard = g
@@ -2145,7 +2214,7 @@ class ChessProgram_app(App):
         # games = PgnFile.open("test/french_watson.pgn")
 ##        first_game = games[5]
 #
-        self.chessboard = chess.pgn.Game()
+        self.chessboard = ExtendedGame()
         self.chessboard_root = self.chessboard
         self.ponder_move = None
         self.hint_move = None
@@ -2248,7 +2317,10 @@ class ChessProgram_app(App):
         self.b = BoxLayout(size_hint=(0.15, 0.15))
         comment_bt = Annotation(self)
         self.b.add_widget(comment_bt)
-        back_bt = Button(markup=True)
+
+        back_bt = BlueButton(markup=True)
+        back_bt.background_color = get_color_from_hex('#ffffe0')
+
         back_bt.text = "<"
 
         back_bt.bind(on_press=self.back)
@@ -2257,7 +2329,7 @@ class ChessProgram_app(App):
         self.prev_move = Label(markup=True,font_name='img/CAChess.ttf',font_size=16)
         self.b.add_widget(self.prev_move)
 
-        fwd_bt = Button(markup=True)
+        fwd_bt = BlueButton(markup=True)
         fwd_bt.text = ">"
 
         fwd_bt.bind(on_press=self.fwd)
@@ -2906,7 +2978,7 @@ class ChessProgram_app(App):
         return True if platform.startswith('mac') else False
 
     def new(self, obj):
-        self.chessboard = Game()
+        self.chessboard = ExtendedGame()
         self.chessboard_root = self.chessboard
         self.custom_fen = 'startpos'
         self.refresh_board(update=True)
@@ -3501,7 +3573,6 @@ class ChessProgram_app(App):
     def add_try_variation(self, move):
         try:
             if type(move) is str:
-
                 self.chessboard = self.chessboard.add_variation(chess.Move.from_uci(move))
             else:
                 self.chessboard = self.chessboard.add_variation(move)
@@ -3526,13 +3597,18 @@ class ChessProgram_app(App):
         from_rank = move[1]
         to_rank = move[3]
         from_sq = move[:2]
+        # print from_sq
 
-        if from_rank == '7' and to_rank == '8' and self.chessboard.position[Square(from_sq)] == Piece("P"):
-            return True
-
-        if from_rank == '2' and to_rank == '1' and self.chessboard.position[Square(from_sq)] == Piece("p"):
-            return True
-        return False
+        # if move.promotion:
+        #     return True
+        mv = chess.Move.from_uci(move)
+        return mv.promotion
+        # if from_rank == '7' and to_rank == '8' and self.chessboard.board().piece_at(from_sq) == chess.Piece("P"):
+        #     return True
+        # #
+        # if from_rank == '2' and to_rank == '1' and self.chessboard.board().piece_at(from_sq) == chess.Piece("p"):
+        #     return True
+        # return False
 
     def add_promotion_info(self, move):
         # Promotion info already present?
@@ -3762,7 +3838,7 @@ class ChessProgram_app(App):
                         for m in user_book_moves:
                             # print m
                             pos = Position(fen)
-                            move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
+                            move_info = pos.make_move(chess.Move.from_uci(m.encode("utf-8")))
                             san = move_info.san
                             move_text += "[ref={0}]{1}[/ref]\n".format(m, san)
                             user_book_moves_set.add(m)
@@ -3803,7 +3879,7 @@ class ChessProgram_app(App):
             for m in user_book_moves_set:
                 try:
                     pos = chess.Bitboard(fen)
-                    move_info = pos.push(Move.from_uci(m.encode("utf-8")))
+                    move_info = pos.push(chess.Move.from_uci(m.encode("utf-8")))
                     san = move_info.san
 
                     # print "color:{0}".format(color)
@@ -4001,7 +4077,9 @@ class ChessProgram_app(App):
         if len(self.chessboard.variations) > 1:
             self.variation_dropdown = DropDown()
             for i,v in enumerate(self.chessboard.variations):
-                btn = Button(id=str(i), text='{0}'.format(v.san), size_hint_y=None, height=20)
+                                    # san = pos.san(mv)
+
+                btn = Button(id=str(i), text='{0}'.format(self.chessboard.board().san(v.move)), size_hint_y=None, height=20)
 
                 # for each button, attach a callback that will call the select() method
                 # on the dropdown. We'll pass the text of the button as the data of the
