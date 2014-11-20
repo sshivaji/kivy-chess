@@ -539,9 +539,100 @@ class ExtendedGameNode(chess.pgn.GameNode):
         node.comment = comment
         node.starting_comment = starting_comment
         self.variations.append(node)
-        ExtendedGame.positions[str(self.board().zobrist_hash())] = self
 
+        ExtendedGame.positions[str(node.board().zobrist_hash())] = node
         return node
+
+class ExtendedGame(chess.pgn.Game):
+    def __init__(self):
+        super(chess.pgn.Game, self).__init__()
+
+        self.headers = collections.OrderedDict()
+        self.headers["Event"] = "?"
+        self.headers["Site"] = "?"
+        self.headers["Date"] = "????.??.??"
+        self.headers["Round"] = "?"
+        self.headers["White"] = "?"
+        self.headers["Black"] = "?"
+        self.headers["Result"] = "*"
+        ExtendedGame.positions={}
+
+    def add_variation(self, move, comment="", starting_comment="", nags=set()):
+        """Creates a child node with the given attributes."""
+        node = ExtendedGameNode()
+        node.move = move
+        node.nags = set(nags)
+        node.parent = self
+        node.comment = comment
+        node.starting_comment = starting_comment
+        ExtendedGame.positions[str(node.board().zobrist_hash())] = node
+
+        # ExtendedGame.positions[str(self.board().zobrist_hash())] = self
+        self.variations.append(node)
+        return node
+
+    def export(self, exporter, comments=True, variations=True, _board=None, _after_variation=False):
+        if _board is None:
+            _board = self.board()
+
+        # The mainline move goes first.
+        if self.variations:
+            main_variation = self.variations[0]
+
+            # Append fullmove number.
+            exporter.put_fullmove_number(_board.turn, _board.fullmove_number, _after_variation)
+
+            # Append SAN.
+            exporter.put_move(_board, main_variation.move)
+
+            if comments:
+                # Append NAGs.
+                exporter.put_nags(main_variation.nags)
+
+                # Append the comment.
+                if main_variation.comment:
+                    exporter.put_comment(main_variation.comment)
+
+        # Then export sidelines.
+        if variations:
+            for variation in it.islice(self.variations, 1, None):
+                # Start variation.
+                exporter.start_variation()
+
+                # Append starting comment.
+                if comments and variation.starting_comment:
+                    exporter.put_starting_comment(variation.starting_comment)
+
+                # Append fullmove number.
+                exporter.put_fullmove_number(_board.turn, _board.fullmove_number, True)
+
+                # Append SAN.
+                exporter.put_move(_board, variation.move)
+
+                if comments:
+                    # Append NAGs.
+                    exporter.put_nags(variation.nags)
+
+                    # Append the comment.
+                    if variation.comment:
+                        exporter.put_comment(variation.comment)
+
+                # Recursively append the next moves.
+                _board.push(variation.move)
+                variation.export(exporter, comments, variations, _board, False)
+                _board.pop()
+
+                # End variation.
+                exporter.end_variation()
+
+        # The mainline is continued last.
+        if self.variations:
+            main_variation = self.variations[0]
+
+            # Recursively append the next moves.
+            _board.push(main_variation.move)
+            main_variation.export(exporter, comments, variations, _board, variations and len(self.variations) > 1)
+            _board.pop()
 
 
 class StringExporter(object):
@@ -638,96 +729,6 @@ class StringExporter(object):
             return "\n".join(itertools.chain(self.lines, [ self.current_line.rstrip() ] )).rstrip()
         else:
             return "\n".join(self.lines).rstrip()
-
-
-class ExtendedGame(chess.pgn.Game):
-    def __init__(self):
-        super(chess.pgn.Game, self).__init__()
-
-        self.headers = collections.OrderedDict()
-        self.headers["Event"] = "?"
-        self.headers["Site"] = "?"
-        self.headers["Date"] = "????.??.??"
-        self.headers["Round"] = "?"
-        self.headers["White"] = "?"
-        self.headers["Black"] = "?"
-        self.headers["Result"] = "*"
-        ExtendedGame.positions={}
-
-    def add_variation(self, move, comment="", starting_comment="", nags=set()):
-        """Creates a child node with the given attributes."""
-        node = ExtendedGameNode()
-        node.move = move
-        node.nags = set(nags)
-        node.parent = self
-        node.comment = comment
-        node.starting_comment = starting_comment
-        # ExtendedGame.positions[str(self.board().zobrist_hash())] = self
-        self.variations.append(node)
-        return node
-
-    def export(self, exporter, comments=True, variations=True, _board=None, _after_variation=False):
-        if _board is None:
-            _board = self.board()
-
-        # The mainline move goes first.
-        if self.variations:
-            main_variation = self.variations[0]
-
-            # Append fullmove number.
-            exporter.put_fullmove_number(_board.turn, _board.fullmove_number, _after_variation)
-
-            # Append SAN.
-            exporter.put_move(_board, main_variation.move)
-
-            if comments:
-                # Append NAGs.
-                exporter.put_nags(main_variation.nags)
-
-                # Append the comment.
-                if main_variation.comment:
-                    exporter.put_comment(main_variation.comment)
-
-        # Then export sidelines.
-        if variations:
-            for variation in it.islice(self.variations, 1, None):
-                # Start variation.
-                exporter.start_variation()
-
-                # Append starting comment.
-                if comments and variation.starting_comment:
-                    exporter.put_starting_comment(variation.starting_comment)
-
-                # Append fullmove number.
-                exporter.put_fullmove_number(_board.turn, _board.fullmove_number, True)
-
-                # Append SAN.
-                exporter.put_move(_board, variation.move)
-
-                if comments:
-                    # Append NAGs.
-                    exporter.put_nags(variation.nags)
-
-                    # Append the comment.
-                    if variation.comment:
-                        exporter.put_comment(variation.comment)
-
-                # Recursively append the next moves.
-                _board.push(variation.move)
-                variation.export(exporter, comments, variations, _board, False)
-                _board.pop()
-
-                # End variation.
-                exporter.end_variation()
-
-        # The mainline is continued last.
-        if self.variations:
-            main_variation = self.variations[0]
-
-            # Recursively append the next moves.
-            _board.push(main_variation.move)
-            main_variation.export(exporter, comments, variations, _board, variations and len(self.variations) > 1)
-            _board.pop()
 
 
 class ButtonEvent:
