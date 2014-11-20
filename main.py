@@ -66,6 +66,8 @@ from operator import attrgetter
 from time import sleep
 # from chess import polyglot_opening_book
 import cloud_eng
+import itertools
+import re
 from uci import UCIEngine
 from Queue import Queue
 from os.path import expanduser
@@ -98,7 +100,9 @@ THINKING = "[color=000000][b][size=16]Thinking..[/size][/b][/color]"
 import chess
 import chess.pgn
 import chess.polyglot
+import copy
 import stockfish as sf
+import collections
 
 # DGT
 import os
@@ -247,6 +251,55 @@ NAG_TO_READABLE_MAP = {
     19: "- +"
 }
 
+
+NAG_NULL = 0
+NAG_GOOD_MOVE = 1
+NAG_MISTAKE = 2
+NAG_BRILLIANT_MOVE = 3
+NAG_BLUNDER = 4
+NAG_SPECULATIVE_MOVE = 5
+NAG_DUBIOUS_MOVE = 6
+NAG_FORCED_MOVE = 7
+NAG_SINGULAR_MOVE = 8
+NAG_WORST_MOVE = 9
+NAG_DRAWISH_POSITION = 10
+NAG_QUIET_POSITION = 11
+NAG_ACTIVE_POSITION = 12
+NAG_UNCLEAR_POSITION = 13
+NAG_WHITE_SLIGHT_ADVANTAGE = 14
+NAG_BLACK_SLIGHT_ADVANTAGE = 15
+
+# TODO: Add more constants for example from
+# https://en.wikipedia.org/wiki/Numeric_Annotation_Glyphs
+
+NAG_WHITE_MODERATE_COUNTERPLAY = 132
+NAG_BLACK_MODERATE_COUNTERPLAY = 133
+NAG_WHITE_DECISIVE_COUNTERPLAY = 134
+NAG_BLACK_DECISIVE_COUNTERPLAY = 135
+NAG_WHITE_MODERATE_TIME_PRESSURE = 136
+NAG_BLACK_MODERATE_TIME_PRESSURE = 137
+NAG_WHITE_SEVERE_TIME_PRESSURE = 138
+NAG_BLACK_SEVERE_TIME_PRESSURE = 139
+
+
+TAG_REGEX = re.compile(r"\[([A-Za-z0-9]+)\s+\"(.*)\"\]")
+
+MOVETEXT_REGEX = re.compile(r"""
+    (%.*?[\n\r])
+    |(\{.*)
+    |(\$[0-9]+)
+    |(\()
+    |(\))
+    |(\*|1-0|0-1|1/2-1/2)
+    |(
+        [NBKRQ]?[a-h]?[1-8]?[\-x]?[a-h][1-8](?:=[nbrqNBRQ])?
+        |--
+        |O-O(?:-O)?
+        |0-0(?:-0)?
+    )
+    |([\?!]{1,2})
+    """, re.DOTALL | re.VERBOSE)
+
 READABLE_TO_NAG_MAP = {v:k for k, v in NAG_TO_READABLE_MAP.iteritems()}
 
 Window.clearcolor = (1, 1, 1, 1)
@@ -260,10 +313,358 @@ except ImportError:
 
 config = ConfigParser()
 
+def _raise(error):
+    raise error
+
+
+def read_game(handle, error_handler=_raise):
+    """
+    Reads a game from a file opened in text mode.
+
+    By using text mode the parser does not need to handle encodings. It is the
+    callers responsibility to open the file with the correct encoding.
+    According to the specification PGN files should be ASCII. Also UTF-8 is
+    common. So this is usually not a problem.
+
+    >>> pgn = open("data/games/kasparov-deep-blue-1997.pgn")
+    >>> first_game = chess.pgn.read_game(pgn)
+    >>> second_game = chess.pgn.read_game(pgn)
+    >>>
+    >>> first_game.headers["Event"]
+    'IBM Man-Machine, New York USA'
+
+    Use `StringIO` to parse games from a string.
+
+    >>> pgn_string = "1. e4 e5 2. Nf3 *"
+    >>>
+    >>> try:
+    >>>     from StringIO import StringIO # Python 2
+    >>> except ImportError:
+    >>>     from io import StringIO # Python 3
+    >>>
+    >>> pgn = StringIO(pgn_string)
+    >>> game = chess.pgn.read_game(pgn)
+
+    The end of a game is determined by a completely blank line or the end of
+    the file. (Of course blank lines in comments are possible.)
+
+    According to the standard at least the usual 7 header tags are required
+    for a valid game. This parser also handles games without any headers just
+    fine.
+
+    The parser is relatively forgiving when it comes to errors. It skips over
+    tokens it can not parse. However it is difficult to handle illegal or
+    ambiguous moves. If such a move is encountered the default behaviour is to
+    stop right in the middle of the game and raise `ValueError`. If you pass
+    `None` for `error_handler` all errors are silently ignored, instead. If you
+    pass a function this function will be called with the error as an argument.
+
+    Returns the parsed game or `None` if the EOF is reached.
+    """
+    game = ExtendedGame()
+    found_game = False
+    found_content = False
+
+    line = handle.readline()
+
+    # Parse game headers.
+    while line:
+        # Skip empty lines and comments.
+        if not line.strip() or line.strip().startswith("%"):
+            line = handle.readline()
+            continue
+
+        found_game = True
+
+        # Read header tags.
+        tag_match = TAG_REGEX.match(line)
+        if tag_match:
+            game.headers[tag_match.group(1)] = tag_match.group(2)
+        else:
+            break
+
+        line = handle.readline()
+
+    # Get the next non-empty line.
+    while not line.strip() and line:
+        line = handle.readline()
+
+    # Movetext parser state.
+    starting_comment = ""
+    variation_stack = collections.deque([ game ])
+    board_stack = collections.deque([ game.board() ])
+    in_variation = False
+
+    # Parse movetext.
+    while line:
+        read_next_line = True
+
+        # An empty line is the end of a game.
+        if not line.strip() and found_game and found_content:
+            return game
+
+        for match in MOVETEXT_REGEX.finditer(line):
+            token = match.group(0)
+
+            if token.startswith("%"):
+                # Ignore the rest of the line.
+                line = handle.readline()
+                continue
+
+            found_game = True
+
+            if token.startswith("{"):
+                # Consume until the end of the comment.
+                line = token[1:]
+                comment_lines = [ ]
+                while line and "}" not in line:
+                    comment_lines.append(line.rstrip())
+                    line = handle.readline()
+                end_index = line.find("}")
+                comment_lines.append(line[:end_index])
+                if "}" in line:
+                    line = line[end_index:]
+                else:
+                    line = ""
+
+                if in_variation or not variation_stack[-1].parent:
+                    # Add the comment if in the middle of a variation or
+                    # directly to the game.
+                    if variation_stack[-1].comment:
+                        comment_lines.insert(0, variation_stack[-1].comment)
+                    variation_stack[-1].comment = "\n".join(comment_lines).strip()
+                else:
+                    # Otherwise it is a starting comment.
+                    if starting_comment:
+                        comment_lines.insert(0, starting_comment)
+                    starting_comment = "\n".join(comment_lines).strip()
+
+                # Continue with the current or the next line.
+                if line:
+                    read_next_line = False
+                break
+            elif token.startswith("$"):
+                # Found a NAG.
+                variation_stack[-1].nags.add(int(token[1:]))
+            elif token == "?":
+                variation_stack[-1].nags.add(NAG_MISTAKE)
+            elif token == "??":
+                variation_stack[-1].nags.add(NAG_BLUNDER)
+            elif token == "!":
+                variation_stack[-1].nags.add(NAG_GOOD_MOVE)
+            elif token == "!!":
+                variation_stack[-1].nags.add(NAG_BRILLIANT_MOVE)
+            elif token == "!?":
+                variation_stack[-1].nags.add(NAG_SPECULATIVE_MOVE)
+            elif token == "?!":
+                variation_stack[-1].nags.add(NAG_DUBIOUS_MOVE)
+            elif token == "(":
+                # Found a start variation token.
+                if variation_stack[-1].parent:
+                    variation_stack.append(variation_stack[-1].parent)
+
+                    board = copy.deepcopy(board_stack[-1])
+                    board.pop()
+                    board_stack.append(board)
+
+                    in_variation = False
+            elif token == ")":
+                # Found a close variation token. Always leave at least the
+                # root node on the stack.
+                if len(variation_stack) > 1:
+                    variation_stack.pop()
+                    board_stack.pop()
+            elif token in ["1-0", "0-1", "1/2-1/2", "*"] and len(variation_stack) == 1:
+                # Found a result token.
+                found_content = True
+
+                # Set result header if not present, yet.
+                if "Result" not in game.headers:
+                    game.headers["Result"] = token
+            else:
+                # Found a SAN token.
+                found_content = True
+
+                # Replace zeros castling notation.
+                if token == "0-0":
+                    token = "O-O"
+                elif token == "0-0-0":
+                    token = "O-O-O"
+
+                # Parse the SAN.
+                try:
+                    move = board_stack[-1].parse_san(token)
+                    in_variation = True
+                    variation_stack[-1] = variation_stack[-1].add_variation(move)
+                    variation_stack[-1].starting_comment = starting_comment
+                    board_stack[-1].push(move)
+                    starting_comment = ""
+                except ValueError as error:
+                    if error_handler:
+                        error_handler(error)
+
+        if read_next_line:
+            line = handle.readline()
+
+    if found_game:
+        return game
+
+class ExtendedGameNode(chess.pgn.GameNode):
+    def __init__(self):
+        self.parent = None
+        self.move = None
+        self.nags = set()
+        self.starting_comment = ""
+        self.comment = ""
+        self.variations = []
+
+    def board(self):
+        """
+        Gets a bitboard with the position of the node.
+
+        Its a copy, so modifying the board will not alter the game.
+        """
+        board = self.parent.board()
+        board.push(self.move)
+        # ExtendedGame.positions[str(self.board().zobrist_hash())] = self
+
+        return board
+
+    def add_variation(self, move, comment="", starting_comment="", nags=set()):
+        """Creates a child node with the given attributes."""
+        node = ExtendedGameNode()
+        node.move = move
+        node.nags = set(nags)
+        node.parent = self
+        node.comment = comment
+        node.starting_comment = starting_comment
+        self.variations.append(node)
+        ExtendedGame.positions[str(self.board().zobrist_hash())] = self
+
+        return node
+
+
+class StringExporter(object):
+    """
+    Allows exporting a game as a string.
+
+    The export method of `Game` also provides options to include or exclude
+    headers, variations or comments. By default everything is included.
+
+    >>> exporter = chess.pgn.StringExporter()
+    >>> game.export(exporter, headers=True, variations=True, comments=True)
+    >>> pgn_string = str(exporter)
+
+    Only `columns` characters are written per line. If `columns` is `None` then
+    the entire movetext will be on a single line. This does not affect header
+    tags and comments.
+
+    There will be no newlines at the end of the string.
+    """
+
+    def __init__(self, columns=80):
+        self.lines = []
+        self.columns = columns
+        self.current_line = ""
+
+    def flush_current_line(self):
+        if self.current_line:
+            self.lines.append(self.current_line.rstrip())
+        self.current_line = ""
+
+    def write_token(self, token):
+        if self.columns is not None and self.columns - len(self.current_line) < len(token):
+            self.flush_current_line()
+        self.current_line += token
+
+    def write_line(self, line=""):
+        self.flush_current_line()
+        self.lines.append(line.rstrip())
+
+    def start_game(self):
+        pass
+
+    def end_game(self):
+        self.write_line()
+
+    def start_headers(self):
+        pass
+
+    def put_header(self, tagname, tagvalue):
+        self.write_line("[{0} \"{1}\"]".format(tagname, tagvalue))
+
+    def end_headers(self):
+        self.write_line()
+
+    def start_variation(self):
+        self.write_token("( ")
+
+    def end_variation(self):
+        self.write_token(") ")
+
+    def put_starting_comment(self, comment):
+        self.put_comment(comment)
+
+    def put_comment(self, comment):
+        self.write_token("{ " + comment.replace("}", "").strip() + " } ")
+
+    def put_nags(self, nags):
+        for nag in sorted(nags):
+            self.put_nag(nag)
+
+    def put_nag(self, nag):
+        self.write_token("$" + str(nag) + " ")
+
+    def put_fullmove_number(self, turn, fullmove_number, variation_start):
+        if turn == chess.WHITE:
+            self.write_token(str(fullmove_number) + ". ")
+        elif variation_start:
+            self.write_token(str(fullmove_number) + "... ")
+
+    def put_move(self, board, move):
+        _board = copy.deepcopy(board)
+        _board.push(move)
+
+        self.write_token("[ref={0}][size={1}] {2} [/size][/ref]".format(_board.zobrist_hash(), 18, board.san(move)))
+        # print "[ref={0}][size={1}] {2} [/size][/ref]".format(_board.zobrist_hash(), 18, board.san(move))
+        # self.write_token(board.san(move) + " [/size][/ref]")
+
+
+    def put_result(self, result):
+        self.write_token(result + " ")
+
+    def __str__(self):
+        if self.current_line:
+            return "\n".join(itertools.chain(self.lines, [ self.current_line.rstrip() ] )).rstrip()
+        else:
+            return "\n".join(self.lines).rstrip()
+
 
 class ExtendedGame(chess.pgn.Game):
-    def __init__(self, *args, **kwargs):
-        chess.pgn.Game.__init__(self, *args, **kwargs)
+    def __init__(self):
+        super(chess.pgn.Game, self).__init__()
+
+        self.headers = collections.OrderedDict()
+        self.headers["Event"] = "?"
+        self.headers["Site"] = "?"
+        self.headers["Date"] = "????.??.??"
+        self.headers["Round"] = "?"
+        self.headers["White"] = "?"
+        self.headers["Black"] = "?"
+        self.headers["Result"] = "*"
+        ExtendedGame.positions={}
+
+    def add_variation(self, move, comment="", starting_comment="", nags=set()):
+        """Creates a child node with the given attributes."""
+        node = ExtendedGameNode()
+        node.move = move
+        node.nags = set(nags)
+        node.parent = self
+        node.comment = comment
+        node.starting_comment = starting_comment
+        # ExtendedGame.positions[str(self.board().zobrist_hash())] = self
+        self.variations.append(node)
+        return node
 
     def export(self, exporter, comments=True, variations=True, _board=None, _after_variation=False):
         if _board is None:
@@ -327,7 +728,6 @@ class ExtendedGame(chess.pgn.Game):
             _board.push(main_variation.move)
             main_variation.export(exporter, comments, variations, _board, variations and len(self.variations) > 1)
             _board.pop()
-
 
 
 class ButtonEvent:
@@ -2605,11 +3005,12 @@ class ChessProgram_app(App):
     def go_to_move(self, label, pos_hash):
         # print pos_hash
         # print "finding move"
-        # if GameNode.positions.has_key(pos_hash):
-        #     # print "Move found!"
-        #     self.chessboard = GameNode.positions[pos_hash]
-        #     self.refresh_board()
-        pass
+        # print "Current pos hash : {0}".format(ExtendedGame.positions)
+        if ExtendedGame.positions.has_key(pos_hash):
+            # print "Move found!"
+            self.chessboard = ExtendedGame.positions[pos_hash]
+            self.refresh_board()
+        # pass
 
     def is_position_inf_eval(self, mv):
         for p in pos_evals:
@@ -2812,7 +3213,7 @@ class ChessProgram_app(App):
         # g = chess.pgn.read_game(game_text)
         # print g
         pgn = StringIO(textwrap.dedent(game_text))
-        g = chess.pgn.read_game(pgn)
+        g = read_game(pgn)
         # print games[0].'White'
         self.chessboard = g
         # print g.headers
@@ -4064,7 +4465,7 @@ class ChessProgram_app(App):
 
         if update:
             # all_moves = self.chessboard_root.game_score(figurine=True)
-            exporter = chess.pgn.StringExporter()
+            exporter = StringExporter(columns=None)
             self.chessboard_root.export(exporter)
             # print str(exporter)
             all_moves = str(exporter)
