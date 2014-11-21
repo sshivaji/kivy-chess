@@ -607,7 +607,7 @@ class ExtendedGame(chess.pgn.Game):
                 exporter.put_fullmove_number(_board.turn, _board.fullmove_number, True)
 
                 # Append SAN.
-                exporter.put_move(_board, variation.move)
+                exporter.put_move(_board, variation.move, main_line=variation.is_main_variation())
 
                 if comments:
                     # Append NAGs.
@@ -688,35 +688,46 @@ class StringExporter(object):
         self.write_line()
 
     def start_variation(self):
-        self.write_token("( ")
+          # if not main_line:
+          #   move_string = u"[color=3333ff] " + move_string + u" [/color]"
+          #
+        self.write_token("\n([color=3333ff]    ")
 
     def end_variation(self):
-        self.write_token(") ")
+        self.write_token(" )[/color]\n")
 
     def put_starting_comment(self, comment):
-        self.put_comment(comment)
+        # self.put_comment(comment)
+        self.write_token("\n[color=006400] " + comment.replace("}", "").strip() + " [/color] ")
+
 
     def put_comment(self, comment):
-        self.write_token("{ " + comment.replace("}", "").strip() + " } ")
+        self.write_token("\n[color=006400] " + comment.replace("}", "").strip() + " [/color] ")
 
     def put_nags(self, nags):
         for nag in sorted(nags):
             self.put_nag(nag)
 
     def put_nag(self, nag):
-        self.write_token("$" + str(nag) + " ")
+        if nag in NAG_TO_READABLE_MAP:
+            self.write_token(str(NAG_TO_READABLE_MAP[nag]) + " ")
+        else:
+            self.write_token("$" + str(nag) + " ")
 
     def put_fullmove_number(self, turn, fullmove_number, variation_start):
         if turn == chess.WHITE:
-            self.write_token(str(fullmove_number) + ". ")
+            self.write_token(str(fullmove_number) + ".")
         elif variation_start:
             self.write_token(str(fullmove_number) + "... ")
 
-    def put_move(self, board, move):
+    def put_move(self, board, move, main_line=True):
+        # print "main_line : {0}".format(main_line)
         _board = copy.deepcopy(board)
         _board.push(move)
-
-        self.write_token("[ref={0}][size={1}] {2} [/size][/ref]".format(_board.zobrist_hash(), 18, board.san(move)))
+        san = board.san(move)
+        move_string = u"[ref={0}][size={1}] {2} [/size][/ref]".format(_board.zobrist_hash(), 18, ChessProgram_app.convert_san_to_figurine(san))
+            # print move_string
+        self.write_token(move_string)
         # print "[ref={0}][size={1}] {2} [/size][/ref]".format(_board.zobrist_hash(), 18, board.san(move))
         # self.write_token(board.san(move) + " [/size][/ref]")
 
@@ -3010,7 +3021,7 @@ class ChessProgram_app(App):
         if ExtendedGame.positions.has_key(pos_hash):
             # print "Move found!"
             self.chessboard = ExtendedGame.positions[pos_hash]
-            self.refresh_board()
+            self.refresh_board(update=False)
         # pass
 
     def is_position_inf_eval(self, mv):
@@ -4363,7 +4374,8 @@ class ChessProgram_app(App):
             sq.remove_piece()
             # Update game notation
 
-    def convert_san_to_figurine(self, san):
+    @staticmethod
+    def convert_san_to_figurine(san):
         for k, v in PIECE_FONT_MAP.iteritems():
             san = san.replace(k, v)
         return san
@@ -4469,7 +4481,8 @@ class ChessProgram_app(App):
             exporter = StringExporter(columns=None)
             self.chessboard_root.export(exporter)
             # print str(exporter)
-            all_moves = str(exporter)
+            # print "updating moves.."
+            all_moves = unicode(exporter)
             # print all_moves
 
             if all_moves:
