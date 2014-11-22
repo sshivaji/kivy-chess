@@ -2394,14 +2394,14 @@ class ChessProgram_app(App):
                     if self.engine_mode == ENGINE_PLAY:
                         self.computer_move_FEN_reached = False
 
-                    if not self.try_dgt_legal_moves(self.chessboard.position.fen, new_dgt_fen):
+                    if not self.try_dgt_legal_moves(self.chessboard.board().fen(), new_dgt_fen):
                         dgt_fen_start = new_dgt_fen.split()[0]
-                        curr_fen_start = self.chessboard.position.fen.split()[0]
+                        curr_fen_start = self.chessboard.board().fen().split()[0]
                         if curr_fen_start == dgt_fen_start and self.engine_mode == ENGINE_PLAY:
                             self.computer_move_FEN_reached = True
 
-                        if self.chessboard.previous_node:
-                            prev_fen_start = self.chessboard.previous_node.position.fen.split()[0]
+                        if self.chessboard.parent:
+                            prev_fen_start = self.chessboard.parent.board().fen().split()[0]
                             if dgt_fen_start == prev_fen_start:
                                 self.back('dgt')
                     if self.engine_mode != ENGINE_PLAY and self.engine_mode != ENGINE_ANALYSIS:

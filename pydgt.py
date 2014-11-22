@@ -99,7 +99,7 @@ dgt_send_message_list = [_DGTNIX_CLOCK_MESSAGE, _DGTNIX_SEND_CLK, _DGTNIX_SEND_B
 
 def scan():
    # scan for available ports. return a list of device names.
-    return glob.glob('/dev/tty.usb*') + glob.glob('/dev/ttyUSB*')
+    return glob.glob('/dev/tty.usb*') + glob.glob('/dev/ttyUSB*') + glob.glob('/dev/ttyACM*')
 
 class Event(object):
     pass
