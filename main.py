@@ -67,6 +67,7 @@ from time import sleep
 # from chess import polyglot_opening_book
 import cloud_eng
 import itertools
+import locale
 import re
 from uci import UCIEngine
 from Queue import Queue
@@ -303,6 +304,7 @@ MOVETEXT_REGEX = re.compile(r"""
 READABLE_TO_NAG_MAP = {v:k for k, v in NAG_TO_READABLE_MAP.iteritems()}
 
 Window.clearcolor = (1, 1, 1, 1)
+locale.setlocale(locale.LC_ALL, 'en_US')
 
 arduino = False
 try:
@@ -2681,7 +2683,7 @@ class ChessProgram_app(App):
         self.last_touch_down_setup = None
         self.last_touch_up_setup = None
         # self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin')
-        self.book = chess.polyglot.open_reader("book.bin")
+        # self.book = chess.polyglot.open_reader("book.bin")
 
         self.dgt_connected = False
         self.dgtnix = None
@@ -2790,7 +2792,11 @@ class ChessProgram_app(App):
         # book_grid = GridLayout(cols = 2, rows = 1, spacing = 1, size_hint=(0.3, 1))
 
         self.book_panel = ScrollableGrid([['Move', 'center', 'center', 'string', 0.3, 'visible'],
-                                         ['Weight', 'center', 'left', 'option', 0.3, 'visible']],
+                                         ['Games', 'center', 'left', 'option', 0.3, 'visible'],
+                                         ['Win %', 'center', 'left', 'option', 0.3, 'visible'],
+                                         ['Wins', 'center', 'left', 'option', 0.3, 'visible'],
+                                         ['Draws', 'center', 'left', 'option', 0.3, 'visible'],
+                                         ['Losses', 'center', 'left', 'option', 0.3, 'visible']],
                                          '',
                                          '',
                                          top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display, no_color=True)
@@ -4210,140 +4216,246 @@ class ChessProgram_app(App):
             self.db_adapter.data = db_game_list
             self.database_list_view.scroll_to(0)
 
+    def get_move_from_int(self, move):
+        source_x = ((move >> 6) & 077) & 0x7
+        source_y = (((move >> 6) & 077) >> 3) & 0x7
+
+        target_x = (move & 077) & 0x7
+        target_y = ((move & 077) >> 3) & 0x7
+
+        promote = (move >> 12) & 0x7
+        # print promote
+        try:
+            promotion = "nbrq"[promote + 1] if promote else None
+        except IndexError:
+            promotion = "q"
+
+        move = self.get_textmove_from_raw(source_x, source_y, target_x, target_y)
+        if promotion:
+            move += promotion
+        return move
+
+    def get_textmove_from_raw(self, fx, fy, tx, ty):
+        _file = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
+        _rank = ['1', '2', '3', '4', '5', '6', '7', '8']
+
+        return _file[fx] + _rank[fy] + _file[tx] + _rank[ty]
 
     def update_book_panel(self, ev=None):
-        # print "ev:"+str(ev)
-        fen = self.chessboard.board().fen()
+        class ChessMove(object):
+            def __init__(self, uci, san):
+                self.uci = uci
+                self.san = san
+
+        def get_polyglot_hash(fen, move=None):
+            board = chess.Bitboard(fen=fen)
+            if move:
+                board.push(chess.Move.from_uci(move))
+            return board.zobrist_hash()
 
         if self.book_display:
-            user_book_moves_set = set()
-            # pos_hash = str(self.chessboard.position.__hash__())
-            pos_hash = str(self.chessboard.board().zobrist_hash())
-
-            # print pos_hash
-            user_book_moves = None
-            if self.user_book is not None:
-                # self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
-                #            print "found user_book\n"
-                move_text = ""
-
-                if pos_hash in self.user_book:
-#                    print "found position"
-    #                print self.user_book[self.chessboard.position.fen]
-                    user_book_moves = self.user_book[pos_hash]
-                    # print user_book_moves
-                    try:
-                        col = user_book_moves["color"]
-                    except KeyError:
-                        print user_book_moves
-                        col = ["white"]
-                    color = "bold"
-                    if "white" in col and "black" not in col:
-                        color = "3333ff"
-                    elif "white" in col and "black" in col:
-                        color = "ff0000"
-                    # elif "white" not in col and "black" in col:
-                    #     color = "bold"
-
-                    user_book_moves = user_book_moves["moves"]
-                    # print user_book_moves
-                    if user_book_moves:
-                        for m in user_book_moves:
-                            # print m
-                            pos = Position(fen)
-                            move_info = pos.make_move(chess.Move.from_uci(m.encode("utf-8")))
-                            san = move_info.san
-                            move_text += "[ref={0}]{1}[/ref]\n".format(m, san)
-                            user_book_moves_set.add(m)
-
-                    if ev is not None:
-                        j = self.user_book[pos_hash]
-                        j["eval"] = self.convert_inf_eval_to_int(ev)
-                        self.user_book[pos_hash] = j
-                else:
-                    # Not found
-                    #     print "pos not found"
-                        self.user_book[pos_hash] = {"moves":[], "annotation":"", "color": [],
-                                                                      "eval":5, "games":[], "misc":""}
-
-            p = chess.Bitboard(fen)
-            # print p
-            # self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
-            book_entries = 0
-#            self.book_panel.grid.remove_all_data_rows()
-            self.book_panel.reset_grid()
-            polyglot_entries = list(self.book.get_entries_for_position(p))
-#            if user_book_moves:
-#                for m in user_book_moves:
-#                    print m
-            for p in polyglot_entries:
-                # print p
-                # print p.raw_move
-                p.in_user_book = False
-#                print str(p.move)
-#                print user_book_moves
-                if user_book_moves and str(p.move()) in user_book_moves:
-                    p.in_user_book = True
-                    user_book_moves_set.remove(str(p.move()))
-
-            polyglot_entries = sorted(polyglot_entries, key=lambda p: p.in_user_book, reverse = True)
-
-            # print user_book_moves_set
-            for m in user_book_moves_set:
-                try:
-                    pos = chess.Bitboard(fen)
-                    move_info = pos.push(chess.Move.from_uci(m.encode("utf-8")))
-                    san = move_info.san
-
-                    # print "color:{0}".format(color)
-
-                    if color == "bold":
-                        self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(m, san), ''], callback=self.add_book_moves)
-                    else:
-                        self.book_panel.grid.add_row(["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(m, san, color), ''], callback=self.add_book_moves)
-
-                except Exception, ex:
-                    raise
-
-             # 'key', 'learn', 'move', 'raw_move', 'weight'
-            for e in polyglot_entries:
-                # print e.move
-                try:
-                    pos = chess.Bitboard(fen)
-                    # print fen
-                    # move_info = pos.make_move(Move.from_uci(e.move.uci))
-                    mv = e.move()
-                    san = pos.san(mv)
-
-                    pos.push(mv)
-
-
-                    if e.in_user_book:
-                        weight = str(e.weight)
-                        if color == "bold":
-                            self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(mv, san), weight], callback=self.add_book_moves)
-                        else:
-                            self.book_panel.grid.add_row(["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(mv, san, color), weight], callback=self.add_book_moves)
-                        # self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
-                    else:
-                        self.book_panel.grid.add_row(["[ref={0}]{1}[/ref]".format(mv, san), str(e.weight)], callback=self.add_book_moves)
-                    book_entries += 1
-                    if book_entries >= 5:
-                        break
-                except Exception, ex:
-                    raise
-
-            # current_eval = self.user_book[pos_hash]["eval"]
-            current_eval = None
-            # print "current_eval:"+str(current_eval)
-            weight = self.convert_int_eval_to_inf(current_eval)
+#             user_book_moves_set = set()
+#             # pos_hash = str(self.chessboard.position.__hash__())
+#             pos_hash = str(self.chessboard.board().zobrist_hash())
+#
+#             # print pos_hash
+#             user_book_moves = None
+#             if self.user_book is not None:
+#                 # self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
+#                 #            print "found user_book\n"
+#                 move_text = ""
+#
+#                 if pos_hash in self.user_book:
+# #                    print "found position"
+#     #                print self.user_book[self.chessboard.position.fen]
+#                     user_book_moves = self.user_book[pos_hash]
+#                     # print user_book_moves
+#                     try:
+#                         col = user_book_moves["color"]
+#                     except KeyError:
+#                         print user_book_moves
+#                         col = ["white"]
+#                     color = "bold"
+#                     if "white" in col and "black" not in col:
+#                         color = "3333ff"
+#                     elif "white" in col and "black" in col:
+#                         color = "ff0000"
+#                     # elif "white" not in col and "black" in col:
+#                     #     color = "bold"
+#
+#                     user_book_moves = user_book_moves["moves"]
+#                     # print user_book_moves
+#                     if user_book_moves:
+#                         for m in user_book_moves:
+#                             # print m
+#                             pos = Position(fen)
+#                             move_info = pos.make_move(chess.Move.from_uci(m.encode("utf-8")))
+#                             san = move_info.san
+#                             move_text += "[ref={0}]{1}[/ref]\n".format(m, san)
+#                             user_book_moves_set.add(m)
+#
+#                     if ev is not None:
+#                         j = self.user_book[pos_hash]
+#                         j["eval"] = self.convert_inf_eval_to_int(ev)
+#                         self.user_book[pos_hash] = j
+#                 else:
+#                     # Not found
+#                     #     print "pos not found"
+#                         self.user_book[pos_hash] = {"moves":[], "annotation":"", "color": [],
+#                                                                       "eval":5, "games":[], "misc":""}
+#
+#             p = chess.Bitboard(fen)
+#             # print p
+#             # self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
+#             book_entries = 0
+# #            self.book_panel.grid.remove_all_data_rows()
+#             self.book_panel.reset_grid()
+#             polyglot_entries = list(self.book.get_entries_for_position(p))
+# #            if user_book_moves:
+# #                for m in user_book_moves:
+# #                    print m
+#             for p in polyglot_entries:
+#                 # print p
+#                 # print p.raw_move
+#                 p.in_user_book = False
+# #                print str(p.move)
+# #                print user_book_moves
+#                 if user_book_moves and str(p.move()) in user_book_moves:
+#                     p.in_user_book = True
+#                     user_book_moves_set.remove(str(p.move()))
+#
+#             polyglot_entries = sorted(polyglot_entries, key=lambda p: p.in_user_book, reverse = True)
+#
+#             # print user_book_moves_set
+#             for m in user_book_moves_set:
+#                 try:
+#                     pos = chess.Bitboard(fen)
+#                     move_info = pos.push(chess.Move.from_uci(m.encode("utf-8")))
+#                     san = move_info.san
+#
+#                     # print "color:{0}".format(color)
+#
+#                     if color == "bold":
+#                         self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(m, san), ''], callback=self.add_book_moves)
+#                     else:
+#                         self.book_panel.grid.add_row(["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(m, san, color), ''], callback=self.add_book_moves)
+#
+#                 except Exception, ex:
+#                     raise
+#
+#              # 'key', 'learn', 'move', 'raw_move', 'weight'
+#             for e in polyglot_entries:
+#                 # print e.move
+#                 try:
+#                     pos = chess.Bitboard(fen)
+#                     # print fen
+#                     # move_info = pos.make_move(Move.from_uci(e.move.uci))
+#                     mv = e.move()
+#                     san = pos.san(mv)
+#
+#                     pos.push(mv)
+#
+#
+#                     if e.in_user_book:
+#                         weight = str(e.weight)
+#                         if color == "bold":
+#                             self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(mv, san), weight], callback=self.add_book_moves)
+#                         else:
+#                             self.book_panel.grid.add_row(["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(mv, san, color), weight], callback=self.add_book_moves)
+#                         # self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
+#                     else:
+#                         self.book_panel.grid.add_row(["[ref={0}]{1}[/ref]".format(mv, san), str(e.weight)], callback=self.add_book_moves)
+#                     book_entries += 1
+#                     if book_entries >= 5:
+#                         break
+#                 except Exception, ex:
+#                     raise
+#
+#             # current_eval = self.user_book[pos_hash]["eval"]
+#             current_eval = None
+#             # print "current_eval:"+str(current_eval)
+#             weight = self.convert_int_eval_to_inf(current_eval)
             # print weight
+            self.book_panel.reset_grid()
+            db_index = self.ref_db_index_book
+            # if self.use_ref_db:
+            #     db_index = self.ref_db_index_book
+            #     print db_index
+            pos_hash = str(self.chessboard.board().zobrist_hash())
+            fen = self.chessboard.board().fen()
+            # print self.chessboard.board()
+            results = {}
+            records = []
+
+            move_list = []
+            try:
+                moves = db_index.Get(pos_hash + "_moves").split(',')[:-1]
+                for m in moves:
+                    mv = int(m)
+                    if mv:
+                        move = self.get_move_from_int(mv)
+                        if move == "e1h1":
+                            move = "e1g1"
+                        elif move == "e1a1":
+                            move = "e1c1"
+                        elif move == "e8a8":
+                            move = "e8c8"
+                        elif move == "e8h8":
+                            move = "e8g8"
+                        try:
+                            bit_board = chess.Bitboard(fen)
+                            san = bit_board.san(chess.Move.from_uci(move))
+                            move_list.append(ChessMove(move, san))
+                        except ValueError:
+                            continue
+                            # print "frequency: {0}".format(db_index.Get(pos_hash+"_freq"))
+                            # print "score: {0}".format(db_index.Get(pos_hash+"_white_score"))
+                            # print "draws: {0}".format(db_index.Get(pos_hash+"_draws"))
+                            # print "moves: {0}".format(db_index.Get(pos_hash+"_moves"))
+
+                for i, m in enumerate(move_list):
+                    pos_hash = str(get_polyglot_hash(fen, move=m.uci))
+
+                    try:
+                        move_list[i].freq = int(db_index.Get(pos_hash + "_freq"))
+                    except KeyError:
+                        move_list[i].freq = 1
+
+                move_list = sorted(move_list, key=lambda m: m.freq, reverse=True)[:5]
+                for m in move_list:
+                    pos_hash = str(get_polyglot_hash(fen, move=m.uci))
+
+                    try:
+                        m.white_score = int(db_index.Get(pos_hash + "_white_score"))
+                    except KeyError:
+                        m.white_score = 0
+                    try:
+                        m.draws = int(db_index.Get(pos_hash + "_draws"))
+                    except KeyError:
+                        m.draws = 0
+
+                    m.losses = (m.freq - m.draws - m.white_score) / 2
+                    m.wins = m.losses + m.white_score
+                    pct = (m.wins * 1.0 + 0.5 * m.draws) / m.freq * 100.0
+
+                    records.append({'move':str(m.uci), 'san': unicode(self.convert_san_to_figurine(m.san)), 'pct': "{0:.2f}".format(pct), 'freq': locale.format("%d", m.freq, grouping=True), 'wins': locale.format("%d", m.wins, grouping=True),
+                                    'draws': locale.format("%d", m.draws, grouping=True), 'losses': locale.format("%d", m.losses, grouping=True)})
+                    results = {"records": records}
+            except KeyError:
+                results = {"records": []}
+                print "KeyError"
+
+            for r in results["records"]:
+                self.book_panel.grid.add_row([u"[ref={0}]{1}[/ref]".format(r['move'], r['san']), r['freq'], r['pct'], r['wins'], r['draws'], r['losses']], callback=self.add_book_moves)
+
+
+
 
             self.book_panel.grid.add_row(["[color=3333ff][ref=add_to_user_book]Add to White Rep[/ref][/color]",
-                                          ("[color=3333ff][ref=%s]Delete[/ref][/color]" % DELETE_FROM_USER_BOOK)], callback=self.add_book_moves_white)
+                                          ("[color=3333ff][ref=%s]Delete[/ref][/color]" % DELETE_FROM_USER_BOOK), '',''], callback=self.add_book_moves_white)
             self.book_panel.grid.add_row(["[ref=add_to_user_book]Add to Black Rep[/ref]",
                                           ("[ref=%s]Delete[/ref]" % DELETE_FROM_USER_BOOK)], callback=self.add_book_moves_black)
-            self.book_panel.grid.add_row(["Eval", "[ref={0}]{0}[/ref]".format(weight)], callback=self.add_book_moves)
+            # self.book_panel.grid.add_row(["Eval", "[ref={0}]{0}[/ref]".format(weight)], callback=self.add_book_moves)
 
                 # current_eval = NONE
                 # self.book_panel.grid.add_row(["__", "[ref={0}]{0}[/ref]".format(eval_symbol[NONE])], callback=self.add_book_moves)

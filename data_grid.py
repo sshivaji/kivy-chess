@@ -132,7 +132,7 @@ class DataGrid(GridLayout):
         n = 0
         # print "add_row"
         # print row_data
-        for cell_data in row_data:
+        for i, cell_data in enumerate(row_data):
             cell_height = 30
             # cell_width = 10
             if type(cell_data) is tuple:
@@ -141,13 +141,17 @@ class DataGrid(GridLayout):
             #            print cell_height
 
             cell_text = '[color=000000]' + cell_data + '[/color]'
+            # self.prev_move = Label(markup=True,font_name='img/CAChess.ttf',font_size=16)
+
             if cell_height:
-                tmp = TableCell(text=cell_text, id="Body", size_hint_y=None, size_hint_x=None, height=cell_height,
+                tmp = TableCell(font_name='img/CAChess.ttf',font_size=16, text=cell_text, id="Body", size_hint_y=None, size_hint_x=None, height=cell_height,
                                 padding=(5, 5), spacing=1)
             else:
-                tmp = TableCell(text=cell_text, id="Body", size_hint_y=None, size_hint_x=None, padding=(5, 5),
+                tmp = TableCell(font_name='img/CAChess.ttf',font_size=16, text=cell_text, id="Body", size_hint_y=None, size_hint_x=None, padding=(5, 5),
                                 spacing=1)
 
+            if i==0:
+                tmp.font_size=18
             tmp.bind(size=(tmp.setter('text_size')), on_press=callback, on_ref_press=callback)
 
             tmp.cell_pos = [self.rows - 1, n]
