@@ -1203,7 +1203,9 @@ class ChessBoardWidget(Widget):
 
         # self.highlight_color = (0.5, 0.5, 0.5)
         if 'setup' in kwargs:
-            self.fen = '8/8/8/8/8/8/8/8'
+            # print self.app
+            self.fen = self.app.chessboard.board().fen()
+            # print self.fen
             self.setup_board = True
         else:
             self.fen='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
@@ -2033,14 +2035,25 @@ class ChessProgram_app(App):
         if fen == INITIAL_BOARD_FEN:
             self.chessboard = ExtendedGame()
         else:
-            g = ExtendedGame()
-            g.setup(fen)
+            try:
+                bitboard = chess.Bitboard()
+                bitboard.set_fen(fen)
+                if bitboard.status() != chess.STATUS_VALID:
+                    # print "invalid fen.."
+                    return
+            except ValueError:
+                # print 'invaild fen'
+                return
+            else:
+                g = ExtendedGame()
+                g.setup(fen)
 
-            self.chessboard = g
-            self.chessboard_root = self.chessboard
+                self.chessboard = g
+                self.chessboard_root = self.chessboard
 
-            self.start_pos_changed = True
-            self.custom_fen = fen
+                self.start_pos_changed = True
+                self.custom_fen = fen
+                return True
 
     def dgt_clock_msg_handler(self):
         while True:
@@ -2065,9 +2078,10 @@ class ChessProgram_app(App):
         self.dgt_clock_ack_th.start()
 
     def generate_settings(self):
+
         def go_to_setup_board(value):
             self.root.current = 'setup_board'
-
+            self.setup_board._update_position(None, self.chessboard.board().fen())
 
         def on_dgt_dev_input(instance):
 #            print instance.text
@@ -2201,10 +2215,12 @@ class ChessProgram_app(App):
 
         def on_fen_input(instance):
             fen = instance.text
-            self.process_fen(fen)
-
-            self.refresh_board()
-            self.root.current = 'main'
+            # print "fen : {0}".format(fen)
+            ret = self.process_fen(fen)
+            # print "return : {0}".format(ret)
+            if ret is not None:
+                self.refresh_board()
+                self.root.current = 'main'
 
         fen_input.bind(on_text_validate=on_fen_input)
         setup_pos_item.add_widget(fen_input)
@@ -2966,22 +2982,17 @@ class ChessProgram_app(App):
 
         def render_setup_board(bt):
             if bt.text == "Clear":
-                self.setup_chessboard.clear_board()
+                self.setup_chessboard.clear()
 #                clearBoard()
             elif bt.text == "DGT":
                 if self.dgt_fen:
                     fen = self.dgt_fen.split()[0]
-                    fen+=" {0} KQkq - 0 1".format(self.setup_chessboard.turn)
+                    fen += " {0} KQkq - 0 1".format(self.setup_chessboard.turn)
                     self.setup_chessboard = Position(fen)
 
             else:
-                self.setup_chessboard.reset()
-#            squares = [item for sublist in self.setup_chessboard.getBoard() for item in sublist]
-#            for i, p in enumerate(squares):
-#                self.fill_chess_board(self.setup_board_squares[i], p)
-
-            for i, p in enumerate(SQUARES):
-                self.fill_chess_board(self.setup_board_squares[i], self.setup_chessboard[p])
+                self.setup_chessboard = chess.Bitboard()
+            self.setup_board._update_position(None, self.setup_chessboard.fen())
 
         def validate_setup_board(value):
 
@@ -3010,10 +3021,9 @@ class ChessProgram_app(App):
 
             # TODO: Support fen positions where castling is not possible even if king and rook are on right squares
             fen = fen.replace("KQkq", castling_fen)
-            self.process_fen(fen)
-
-            self.refresh_board()
-            self.root.current = 'main'
+            if self.process_fen(fen):
+                self.refresh_board()
+                self.root.current = 'main'
 
         setup_bar = GridLayout(cols=7, rows=3, size_hint=(1, 0.20))
         setup_piece_bar = GridLayout(cols=7, rows=2)
@@ -3054,7 +3064,6 @@ class ChessProgram_app(App):
         setup_bar.add_widget(cancel)
 
         setup_widget.add_widget(setup_bar)
-
 
         setup_board_screen.add_widget(setup_widget)
         sm.add_widget(setup_board_screen)
@@ -4538,9 +4547,9 @@ class ChessProgram_app(App):
 
 
 
-            self.book_panel.grid.add_row(["[color=3333ff][ref=add_to_user_book]+White Rep[/ref][/color]",
+            self.book_panel.grid.add_row(["[color=3333ff][ref=add_to_user_book]+White[/ref][/color]",
                                           ("[color=3333ff][ref=%s]Remove[/ref][/color]" % DELETE_FROM_USER_BOOK), '',''], callback=self.add_book_moves_white)
-            self.book_panel.grid.add_row(["[ref=add_to_user_book]+Black Rep[/ref]",
+            self.book_panel.grid.add_row(["[ref=add_to_user_book]+Black[/ref]",
                                           ("[ref=%s]Remove[/ref]" % DELETE_FROM_USER_BOOK)], callback=self.add_book_moves_black)
             # self.book_panel.grid.add_row(["Eval", "[ref={0}]{0}[/ref]".format(weight)], callback=self.add_book_moves)
 
