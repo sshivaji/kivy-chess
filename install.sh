@@ -13,7 +13,10 @@ git checkout pyfish
 cd src
 ../../chesspython/bin/python setup.py install
 cd ../..
-#git clone https://github.com/sshivaji/python-chess
-#cd python-chess
-#git checkout pgn
+git clone https://github.com/sshivaji/polyglot
+cd polyglot
+git checkout leveldb
+cd src
+sudo make install
+cd ../..
 #../chesspython/bin/python setup.py install
