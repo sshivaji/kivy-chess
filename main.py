@@ -1068,6 +1068,9 @@ class ChessBoardWidget(Widget):
         return -1 if (touch.x - self.bottom_left[0]) < 0 or f > 7 or (
             touch.y - self.bottom_left[1]) < 0 or r > 7 else f + r * 8
 
+    def _to_chess_square(self, str):
+        return chess.SQUARES[getattr(chess.SQUARES, str.upper(), None)]
+
     def _to_coordinates(self, square):
         return (square % 8) * self.square_size + self.bottom_left[0], (7 - (square / 8)) * self.square_size + self.bottom_left[1]
 
@@ -1487,9 +1490,9 @@ class ChessPiece(Scatter):
 
     hide = BooleanProperty(False)
 
-    def __init__(self, image_source, **kwargs):
+    def __init__(self, name, image_source, **kwargs):
         super(ChessPiece, self).__init__(**kwargs)
-
+        self.name = name
         self.image = Image(source=image_source)
         self.image.allow_stretch = True
         self.image.keep_ratio = True
@@ -2026,12 +2029,13 @@ class ChessProgram_app(App):
 
     def process_fen(self, fen):
         fen = fen.strip()
+        # print fen
         if fen == INITIAL_BOARD_FEN:
             self.chessboard = ExtendedGame()
         else:
             g = ExtendedGame()
-            bag = GameHeaderBag(game=g, fen=fen)
-            g.set_headers(bag)
+            g.setup(fen)
+
             self.chessboard = g
             self.chessboard_root = self.chessboard
 
@@ -2292,7 +2296,7 @@ class ChessProgram_app(App):
                 # bt.sq_color = "l"
 
                 if i!=".":
-                    piece = ChessPiece(MERIDA+'%s.png' % IMAGE_PIECE_MAP[i])
+                    piece = ChessPiece(i, MERIDA+'%s.png' % IMAGE_PIECE_MAP[i])
                     bt.add_piece(piece)
 
                 bt.bind(on_touch_down=self.touch_down_setup)
@@ -2732,6 +2736,7 @@ class ChessProgram_app(App):
         parent = BoxLayout(spacing=10)
         # box = BoxLayout(spacing=10, padding=(10,10))
         self.grid = ChessBoardWidget(self)
+        self.setup_board = None
             # self.create_chess_board(self.squares)
 
         # Dummy params for listener
@@ -2942,8 +2947,8 @@ class ChessProgram_app(App):
         # setup_widget = self.create_chess_board(self.setup_board_squares, type="setup")
         setup_widget = BoxLayout(orientation='vertical')
         # setup_grid.add_widget(ChessBoardWidget(self))
-
-        setup_widget.add_widget(ChessBoardWidget(self, setup=True, on_touch_down=self.touch_down_setup, on_touch_up=self.touch_up_setup))
+        self.setup_board = ChessBoardWidget(self, setup=True, on_touch_down=self.touch_down_setup, on_touch_up=self.touch_up_setup)
+        setup_widget.add_widget(self.setup_board)
         # setup_grid.add_widget(setup_widget)
             # self.create_chess_board(self.squares)
 
@@ -2980,25 +2985,25 @@ class ChessProgram_app(App):
 
         def validate_setup_board(value):
 
-            fen = str(self.setup_chessboard.fen)
+            fen = str(self.setup_chessboard.fen())
             can_castle = False
             castling_fen = ''
 
-            if self.setup_chessboard[Square("e1")]==Piece("K") and self.setup_chessboard[Square("h1")]==Piece("R"):
+            if self.setup_chessboard.piece_at(chess.E1) == chess.Piece.from_symbol("K") and self.setup_chessboard.piece_at(chess.H1) == chess.Piece.from_symbol("R"):
                 can_castle = True
-                castling_fen+='K'
+                castling_fen += 'K'
 
-            if self.setup_chessboard[Square("e1")]==Piece("K") and self.setup_chessboard[Square("a1")]==Piece("R"):
+            if self.setup_chessboard.piece_at(chess.E1) == chess.Piece.from_symbol("K") and self.setup_chessboard.piece_at(chess.A1) == chess.Piece.from_symbol("R"):
                 can_castle = True
-                castling_fen+='Q'
+                castling_fen += 'Q'
 
-            if self.setup_chessboard[Square("e8")]==Piece("k") and self.setup_chessboard[Square("h8")]==Piece("r"):
+            if self.setup_chessboard.piece_at(chess.E8) == chess.Piece.from_symbol("k") and self.setup_chessboard.piece_at(chess.H8) == chess.Piece.from_symbol("r"):
                 can_castle = True
-                castling_fen+='k'
+                castling_fen += 'k'
 
-            if self.setup_chessboard[Square("e8")]==Piece("k") and self.setup_chessboard[Square("a8")]==Piece("r"):
+            if self.setup_chessboard.piece_at(chess.E8) == chess.Piece.from_symbol("k") and self.setup_chessboard.piece_at(chess.A8) == chess.Piece.from_symbol("r"):
                 can_castle = True
-                castling_fen+='q'
+                castling_fen += 'q'
 
             if not can_castle:
                 castling_fen = '-'
@@ -3019,7 +3024,7 @@ class ChessProgram_app(App):
                 bt.name = i
 
                 if i!=".":
-                    piece = ChessPiece(MERIDA+'%s.png' % IMAGE_PIECE_MAP[i])
+                    piece = ChessPiece(i, MERIDA+'%s.png' % IMAGE_PIECE_MAP[i])
                     bt.add_piece(piece)
 
                 bt.bind(on_touch_down=self.touch_down_setup)
@@ -3985,37 +3990,80 @@ class ChessProgram_app(App):
             return
             # print "touch_move"
         # print touch
-        mv = img.name
-        self.last_touch_down_setup = mv
+        # print img.piece
+        # print img.name
+        try:
+            mv = img.name
+            self.piece = img.name
+            self.last_touch_down_setup = mv
+        except AttributeError:
+            square = img._to_square(touch)
+            square_name = img.square_name(square)
+            try:
+                square = chess.SQUARES[getattr(chess, square_name.upper())]
+                # print img.square_name(square)
+                self.last_touch_down_setup = square
+                # print square
+            except AttributeError:
+                self.last_touch_down_setup = -1
 
     def touch_up_setup(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
             return
-        self.last_touch_up_setup = img.name
+        try:
+            square = img._to_square(touch)
+            square_name = img.square_name(square)
+            square = chess.SQUARES[getattr(chess, square_name.upper())]
+            # square = img._to_chess_square(square_name)
+            self.last_touch_up_setup = square
+
+        except AttributeError:
+            # Empty square, remove piece
+            self.last_touch_up_setup = -1
+
+        # print "square: {0}".format(square)
+        # print self.last_touch_down_setup
+        # print self.last_touch_up_setup
         if self.last_touch_up_setup and self.last_touch_down_setup and self.last_touch_up_setup != self.last_touch_down_setup:
-#            print "touch_down_setup:"
-#            print self.last_touch_down_setup
+            # print "processing.."
+            # print "touch_down_setup:"
+            # print self.last_touch_down_setup
 #            # print len(self.last_touch_down_setup)
-#            print "touch_up_setup:"
-#            print self.last_touch_up_setup
+#             print "touch_up_setup:"
+#             print self.last_touch_up_setup
             # print len(self.last_touch_up_setup)
+            # print self.last_touch_down_setup
+            # print self.last_touch_up_setup
             try:
-                if len(self.last_touch_down_setup)==1 and len(self.last_touch_up_setup)==2:
-                    sq = Square(self.last_touch_up_setup)
-                    self.setup_chessboard[sq] = Piece(self.last_touch_down_setup)
-                    self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.setup_chessboard[self.last_touch_up_setup])
+                if type(self.last_touch_down_setup) is int and type(self.last_touch_up_setup) is int and self.last_touch_up_setup > -1:
+                    # sq = Square(self.last_touch_up_setup)
+                    # self.setup_chessboard[sq] = self.setup_chessboard[Square(self.last_touch_down_setup)]
+                    # self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.setup_chessboard[self.last_touch_up_setup])
+                    # del self.setup_chessboard[self.last_touch_down_setup]
+                    # self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], self.setup_chessboard[self.last_touch_down_setup])
+                    self.setup_chessboard.set_piece_at(self.last_touch_up_setup, self.setup_chessboard.piece_at(self.last_touch_down_setup))
+                    self.setup_chessboard.remove_piece_at(self.last_touch_down_setup)
+                    self.setup_board._update_position(None, self.setup_chessboard.fen())
 
-                elif len(self.last_touch_down_setup)==2 and len(self.last_touch_up_setup)==1:
-                    del self.setup_chessboard[self.last_touch_down_setup]
-                    self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], self.setup_chessboard[self.last_touch_down_setup])
 
-                elif len(self.last_touch_down_setup)==2 and len(self.last_touch_up_setup)==2:
-                    sq = Square(self.last_touch_up_setup)
-                    self.setup_chessboard[sq] = self.setup_chessboard[Square(self.last_touch_down_setup)]
-                    self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.setup_chessboard[self.last_touch_up_setup])
-                    del self.setup_chessboard[self.last_touch_down_setup]
-                    self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], self.setup_chessboard[self.last_touch_down_setup])
+                elif type(self.last_touch_down_setup) is int and self.last_touch_up_setup == -1:
+                    # print "removing piece.."
+                    self.setup_chessboard.remove_piece_at(self.last_touch_down_setup)
+                    self.setup_board._update_position(None, self.setup_chessboard.fen())
+
+                elif type(self.last_touch_down_setup) is str and type(self.last_touch_up_setup) is int:
+                    # sq = Square(self.last_touch_up_setup)
+                    if self.last_touch_down_setup == '.':
+                        return
+                    self.setup_chessboard.set_piece_at(self.last_touch_up_setup, chess.Piece.from_symbol(self.last_touch_down_setup))
+                    self.setup_board._update_position(None, self.setup_chessboard.fen())
+
+                    # self.setup_chessboard[self.last_touch_up_setup] = self.last_touch_down_setup
+                    # self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.setup_chessboard[self.last_touch_up_setup])
+
             except ValueError:
+                return
+            except AttributeError:
                 return
 
     def touch_up_move(self, img, touch):
