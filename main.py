@@ -950,6 +950,7 @@ class Annotation(BoxLayout):
         popup = Popup(title='Comment', content=l, size_hint=(1, 0.25))
         popup.open()
 
+
 class ChessBoardWidget(Widget):
     _moving_piece_pos = ListProperty([0, 0])
     _moving_piece = '.'
@@ -1125,7 +1126,6 @@ class ChessBoardWidget(Widget):
                             self.bottom_left[0] + file * self.square_size, self.bottom_left[1] + row * self.square_size), texture=self.light_img.texture, size=(self.square_size, self.square_size))
 
 
-
     def on_size(self, instance, value):
         self.square_size = int(min(self.size) / 8)
         self.board_size = self.square_size * 8
@@ -1149,6 +1149,8 @@ class ChessBoardWidget(Widget):
         self._draw_piece(self._moving_piece, pos)
 
     def mouse_callback(self, instance, value):
+        if self.setup_board:
+            return
         touch = Touch(value[0],value[1])
         square = self._to_square(touch)
         # print "square: {0}".format(square)
@@ -1194,11 +1196,16 @@ class ChessBoardWidget(Widget):
         self.black = (0, 0, 0)
         self.white = (1, 1, 1)
         self.highlight_color = get_color_from_hex('#ffffe0')
+        self.setup_board = False
 
         # self.highlight_color = (0.5, 0.5, 0.5)
-        # SHIV2
-        self.fen='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
+        if 'setup' in kwargs:
+            self.fen = '8/8/8/8/8/8/8/8'
+            self.setup_board = True
+        else:
+            self.fen='rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'
         self.set_position(self.fen)
+
         self._background_textures = { 'K':'k', 'Q':'l', 'R':'m', 'B':'n', 'N':'o', 'P':'p', 'k':'q', 'q':'r', 'r':'s', 'b':'t', 'n':'u', 'p':'v'}
         self._front_textures = { 'K':'H', 'Q':'I', 'R':'J', 'B':'K', 'N':'L', 'P':'M', 'k':'N', 'q':'O', 'r':'P', 'b':'Q', 'n':'R', 'p':'S'}
         self.bind(_moving_piece_pos=self._animate_piece)
@@ -1206,8 +1213,8 @@ class ChessBoardWidget(Widget):
         self.from_y = None
         self.to_x = None
         self.to_y = None
-        # Window.bind(mouse_pos=self.mouse_callback)
 
+        self.on_size(None, None)
 
     @property
     def game(self):
@@ -1225,6 +1232,8 @@ class ChessBoardWidget(Widget):
 #TODO http://kivy.org/docs/guide/inputs.html
 
     def on_touch_down(self, touch):
+        # if self.setup_board:
+        #     self.app.touch_down_setup(touch)
         self.mouse_callback(None, touch.pos)
         # push the current coordinate, to be able to restore it later
         touch.push()
@@ -2934,7 +2943,7 @@ class ChessProgram_app(App):
         setup_widget = BoxLayout(orientation='vertical')
         # setup_grid.add_widget(ChessBoardWidget(self))
 
-        setup_widget.add_widget(ChessBoardWidget(self))
+        setup_widget.add_widget(ChessBoardWidget(self, setup=True, on_touch_down=self.touch_down_setup, on_touch_up=self.touch_up_setup))
         # setup_grid.add_widget(setup_widget)
             # self.create_chess_board(self.squares)
 
@@ -3001,23 +3010,46 @@ class ChessProgram_app(App):
             self.refresh_board()
             self.root.current = 'main'
 
-        # wtm = ToggleButton(text="White to move", state="down", on_press=setup_board_change_tomove)
-        # setup_widget.add_widget(wtm)
+        setup_bar = GridLayout(cols=7, rows=3, size_hint=(1, 0.20))
+        setup_piece_bar = GridLayout(cols=7, rows=2)
+
+        for index, i in enumerate([".", "R", "N", "B", "Q", "K", "P",  ".", "r", "n", "b", "q", "k", "p"]):
+                bt = ChessSquare()
+                bt.sq = i
+                bt.name = i
+
+                if i!=".":
+                    piece = ChessPiece(MERIDA+'%s.png' % IMAGE_PIECE_MAP[i])
+                    bt.add_piece(piece)
+
+                bt.bind(on_touch_down=self.touch_down_setup)
+                bt.bind(on_touch_up=self.touch_up_setup)
+
+                setup_bar.add_widget(bt)
+
+
+        setup_bar.add_widget(setup_piece_bar)
+
+        wtm = ToggleButton(text="White to move", state="down", on_press=setup_board_change_tomove)
+        setup_bar.add_widget(wtm)
+
+        clear = Button(text="Clear", on_press=render_setup_board)
+        setup_bar.add_widget(clear)
+
+        initial = Button(text="Initial", on_press=render_setup_board)
+        setup_bar.add_widget(initial)
+
+        dgt = Button(text="DGT", on_press=render_setup_board)
+        setup_bar.add_widget(dgt)
+
+        validate = Button(text="OK", on_press=validate_setup_board)
+        setup_bar.add_widget(validate)
         #
-        # clear = Button(text="Clear", on_press=render_setup_board)
-        # setup_widget.add_widget(clear)
-        #
-        # initial = Button(text="Initial", on_press=render_setup_board)
-        # setup_widget.add_widget(initial)
-        #
-        # dgt = Button(text="DGT", on_press=render_setup_board)
-        # setup_widget.add_widget(dgt)
-        #
-        # validate = Button(text="OK", on_press=validate_setup_board)
-        # setup_widget.add_widget(validate)
-        # #
-        # cancel = Button(text="Cancel", on_press=go_to_main_screen)
-        # setup_widget.add_widget(cancel)
+        cancel = Button(text="Cancel", on_press=go_to_main_screen)
+        setup_bar.add_widget(cancel)
+
+        setup_widget.add_widget(setup_bar)
+
 
         setup_board_screen.add_widget(setup_widget)
         sm.add_widget(setup_board_screen)
