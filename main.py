@@ -693,10 +693,10 @@ class StringExporter(object):
           # if not main_line:
           #   move_string = u"[color=3333ff] " + move_string + u" [/color]"
           #
-        self.write_token("\n([color=3333ff]    ")
+        self.write_token("\n    ([color=3333ff]")
 
     def end_variation(self):
-        self.write_token(" )[/color]\n")
+        self.write_token(")[/color]\n")
 
     def put_starting_comment(self, comment):
         # self.put_comment(comment)
@@ -4086,15 +4086,15 @@ class ChessProgram_app(App):
             self.process_move()
 
     def add_try_variation(self, move):
-        try:
-            if type(move) is str:
-                self.chessboard = self.chessboard.add_variation(chess.Move.from_uci(move))
-            else:
-                self.chessboard = self.chessboard.add_variation(move)
-        except ValueError:
-            for v in self.chessboard.variations:
-                if str(v.move) == move:
-                    self.chessboard = v
+        if type(move) is str:
+            move = chess.Move.from_uci(move)
+        # print move
+        for v in self.chessboard.variations:
+            # print "variation: {0}".format(v.move)
+            if v.move == move:
+                self.chessboard = v
+                return
+        self.chessboard = self.chessboard.add_variation(move)
 
     def update_player_time(self):
         color = 'w'
