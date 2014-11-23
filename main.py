@@ -1821,6 +1821,7 @@ class ChessProgram_app(App):
         interesting_positions = []
         position_iter = None
         if params["use_medal_positions"] == "down":
+            # for p in self.chessboard.positions.values():
             for p in self.chessboard.positions.values():
                 comment_lower = p.comment.lower()
                 if comment_lower.find("medal") > -1:
@@ -2927,8 +2928,14 @@ class ChessProgram_app(App):
         sm.add_widget(settings_screen)
 
         setup_board_screen = Screen(name='setup_board')
-        setup_widget = self.create_chess_board(self.setup_board_squares, type="setup")
         # setup_widget = ChessBoardWidget(self)
+
+        # setup_widget = self.create_chess_board(self.setup_board_squares, type="setup")
+        setup_widget = BoxLayout(orientation='vertical')
+        # setup_grid.add_widget(ChessBoardWidget(self))
+
+        setup_widget.add_widget(ChessBoardWidget(self))
+        # setup_grid.add_widget(setup_widget)
             # self.create_chess_board(self.squares)
 
         def go_to_main_screen(value):
@@ -2994,23 +3001,23 @@ class ChessProgram_app(App):
             self.refresh_board()
             self.root.current = 'main'
 
-        wtm = ToggleButton(text="White to move", state="down", on_press=setup_board_change_tomove)
-        setup_widget.add_widget(wtm)
-
-        clear = Button(text="Clear", on_press=render_setup_board)
-        setup_widget.add_widget(clear)
-
-        initial = Button(text="Initial", on_press=render_setup_board)
-        setup_widget.add_widget(initial)
-
-        dgt = Button(text="DGT", on_press=render_setup_board)
-        setup_widget.add_widget(dgt)
-
-        validate = Button(text="OK", on_press=validate_setup_board)
-        setup_widget.add_widget(validate)
-
-        cancel = Button(text="Cancel", on_press=go_to_main_screen)
-        setup_widget.add_widget(cancel)
+        # wtm = ToggleButton(text="White to move", state="down", on_press=setup_board_change_tomove)
+        # setup_widget.add_widget(wtm)
+        #
+        # clear = Button(text="Clear", on_press=render_setup_board)
+        # setup_widget.add_widget(clear)
+        #
+        # initial = Button(text="Initial", on_press=render_setup_board)
+        # setup_widget.add_widget(initial)
+        #
+        # dgt = Button(text="DGT", on_press=render_setup_board)
+        # setup_widget.add_widget(dgt)
+        #
+        # validate = Button(text="OK", on_press=validate_setup_board)
+        # setup_widget.add_widget(validate)
+        # #
+        # cancel = Button(text="Cancel", on_press=go_to_main_screen)
+        # setup_widget.add_widget(cancel)
 
         setup_board_screen.add_widget(setup_widget)
         sm.add_widget(setup_board_screen)
@@ -3063,8 +3070,8 @@ class ChessProgram_app(App):
 
     def update_user_book_positions(self, color="white", delete = False):
         game = self.chessboard
-        while game.previous_node:
-            prev = game.previous_node
+        while game.parent:
+            prev = game.parent
             move = game.move
             move = str(move)
             # curent_pos_hash = str(game.position.__hash__())
@@ -3103,7 +3110,7 @@ class ChessProgram_app(App):
                 # else:
                     # print "move already in book"
             if not delete:
-                game = game.previous_node
+                game = game.parent
             else:
                 return
 
@@ -3341,7 +3348,7 @@ class ChessProgram_app(App):
                 self.engine_mode = value
                 if value == ENGINE_PLAY:
                     self.engine_computer_move = True
-                    self.engine_comp_color = self.chessboard.position.turn
+                    self.engine_comp_color = self.chessboard.board().turn
                     self.reset_clocks()
                 # elif value == ENGINE_ANALYSIS:
                 #     # Check for cloud engine
@@ -3936,7 +3943,7 @@ class ChessProgram_app(App):
         # print "touch_move"
         # print touch
         mv = img.name
-        squares = self.chessboard.position
+        squares = self.chessboard.board()
 
         if squares[mv]:
             self.last_touch_down_move = mv
@@ -4451,10 +4458,10 @@ class ChessProgram_app(App):
 
 
 
-            self.book_panel.grid.add_row(["[color=3333ff][ref=add_to_user_book]Add to White Rep[/ref][/color]",
-                                          ("[color=3333ff][ref=%s]Delete[/ref][/color]" % DELETE_FROM_USER_BOOK), '',''], callback=self.add_book_moves_white)
-            self.book_panel.grid.add_row(["[ref=add_to_user_book]Add to Black Rep[/ref]",
-                                          ("[ref=%s]Delete[/ref]" % DELETE_FROM_USER_BOOK)], callback=self.add_book_moves_black)
+            self.book_panel.grid.add_row(["[color=3333ff][ref=add_to_user_book]+White Rep[/ref][/color]",
+                                          ("[color=3333ff][ref=%s]Remove[/ref][/color]" % DELETE_FROM_USER_BOOK), '',''], callback=self.add_book_moves_white)
+            self.book_panel.grid.add_row(["[ref=add_to_user_book]+Black Rep[/ref]",
+                                          ("[ref=%s]Remove[/ref]" % DELETE_FROM_USER_BOOK)], callback=self.add_book_moves_black)
             # self.book_panel.grid.add_row(["Eval", "[ref={0}]{0}[/ref]".format(weight)], callback=self.add_book_moves)
 
                 # current_eval = NONE
