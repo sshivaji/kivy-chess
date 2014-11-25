@@ -3584,7 +3584,6 @@ class ChessProgram_app(App):
     def get_san(self, moves, figurine=False):
         prev_fen = sf.get_fen(self.pyfish_fen,  self.get_prev_moves(self.chessboard))
 
-
         move_list = sf.to_san(prev_fen, moves)
         if figurine:
             for i, m in enumerate(move_list):
@@ -3832,7 +3831,10 @@ class ChessProgram_app(App):
                     if best_move:
                         if self.dgt_connected and self.dgtnix:
                             san_move = self.get_san([best_move])[0]
+                            # print san_move
                             self.write_to_lcd(san_move, clear=True)
+                            self.write_to_dgt(str(best_move), move=True, beep=True)
+
                         self.process_move(best_move)
                         self.time_add_increment(color=self.engine_comp_color)
 
@@ -3879,28 +3881,29 @@ class ChessProgram_app(App):
             self.dgt_clock_msg_queue.put(DGT_Clock_Message(message, move=move, dots=dots, beep=beep, max_num_tries=max_num_tries))
 
     def write_to_lcd(self, message, clear = False):
-        with self.lcd_lock:
-            if len(message) > 32:
-                message = message[:32]
-            if len(message) > 16 and "\n" not in message:
-                # Append "\n"
-                message = message[:16]+"\n"+message[16:]
-            # lcd.printString("                ", 0, 0)
-            # lcd.printString("                ", 1, 0)
-            if clear:
-                self.lcd.printString("                ", 0, 0)
-                self.lcd.printString("                ", 0, 1)
+        if self.arduino:
+            with self.lcd_lock:
+                if len(message) > 32:
+                    message = message[:32]
+                if len(message) > 16 and "\n" not in message:
+                    # Append "\n"
+                    message = message[:16]+"\n"+message[16:]
+                # lcd.printString("                ", 0, 0)
+                # lcd.printString("                ", 1, 0)
+                if clear:
+                    self.lcd.printString("                ", 0, 0)
+                    self.lcd.printString("                ", 0, 1)
 
-                # lcd.printString("      ",0,1)
-            if "\n" in message:
-                first, second = message.split("\n")
-                # print first
-                # print second
-                self.lcd.printString(first, 0, 0)
-                self.lcd.printString(second, 0, 1)
-            else:
-                self.lcd.printString(message, 0, 0)
-            sleep(0.1)
+                    # lcd.printString("      ",0,1)
+                if "\n" in message:
+                    first, second = message.split("\n")
+                    # print first
+                    # print second
+                    self.lcd.printString(first, 0, 0)
+                    self.lcd.printString(second, 0, 1)
+                else:
+                    self.lcd.printString(message, 0, 0)
+                sleep(0.1)
 
     def format_str_for_dgt(self, s):
         while len(s)>6:
