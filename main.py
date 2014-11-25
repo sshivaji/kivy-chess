@@ -2612,7 +2612,7 @@ class ChessProgram_app(App):
         self.engine_computer_move = True
         self.computer_move_FEN_reached = False
 
-        self.engine_comp_color = 'b'
+        self.engine_comp_color = chess.BLACK
 
         self.engine_level = '20'
         self.sf_options = {}
@@ -3348,18 +3348,18 @@ class ChessProgram_app(App):
     def reset_clock_update(self):
         self.time_last = datetime.datetime.now()
 
-    def time_add_increment(self, color='w'):
-        if color == 'w':
+    def time_add_increment(self, color=chess.WHITE):
+        if color == chess.WHITE:
             self.time_white+=self.time_inc_white
         else:
             self.time_black+=self.time_inc_black
 
-    def update_time(self, color='w'):
+    def update_time(self, color=chess.WHITE):
         current = datetime.datetime.now()
         seconds_elapsed = (current - self.time_last).total_seconds()
 #        print "seconds_elapsed:{0}".format(seconds_elapsed)
         self.time_last = current
-        if color == 'w':
+        if color == chess.WHITE:
             self.time_white-=seconds_elapsed
         else:
             self.time_black-=seconds_elapsed
@@ -3369,11 +3369,13 @@ class ChessProgram_app(App):
 #        self.black_time_now = time.clock()
         self.time_last = datetime.datetime.now()
 
-        self.time_white = 60
-        self.time_inc_white = 3
-        self.time_black = 420
-        self.time_inc_black = 8
-        if self.engine_comp_color == 'b':
+        self.time_white = 420
+        self.time_inc_white = 8
+        self.time_black = 60
+        self.time_inc_black = 3
+        # print "color : {0}".format(self.engine_comp_color)
+        if self.engine_comp_color == chess.WHITE:
+            # print "engine is white"
             # Swap time allotments if comp is black (comp gets less time)
             self.time_white, self.time_black = self.time_black, self.time_white
             self.time_inc_white, self.time_inc_black = self.time_inc_black, self.time_inc_white
@@ -3881,7 +3883,7 @@ class ChessProgram_app(App):
             self.dgt_clock_msg_queue.put(DGT_Clock_Message(message, move=move, dots=dots, beep=beep, max_num_tries=max_num_tries))
 
     def write_to_lcd(self, message, clear = False):
-        if self.arduino:
+        if self.lcd:
             with self.lcd_lock:
                 if len(message) > 32:
                     message = message[:32]
@@ -4100,15 +4102,15 @@ class ChessProgram_app(App):
         self.chessboard = self.chessboard.add_variation(move)
 
     def update_player_time(self):
-        color = 'w'
-        if self.engine_comp_color == 'w':
-            color = 'b'
+        color = chess.WHITE
+        if self.engine_comp_color == chess.WHITE:
+            color = chess.BLACK
         self.update_time(color=color)
 
     def update_player_inc(self):
-        color = 'w'
-        if self.engine_comp_color == 'w':
-            color = 'b'
+        color = chess.WHITE
+        if self.engine_comp_color == chess.WHITE:
+            color = chess.BLACK
         self.time_add_increment(color=color)
 
     def is_promotion(self, move):
