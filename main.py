@@ -573,7 +573,7 @@ class ExtendedGame(chess.pgn.Game):
         self.variations.append(node)
         return node
 
-    def export(self, exporter, comments=True, variations=True, _board=None, _after_variation=False):
+    def export_ref(self, exporter, comments=True, variations=True, _board=None, _after_variation=False):
         if _board is None:
             _board = self.board()
 
@@ -621,7 +621,7 @@ class ExtendedGame(chess.pgn.Game):
 
                 # Recursively append the next moves.
                 _board.push(variation.move)
-                variation.export(exporter, comments, variations, _board, False)
+                variation.export_ref(exporter, comments, variations, _board, False)
                 _board.pop()
 
                 # End variation.
@@ -3973,14 +3973,18 @@ class ChessProgram_app(App):
         if self.db_index_book is not None:
             use_db = True
             # Write to the open database
-            pgn_file = self.db_index_book.Get("pgn_filename")
+            # pgn_file = self.db_index_book.Get("pgn_filename")
             f = open(pgn_file, 'ab')
         else:
+            pgn_file = 'game.pgn'
             f = open('game.pgn', 'wb')
-#        f.write('Game Header - Analysis \n\n')
-        f.write(self.chessboard_root.game_score(format="file"))
-#        f.write("\n")
+        # print "pgn_file : {0}".format(pgn_file)
+        # virtual_file = StringIO()
+        exporter = chess.pgn.FileExporter(f)
+        self.chessboard_root.export(exporter)
+        # print virtual_file.getvalue()
         f.close()
+
         if use_db:
             # Rebuild index
             # db_folder_path = os.path.abspath(os.path.join(pgn_file, os.pardir))
@@ -4698,7 +4702,7 @@ class ChessProgram_app(App):
         if update:
             # all_moves = self.chessboard_root.game_score(figurine=True)
             exporter = StringExporter(columns=None)
-            self.chessboard_root.export(exporter)
+            self.chessboard_root.export_ref(exporter)
             # print str(exporter)
             # print "updating moves.."
             all_moves = unicode(exporter)
