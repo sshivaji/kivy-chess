@@ -2349,9 +2349,10 @@ class ChessProgram_app(App):
 
     def update_clocks(self, *args):
         if self.engine_mode == ENGINE_PLAY:
-            if self.lcd and self.computer_move_FEN_reached:
+            if self.computer_move_FEN_reached:
                 self.write_to_lcd(self.format_time_strs(self.time_white, self.time_black),
                     clear = True)
+                self.print_time_on_dgt(self.time_white, self.time_black)
             if self.engine_computer_move:
                 self.update_time(color=self.engine_comp_color)
                 self.engine_score.children[0].text = THINKING_TIME.format(self.format_time_str(self.time_white), self.format_time_str(self.time_black))
@@ -3708,7 +3709,7 @@ class ChessProgram_app(App):
         # print "m : {0}".format(m)
         # print "s : {0}".format(s)
 
-        if m >=60:
+        if m >= 60:
             h, m = divmod(m, 60)
             return "%d:%02d:%02d" % (h, m, s)
         else:
@@ -3876,6 +3877,11 @@ class ChessProgram_app(App):
                     else:
                         output.children[0].text = TRAIN_MENU.format(san, "")
                     self.train_eng_score = {}
+
+    def print_time_on_dgt(self, w_time, b_time, w_blink=True, b_blink=True):
+        if self.dgtnix:
+            # self.dgtnix.send_message_to_clock(msg.message, move=msg.move, dots=msg.dots, beep=msg.beep, max_num_tries=msg.max_num_tries)
+            self.dgtnix.print_time_on_clock(w_time, b_time, w_blink=True, b_blink=True)
 
     def write_to_dgt(self, message, move=False, dots=False, beep=True, max_num_tries = 5):
         if self.dgtnix:

@@ -310,19 +310,19 @@ class DGTBoard(object):
 
     @staticmethod
     def compute_dgt_time_string(t):
+        print "time : {0}".format(t)
         if t < 0:
             return "   "
         t /= 1000
 
         if t < 1200:
         #minutes.seconds mode
-
             minutes = t / 60
             seconds = t - minutes * 60
             if minutes >= 10:
                 minutes -= 10
             # print "seconds : {0}".format(seconds)
-            return "{0}{1:02d}".format(minutes, seconds)
+            return "{0}{1:02d}".format(minutes, int(seconds))
             # oss << minutes << setfill ('0') << setw (2) << seconds;
 
         else:
