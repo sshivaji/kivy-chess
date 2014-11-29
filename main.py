@@ -621,7 +621,7 @@ class ExtendedGame(chess.pgn.Game):
 
                 # Recursively append the next moves.
                 _board.push(variation.move)
-                variation.export_ref(exporter, comments, variations, _board, False)
+                variation.export(exporter, comments, variations, _board, False)
                 _board.pop()
 
                 # End variation.
