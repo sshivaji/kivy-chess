@@ -812,6 +812,15 @@ class GameControls(BoxLayout):
             # Once expanded to full screen, you no longer have to dismiss the popup
             print e
 
+    def save_games(self, bt):
+        self.app.save_games('')
+        try:
+            bt.parent.parent.dismiss()
+        except AttributeError, e:
+            # Once expanded to full screen, you no longer have to dismiss the popup
+            print e
+
+
     def go_to_settings(self, bt):
         self.app.go_to_settings('')
         try:
@@ -908,7 +917,16 @@ class Annotation(BoxLayout):
     #     # self._label.text = self._label.text + '\n' + button.text
 
     def set_move_eval(self, value, bt):
-        self.app.chessboard.set_eval('move_eval', value)
+        eval = 'move' if value else 'remove'
+
+        for nag in list(self.app.chessboard.nags):
+            if 0 < nag < 9:
+                # Remove existing move evals if a move eval was passed
+                self.app.chessboard.nags.remove(nag)
+
+        if eval == 'move':
+            self.app.chessboard.nags.add(value)
+
         # self._dropdown.dismiss()
         # print dir(grp.parent)
         # grp._dropdown.dismiss()
@@ -921,7 +939,19 @@ class Annotation(BoxLayout):
 
 
     def set_pos_eval(self, value, bt):
-        self.app.chessboard.set_eval('pos_eval', value)
+
+        eval = 'position' if value else 'remove'
+        has_move_eval = False
+        has_pos_eval = False
+
+        for nag in list(self.app.chessboard.nags):
+            if nag > 9:
+                # Remove existing move evals if a move eval was passed
+                self.app.chessboard.nags.remove(nag)
+
+        if eval == 'position':
+            self.app.chessboard.nags.add(value)
+
         self.app.refresh_board(update=True)
         try:
             bt.parent.parent.dismiss()
@@ -2504,8 +2534,6 @@ class ChessProgram_app(App):
             game_index = args[0].selection[0].id
             # current_pos_hash = self.chessboard.position.__hash__()
             current_pos_hash = self.chessboard.board().zobrist_hash()
-                    # pos_hash = str(self.chessboard.board().zobrist_hash())
-
 
             # reset sort criteria if a game is being loaded
             # db_sort_criteria = self.db_sort_criteria
@@ -3967,7 +3995,18 @@ class ChessProgram_app(App):
             # TODO: log error if in debug mode
         return True
 
-    def save(self, obj):
+    def save_games(self, obj):
+        print "saving games"
+        current_pos_hash = self.chessboard.board().zobrist_hash()
+
+        if len(self.db_adapter.data) < 1000:
+            # Dont export more than a thousand games
+            for g in self.db_adapter.data:
+                self.load_game_from_index(int(g.id))
+                self.save(None, filename='games.pgn')
+        self.go_to_move(None, str(current_pos_hash))
+
+    def save(self, obj, filename='game.pgn'):
         use_db = False
         pgn_file = None
         if self.db_index_book is not None:
@@ -3976,8 +4015,12 @@ class ChessProgram_app(App):
             # pgn_file = self.db_index_book.Get("pgn_filename")
             f = open(pgn_file, 'ab')
         else:
-            pgn_file = 'game.pgn'
-            f = open('game.pgn', 'wb')
+            pgn_file = filename
+            if os.path.isfile(filename):
+                f = open(filename, 'a')
+            else:
+                f = open(filename, 'wb')
+
         # print "pgn_file : {0}".format(pgn_file)
         # virtual_file = StringIO()
         exporter = chess.pgn.FileExporter(f)
@@ -4318,12 +4361,6 @@ class ChessProgram_app(App):
                 db_game_list = sorted(db_game_list, reverse = not self.db_sort_criteria[0].asc, key=sort_key)
 
             self.db_stat_label.text = "{0} games".format(len(game_ids))
-#            self.db_adapter.data = {str(i): {'text': str(g.id), 'is_selected': False} for i, g in enumerate(db_game_list)}
-#             if ref_db:
-#                 self.database_list_view.adapter.bind(on_selection_change=self.ref_db_selection_changed)
-#             else:
-#             self.database_list_view.adapter.bind(on_selection_change=self.db_selection_changed)
-
             self.db_adapter.data = db_game_list
             self.database_list_view.scroll_to(0)
 
@@ -4637,7 +4674,7 @@ class ChessProgram_app(App):
                 san = self.convert_san_to_figurine(san)
             # return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
 
-            return u"[size=19][color=000000]{0}.{1} {2}[/color][/size]".format(self.chessboard.board().fullmove_number, filler, san)
+            return u"[size=19][color=000000]{0}.{1} {2}[/color][/size]".format(self.chessboard.parent.board().fullmove_number, filler, san)
 
         return ' '
 

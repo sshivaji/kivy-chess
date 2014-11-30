@@ -1,6 +1,7 @@
 #:import ENGINE_ANALYSIS main.ENGINE_ANALYSIS
 #:import ENGINE_TRAINING main.ENGINE_TRAINING
 #:import ENGINE_PLAY main.ENGINE_PLAY
+#:import pgn chess.pgn
 
 
 [HSeparator@Label]:
@@ -35,36 +36,36 @@
                 text: '!?'
                 ActionButton:
                     text: 'Reset'
-                    on_press: root.set_move_eval(0, self)
+                    on_press: root.set_move_eval(pgn.NAG_NULL, self)
 
                 ActionButton:
                     text: '!?'
-                    on_press: root.set_move_eval(5, self)
+                    on_press: root.set_move_eval(pgn.NAG_SPECULATIVE_MOVE, self)
                 ActionButton:
                     text: '!'
-                    on_press: root.set_move_eval(1, self)
+                    on_press: root.set_move_eval(pgn.NAG_GOOD_MOVE, self)
                 ActionButton:
                     text: '?'
-                    on_press: root.set_move_eval(2, self)
+                    on_press: root.set_move_eval(pgn.NAG_MISTAKE, self)
                 ActionButton:
                     text: '?!'
-                    on_press: root.set_move_eval(6, self)
+                    on_press: root.set_move_eval(pgn.NAG_DUBIOUS_MOVE, self)
             ActionGroup:
                 id: eval_action_group
                 mode: 'normal'
                 text: 'Eval'
                 ActionButton:
                     text: 'Reset'
-                    on_press: root.set_pos_eval(0, self)
+                    on_press: root.set_pos_eval(pgn.NAG_NULL, self)
                 ActionButton:
                     text: '+='
-                    on_press: root.set_pos_eval(14, self)
+                    on_press: root.set_pos_eval(pgn.NAG_WHITE_SLIGHT_ADVANTAGE, self)
                 ActionButton:
                     text: '='
-                    on_press: root.set_pos_eval(10, self)
+                    on_press: root.set_pos_eval(pgn.NAG_DRAWISH_POSITION, self)
                 ActionButton:
                     text: '=+'
-                    on_press: root.set_pos_eval(15, self)
+                    on_press: root.set_pos_eval(pgn.NAG_BLACK_SLIGHT_ADVANTAGE, self)
                 ActionButton:
                     text: 'Comment'
                     on_press: root.open_comment_dialog(self)
@@ -84,14 +85,18 @@
                 mode: 'spinner'
                 text: 'Game'
                 ActionButton:
+                    text: 'Settings'
+                    on_press: root.go_to_settings(self)
+                ActionButton:
                     text: 'New Game'
                     on_press: root.new(self)
                 ActionButton:
                     text: 'Save Game'
                     on_press: root.save(self)
                 ActionButton:
-                    text: 'Setup'
-                    on_press: root.go_to_settings(self)
+                    text: 'Export Games'
+                    on_press: root.save_games(self)
+
 
 <GameAnalysisPopup>:
     size_hint: 1, 1
