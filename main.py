@@ -4680,8 +4680,12 @@ class ChessProgram_app(App):
 
     def update_board_position(self, *args):
         if self.game_analysis:
-            self.grid._update_position(self.chessboard.move, self.chessboard.board().fen)
-            all_moves = self.chessboard_root.game_score(figurine=True)
+            self.grid._update_position(self.chessboard.move, self.chessboard.board().fen())
+    
+            exporter = StringExporter(columns=None)
+            self.chessboard_root.export_ref(exporter)
+            all_moves = unicode(exporter)
+
             if all_moves:
                 self.game_score.children[0].text=u"[color=000000]{0}[/color]".format(all_moves)
         else:
@@ -4740,10 +4744,7 @@ class ChessProgram_app(App):
             # all_moves = self.chessboard_root.game_score(figurine=True)
             exporter = StringExporter(columns=None)
             self.chessboard_root.export_ref(exporter)
-            # print str(exporter)
-            # print "updating moves.."
             all_moves = unicode(exporter)
-            # print all_moves
 
             if all_moves:
                 self.game_score.children[0].text=u"[color=000000]{0}[/color]".format(all_moves)
