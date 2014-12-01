@@ -920,16 +920,13 @@ class Annotation(BoxLayout):
         eval = 'move' if value else 'remove'
 
         for nag in list(self.app.chessboard.nags):
-            if 0 < nag < 9:
+            if 0 < nag < 9 or eval == 'remove':
                 # Remove existing move evals if a move eval was passed
                 self.app.chessboard.nags.remove(nag)
 
         if eval == 'move':
             self.app.chessboard.nags.add(value)
 
-        # self._dropdown.dismiss()
-        # print dir(grp.parent)
-        # grp._dropdown.dismiss()
         self.app.refresh_board(update=True)
         try:
             bt.parent.parent.dismiss()
@@ -939,13 +936,10 @@ class Annotation(BoxLayout):
 
 
     def set_pos_eval(self, value, bt):
-
         eval = 'position' if value else 'remove'
-        has_move_eval = False
-        has_pos_eval = False
 
         for nag in list(self.app.chessboard.nags):
-            if nag > 9:
+            if nag > 9 or eval == 'remove':
                 # Remove existing move evals if a move eval was passed
                 self.app.chessboard.nags.remove(nag)
 
@@ -1936,12 +1930,12 @@ class ChessProgram_app(App):
             try:
                 if last_eng_score:
                     if abs(last_eng_score - curr_eng_score) >= thresholds[0]:
-                        move_symbol = "??"
+                        move_symbol = NAG_BLUNDER
                         # print "Played move is a blunder"
                     elif abs(last_eng_score - curr_eng_score) >= thresholds[1]:
-                        move_symbol = "?"
+                        move_symbol = NAG_MISTAKE
                     elif abs(last_eng_score - curr_eng_score) >= thresholds[2]:
-                        move_symbol = "?!"
+                        move_symbol = NAG_DUBIOUS_MOVE
                         # print "Played move is bad"
 
             except ValueError, e:
@@ -1952,7 +1946,10 @@ class ChessProgram_app(App):
             # print "eng_rec_first_move : {0}".format(last_eng_first_move)
             # print self.internal_engine_raw_scores
             if move_symbol:
-                self.chessboard.set_eval('move_eval', READABLE_TO_NAG_MAP[move_symbol])
+
+                self.chessboard.nags = set()
+                self.chessboard.nags.add(move_symbol)
+                # self.chessboard.set_eval('move_eval', READABLE_TO_NAG_MAP[move_symbol])
                 # tokens = self.internal_engine_raw_output.split()
                 self.chessboard.comment = 'Played move score is {0}, better is {1}'.format(curr_eng_score, last_eng_line)
 
@@ -4002,8 +3999,11 @@ class ChessProgram_app(App):
         if len(self.db_adapter.data) < 1000:
             # Dont export more than a thousand games
             for g in self.db_adapter.data:
-                self.load_game_from_index(int(g.id))
-                self.save(None, filename='games.pgn')
+                try:
+                    self.load_game_from_index(int(g.id))
+                    self.save(None, filename='games.pgn')
+                except AttributeError:
+                    pass
         self.go_to_move(None, str(current_pos_hash))
 
     def save(self, obj, filename='game.pgn'):
@@ -4681,7 +4681,7 @@ class ChessProgram_app(App):
     def update_board_position(self, *args):
         if self.game_analysis:
             self.grid._update_position(self.chessboard.move, self.chessboard.board().fen())
-    
+
             exporter = StringExporter(columns=None)
             self.chessboard_root.export_ref(exporter)
             all_moves = unicode(exporter)
@@ -4747,7 +4747,7 @@ class ChessProgram_app(App):
             all_moves = unicode(exporter)
 
             if all_moves:
-                self.game_score.children[0].text=u"[color=000000]{0}[/color]".format(all_moves)
+                self.game_score.children[0].text = u"[color=000000]{0}[/color]".format(all_moves)
         if self.variation_dropdown:
             self.variation_dropdown.dismiss()
         if len(self.chessboard.variations) > 1:
