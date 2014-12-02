@@ -511,6 +511,11 @@ def read_game(handle, error_handler=_raise):
     if found_game:
         return game
 
+class ChessMove(object):
+    def __init__(self, uci, san):
+        self.uci = uci
+        self.san = san
+
 class ExtendedGameNode(chess.pgn.GameNode):
     def __init__(self):
         self.parent = None
@@ -840,6 +845,18 @@ class GameAnalysisPopup(Popup):
         self.app.game_analysis_thread.start()
         Clock.schedule_interval(self.app.update_board_position, 1)
 
+class OpeningAnalysisPopup(Popup):
+    def __init__(self, app, **kwargs):
+        super(OpeningAnalysisPopup, self).__init__(**kwargs)
+        self.app = app
+
+    def start_analyze_game(self, p, *args, **kwargs):
+        self.dismiss()
+        self.app.game_analysis_thread = KThread(target=self.app.analyze_opening, args=(p,))
+        self.app.game_analysis_thread.start()
+        Clock.schedule_interval(self.app.update_board_position, 1)
+
+
 class EngineControls(BoxLayout):
     def __init__(self, app, **kwargs):
         super(EngineControls, self).__init__(**kwargs)
@@ -899,6 +916,16 @@ class EngineControls(BoxLayout):
         p = GameAnalysisPopup(self.app)
                 # self.info_grid.add_widget(EngineControls(self, size_hint=(1,0.15)))
 
+        p.open()
+
+    def analyze_opening(self, bt):
+        try:
+            bt.parent.parent.dismiss()
+        except AttributeError, e:
+            # Once expanded to full screen, you no longer have to dismiss the popup
+            print e
+
+        p = OpeningAnalysisPopup(self.app)
         p.open()
 
 
@@ -1833,6 +1860,141 @@ class ChessProgram_app(App):
                 if num_sleeps > 20:
                     break
                 print "Will retry after 5 seconds"
+
+    def analyze_opening(self, params):
+        if params["use_ext_eng"] == "down":
+            use_external_engine = True
+        else:
+            use_external_engine = False
+
+        self.engine_mode = ENGINE_ANALYSIS
+        self.game_analysis = True
+        root_position = self.chessboard
+
+        # self.chessboard = self.chessboard_root
+        self.use_internal_engine = True
+        self.hint_move = None
+        last_eng_score = None
+        last_eng_line = None
+
+        interesting_positions = []
+        position_iter = None
+
+        thresholds = [params["blunder_threshold"]*1.0/100, params["mistake_threshold"]*1.0/100, params["dubious_threshold"]*1.0/100]
+
+        prev_multi_pv = sf.get_options()['MultiPV'][0]
+        # sf.set_option('MultiPV', '4')
+        # Set multi-pv to 4 lines in the case of deep analysis
+        # Deep analysis modal:
+        # Confirm - time per move/thresholds, mode, and look for white/black improvements
+        # Bonus - create opening repertoire mode!
+
+
+        # self.refresh_engine()
+        # sleep(4)
+        # last_eng_line = self.internal_engine_raw_output
+        # last_eng_score = self.convert_mate_to_score(self.internal_engine_raw_scores[0]['score'])
+        # print "last_eng_score"
+        # print last_eng_score
+
+        # interesting_positions_start = False
+
+
+        while True:
+
+            self.refresh_engine()
+
+            if position_iter:
+
+                # Objective Algorithm:
+
+
+                # Practical Algorithm:
+
+                # 1. Go down the tree using the compound polyglot index. Look at breakdown of games, when there is early divergence, mark these as sidelines
+                # 2. For sidelines of opposite color, show best path to advantage using engines and database games. Use database when more than 5 games played in line.
+                # When line settles show path to advantage if it exists.
+                # 3.
+                # 4. Create novelties for any color that improves evaluation by 0.3 (configurable)
+                # 5. From when main line dissolves into less than 5 games, figure out most common plans (moves) and display them.
+                # 6. Top players
+
+
+
+                try:
+                    self.chessboard = next(position_iter)
+                    sleep(params["interesting_sec_per_move"])
+                    # print "position_iter is True"
+                except StopIteration:
+                    break
+            else:
+                sleep(params["regular_sec_per_move"])
+            # If played move is worse than best move by > 3, add a double question mark and indicate best move in a variation
+            # If played move is worse than best move by > 0.75, add a single question mark and indicate best move in a variation
+            # If played move is the best move and better than other moves by 0.5, and is not a recapture, add an !
+            move_symbol = None
+            if use_external_engine:
+                curr_eng_score = self.convert_mate_to_score(self.external_engine_raw_scores[0]['score'])
+            else:
+                curr_eng_score = self.convert_mate_to_score(self.internal_engine_raw_scores[0]['score'])
+
+
+            try:
+                if last_eng_score:
+                    if abs(last_eng_score - curr_eng_score) >= thresholds[0]:
+                        move_symbol = NAG_BLUNDER
+                        # print "Played move is a blunder"
+                    elif abs(last_eng_score - curr_eng_score) >= thresholds[1]:
+                        move_symbol = NAG_MISTAKE
+                    elif abs(last_eng_score - curr_eng_score) >= thresholds[2]:
+                        move_symbol = NAG_DUBIOUS_MOVE
+                        # print "Played move is bad"
+
+            except ValueError, e:
+                print e
+                print "mate?"
+
+            # last_eng_first_move = self.internal_engine_raw_output.split()[0]
+            # print "eng_rec_first_move : {0}".format(last_eng_first_move)
+            # print self.internal_engine_raw_scores
+            if move_symbol:
+
+                self.chessboard.nags = set()
+                self.chessboard.nags.add(move_symbol)
+                # self.chessboard.set_eval('move_eval', READABLE_TO_NAG_MAP[move_symbol])
+                # tokens = self.internal_engine_raw_output.split()
+                self.chessboard.comment = 'Played move score is {0}, better is {1}'.format(curr_eng_score, last_eng_line)
+
+                # num_moves = len(tokens)
+                # can_moves = self.get_can(tokens)
+
+
+                # for mv in can_moves:
+                #     # print mv
+                #     self.add_try_variation(str(mv))
+                #
+                #         # v = self.chessboard.add_variation(Move.from_uci(str(mv)))
+                # for m in xrange(0, num_moves):
+                #     self.back(None)
+
+
+                # print "played move: {0}{1}".format(self.chessboard.san, move_symbol)
+            if use_external_engine:
+                last_eng_line = self.external_engine_raw_output
+            else:
+                last_eng_line = self.internal_engine_raw_output
+            last_eng_score = curr_eng_score
+            # print "last_eng_score: {0}".format(last_eng_score)
+
+            if not position_iter:
+                if not self.fwd(None, refresh=False, update=False):
+                    break
+
+
+            # Analyze the position
+        self.add_eng_moves(None, ENGINE_ANALYSIS)
+        self.game_analysis=False
+
 
     def analyze_game(self, params):
         # print params
@@ -4389,17 +4551,82 @@ class ChessProgram_app(App):
 
         return _file[fx] + _rank[fy] + _file[tx] + _rank[ty]
 
-    def update_book_panel(self, ev=None):
-        class ChessMove(object):
-            def __init__(self, uci, san):
-                self.uci = uci
-                self.san = san
+    def get_polyglot_hash(self, fen, move=None):
+        board = chess.Bitboard(fen=fen)
+        if move:
+            board.push(chess.Move.from_uci(move))
+        return board.zobrist_hash()
 
-        def get_polyglot_hash(fen, move=None):
-            board = chess.Bitboard(fen=fen)
-            if move:
-                board.push(chess.Move.from_uci(move))
-            return board.zobrist_hash()
+    def get_book_stats(self, fen):
+        db_index = self.ref_db_index_book
+        _board = chess.Bitboard(fen)
+        pos_hash = str(_board.zobrist_hash())
+        # print self.chessboard.board()
+        results = {}
+        records = []
+        move_list = []
+        try:
+            moves = db_index.Get(pos_hash + "_moves").split(',')[:-1]
+            for m in moves:
+                mv = int(m)
+                if mv:
+                    move = self.get_move_from_int(mv)
+                    if move == "e1h1":
+                        move = "e1g1"
+                    elif move == "e1a1":
+                        move = "e1c1"
+                    elif move == "e8a8":
+                        move = "e8c8"
+                    elif move == "e8h8":
+                        move = "e8g8"
+                    try:
+                        bit_board = chess.Bitboard(fen)
+                        san = bit_board.san(chess.Move.from_uci(move))
+                        move_list.append(ChessMove(move, san))
+                    except ValueError:
+                        continue
+                        # print "frequency: {0}".format(db_index.Get(pos_hash+"_freq"))
+                        # print "score: {0}".format(db_index.Get(pos_hash+"_white_score"))
+                        # print "draws: {0}".format(db_index.Get(pos_hash+"_draws"))
+                        # print "moves: {0}".format(db_index.Get(pos_hash+"_moves"))
+
+            for i, m in enumerate(move_list):
+                pos_hash = str(self.get_polyglot_hash(fen, move=m.uci))
+
+                try:
+                    move_list[i].freq = int(db_index.Get(pos_hash + "_freq"))
+                except KeyError:
+                    move_list[i].freq = 1
+
+            move_list = sorted(move_list, key=lambda m: m.freq, reverse=True)[:5]
+            for m in move_list:
+                pos_hash = str(self.get_polyglot_hash(fen, move=m.uci))
+
+                try:
+                    m.white_score = int(db_index.Get(pos_hash + "_white_score"))
+                except KeyError:
+                    m.white_score = 0
+                try:
+                    m.draws = int(db_index.Get(pos_hash + "_draws"))
+                except KeyError:
+                    m.draws = 0
+
+                m.losses = (m.freq - m.draws - m.white_score) / 2
+                m.wins = m.losses + m.white_score
+                pct = (m.wins * 1.0 + 0.5 * m.draws) / m.freq * 100.0
+
+                records.append({'move': str(m.uci), 'san': unicode(self.convert_san_to_figurine(m.san)),
+                                'pct': "{0:.2f}".format(pct), 'freq': locale.format("%d", m.freq, grouping=True),
+                                'wins': locale.format("%d", m.wins, grouping=True),
+                                'draws': locale.format("%d", m.draws, grouping=True),
+                                'losses': locale.format("%d", m.losses, grouping=True)})
+                results = {"records": records}
+        except KeyError:
+            results = {"records": []}
+            print "KeyError"
+        return results
+
+    def update_book_panel(self, ev=None):
 
         if self.book_display:
 #             user_book_moves_set = set()
@@ -4525,79 +4752,15 @@ class ChessProgram_app(App):
 #             weight = self.convert_int_eval_to_inf(current_eval)
             # print weight
             self.book_panel.reset_grid()
-            db_index = self.ref_db_index_book
             # if self.use_ref_db:
             #     db_index = self.ref_db_index_book
             #     print db_index
-            pos_hash = str(self.chessboard.board().zobrist_hash())
             fen = self.chessboard.board().fen()
-            # print self.chessboard.board()
-            results = {}
-            records = []
 
-            move_list = []
-            try:
-                moves = db_index.Get(pos_hash + "_moves").split(',')[:-1]
-                for m in moves:
-                    mv = int(m)
-                    if mv:
-                        move = self.get_move_from_int(mv)
-                        if move == "e1h1":
-                            move = "e1g1"
-                        elif move == "e1a1":
-                            move = "e1c1"
-                        elif move == "e8a8":
-                            move = "e8c8"
-                        elif move == "e8h8":
-                            move = "e8g8"
-                        try:
-                            bit_board = chess.Bitboard(fen)
-                            san = bit_board.san(chess.Move.from_uci(move))
-                            move_list.append(ChessMove(move, san))
-                        except ValueError:
-                            continue
-                            # print "frequency: {0}".format(db_index.Get(pos_hash+"_freq"))
-                            # print "score: {0}".format(db_index.Get(pos_hash+"_white_score"))
-                            # print "draws: {0}".format(db_index.Get(pos_hash+"_draws"))
-                            # print "moves: {0}".format(db_index.Get(pos_hash+"_moves"))
-
-                for i, m in enumerate(move_list):
-                    pos_hash = str(get_polyglot_hash(fen, move=m.uci))
-
-                    try:
-                        move_list[i].freq = int(db_index.Get(pos_hash + "_freq"))
-                    except KeyError:
-                        move_list[i].freq = 1
-
-                move_list = sorted(move_list, key=lambda m: m.freq, reverse=True)[:5]
-                for m in move_list:
-                    pos_hash = str(get_polyglot_hash(fen, move=m.uci))
-
-                    try:
-                        m.white_score = int(db_index.Get(pos_hash + "_white_score"))
-                    except KeyError:
-                        m.white_score = 0
-                    try:
-                        m.draws = int(db_index.Get(pos_hash + "_draws"))
-                    except KeyError:
-                        m.draws = 0
-
-                    m.losses = (m.freq - m.draws - m.white_score) / 2
-                    m.wins = m.losses + m.white_score
-                    pct = (m.wins * 1.0 + 0.5 * m.draws) / m.freq * 100.0
-
-                    records.append({'move':str(m.uci), 'san': unicode(self.convert_san_to_figurine(m.san)), 'pct': "{0:.2f}".format(pct), 'freq': locale.format("%d", m.freq, grouping=True), 'wins': locale.format("%d", m.wins, grouping=True),
-                                    'draws': locale.format("%d", m.draws, grouping=True), 'losses': locale.format("%d", m.losses, grouping=True)})
-                    results = {"records": records}
-            except KeyError:
-                results = {"records": []}
-                print "KeyError"
+            results = self.get_book_stats(fen)
 
             for r in results["records"]:
                 self.book_panel.grid.add_row([u"[ref={0}]{1}[/ref]".format(r['move'], r['san']), r['freq'], r['pct'], r['wins'], r['draws'], r['losses']], callback=self.add_book_moves)
-
-
-
 
             self.book_panel.grid.add_row(["[color=3333ff][ref=add_to_user_book]+White[/ref][/color]",
                                           ("[color=3333ff][ref=%s]Remove[/ref][/color]" % DELETE_FROM_USER_BOOK), '',''], callback=self.add_book_moves_white)
