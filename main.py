@@ -1894,30 +1894,34 @@ class ChessProgram_app(App):
 
 
         # sorted(book_moves, key=lambda book_move: int(book_move['freq']), reverse=True)
+        moves_to_probe = []
 
         while True:
             # self.refresh_engine()
-            stats = self.get_book_stats(root_position.board().fen(), format=False)['records']
+            stats = self.get_book_stats(self.chessboard.board().fen(), format=False)['records']
             book_moves = sorted(stats, key=lambda book_move: int(book_move['freq']), reverse=True)
             # freqs = [m['freq'] for m in stats]
             # print book_moves
 
-            moves_to_probe = []
 
             for i, m in enumerate(book_moves):
                 # print m
-                if i == 0 and m['freq'] > int(initial_frequency/100):
+                # print (book_moves[i-1]['freq']-m['freq'])/(book_moves[i-1]['freq']*1.0)
+                # print "init_freq : {0}".format(initial_frequency/100*1.0)
+                # print "m_freq: {0}".format(m['freq'])
+                if i == 0 and m['freq'] > int(initial_frequency/100*1.0):
                     moves_to_probe.append(m)
-                elif m['freq'] > int(initial_frequency/100) and book_moves[i-1]['freq']-m['freq']/(book_moves[i-1]['freq']) < 0.25:
+
+                elif m['freq'] > int(initial_frequency/100) and (book_moves[i-1]['freq']-m['freq'])/(book_moves[i-1]['freq']*1.0) < 0.25:
                     moves_to_probe.append(m)
                 else:
-                    # Break if there is a move that does not qualify
+                #     # Break if there is a move that does not qualify
                     break
 
             # print "moves to probe: {0}".format(moves_to_probe)
 
 
-            if position_iter:
+            if moves_to_probe:
                 # Objective Algorithm:
                 # Practical Algorithm:
 
@@ -1930,20 +1934,28 @@ class ChessProgram_app(App):
                 # 6. Top players
 
 
+                m = moves_to_probe.pop()
+                # print m
 
+                self.add_try_variation(m['move'])
+                self.refresh_board(update=False)
 
-                try:
-                    self.chessboard = next(position_iter)
-                    # sleep(params["interesting_sec_per_move"])
-                    # print "position_iter is True"
-                except StopIteration:
-                    break
+                # print moves_to_probe[0]
+                # print
+                # del moves_to_probe[0]
+
+                # self.chessboard = next(position_iter)
+                # sleep(params["interesting_sec_per_move"])
+                # print "position_iter is True"
+            # except StopIteration:
+            #     break
             else:
                 pass
 
-            if not position_iter:
-                if not self.fwd(None, refresh=False, update=False):
-                    break
+            if not moves_to_probe:
+                print "No moves to probe"
+                # if not self.fwd(None, refresh=False, update=False):
+                break
 
 
             # Analyze the position
