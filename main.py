@@ -850,10 +850,10 @@ class OpeningAnalysisPopup(Popup):
         super(OpeningAnalysisPopup, self).__init__(**kwargs)
         self.app = app
 
-    def start_analyze_game(self, p, *args, **kwargs):
+    def start_analyze_opening(self, p, *args, **kwargs):
         self.dismiss()
-        self.app.game_analysis_thread = KThread(target=self.app.analyze_opening, args=(p,))
-        self.app.game_analysis_thread.start()
+        self.app.opening_analysis_thread = KThread(target=self.app.analyze_opening, args=(p,))
+        self.app.opening_analysis_thread.start()
         Clock.schedule_interval(self.app.update_board_position, 1)
 
 
@@ -1867,7 +1867,7 @@ class ChessProgram_app(App):
         else:
             use_external_engine = False
 
-        self.engine_mode = ENGINE_ANALYSIS
+        # self.engine_mode = ENGINE_ANALYSIS
         self.game_analysis = True
         root_position = self.chessboard
 
@@ -1882,28 +1882,15 @@ class ChessProgram_app(App):
 
         thresholds = [params["blunder_threshold"]*1.0/100, params["mistake_threshold"]*1.0/100, params["dubious_threshold"]*1.0/100]
 
-        prev_multi_pv = sf.get_options()['MultiPV'][0]
+        # prev_multi_pv = sf.get_options()['MultiPV'][0]
         # sf.set_option('MultiPV', '4')
         # Set multi-pv to 4 lines in the case of deep analysis
         # Deep analysis modal:
         # Confirm - time per move/thresholds, mode, and look for white/black improvements
         # Bonus - create opening repertoire mode!
 
-
-        # self.refresh_engine()
-        # sleep(4)
-        # last_eng_line = self.internal_engine_raw_output
-        # last_eng_score = self.convert_mate_to_score(self.internal_engine_raw_scores[0]['score'])
-        # print "last_eng_score"
-        # print last_eng_score
-
-        # interesting_positions_start = False
-
-
         while True:
-
             self.refresh_engine()
-
             if position_iter:
 
                 # Objective Algorithm:
@@ -1923,68 +1910,12 @@ class ChessProgram_app(App):
 
                 try:
                     self.chessboard = next(position_iter)
-                    sleep(params["interesting_sec_per_move"])
+                    # sleep(params["interesting_sec_per_move"])
                     # print "position_iter is True"
                 except StopIteration:
                     break
             else:
-                sleep(params["regular_sec_per_move"])
-            # If played move is worse than best move by > 3, add a double question mark and indicate best move in a variation
-            # If played move is worse than best move by > 0.75, add a single question mark and indicate best move in a variation
-            # If played move is the best move and better than other moves by 0.5, and is not a recapture, add an !
-            move_symbol = None
-            if use_external_engine:
-                curr_eng_score = self.convert_mate_to_score(self.external_engine_raw_scores[0]['score'])
-            else:
-                curr_eng_score = self.convert_mate_to_score(self.internal_engine_raw_scores[0]['score'])
-
-
-            try:
-                if last_eng_score:
-                    if abs(last_eng_score - curr_eng_score) >= thresholds[0]:
-                        move_symbol = NAG_BLUNDER
-                        # print "Played move is a blunder"
-                    elif abs(last_eng_score - curr_eng_score) >= thresholds[1]:
-                        move_symbol = NAG_MISTAKE
-                    elif abs(last_eng_score - curr_eng_score) >= thresholds[2]:
-                        move_symbol = NAG_DUBIOUS_MOVE
-                        # print "Played move is bad"
-
-            except ValueError, e:
-                print e
-                print "mate?"
-
-            # last_eng_first_move = self.internal_engine_raw_output.split()[0]
-            # print "eng_rec_first_move : {0}".format(last_eng_first_move)
-            # print self.internal_engine_raw_scores
-            if move_symbol:
-
-                self.chessboard.nags = set()
-                self.chessboard.nags.add(move_symbol)
-                # self.chessboard.set_eval('move_eval', READABLE_TO_NAG_MAP[move_symbol])
-                # tokens = self.internal_engine_raw_output.split()
-                self.chessboard.comment = 'Played move score is {0}, better is {1}'.format(curr_eng_score, last_eng_line)
-
-                # num_moves = len(tokens)
-                # can_moves = self.get_can(tokens)
-
-
-                # for mv in can_moves:
-                #     # print mv
-                #     self.add_try_variation(str(mv))
-                #
-                #         # v = self.chessboard.add_variation(Move.from_uci(str(mv)))
-                # for m in xrange(0, num_moves):
-                #     self.back(None)
-
-
-                # print "played move: {0}{1}".format(self.chessboard.san, move_symbol)
-            if use_external_engine:
-                last_eng_line = self.external_engine_raw_output
-            else:
-                last_eng_line = self.internal_engine_raw_output
-            last_eng_score = curr_eng_score
-            # print "last_eng_score: {0}".format(last_eng_score)
+                pass
 
             if not position_iter:
                 if not self.fwd(None, refresh=False, update=False):
@@ -1992,7 +1923,7 @@ class ChessProgram_app(App):
 
 
             # Analyze the position
-        self.add_eng_moves(None, ENGINE_ANALYSIS)
+        # self.add_eng_moves(None, ENGINE_ANALYSIS)
         self.game_analysis=False
 
 
@@ -4623,7 +4554,7 @@ class ChessProgram_app(App):
                 results = {"records": records}
         except KeyError:
             results = {"records": []}
-            print "KeyError"
+            # print "KeyError"
         return results
 
     def update_book_panel(self, ev=None):
