@@ -1888,14 +1888,37 @@ class ChessProgram_app(App):
         # Deep analysis modal:
         # Confirm - time per move/thresholds, mode, and look for white/black improvements
         # Bonus - create opening repertoire mode!
+        stats = self.get_book_stats(root_position.board().fen(), format=False)['records']
+        initial_frequency = sum([m['freq'] for m in stats])
+        # print "initial_freq: {0}".format(initial_frequency)
+
+
+        # sorted(book_moves, key=lambda book_move: int(book_move['freq']), reverse=True)
 
         while True:
-            self.refresh_engine()
+            # self.refresh_engine()
+            stats = self.get_book_stats(root_position.board().fen(), format=False)['records']
+            book_moves = sorted(stats, key=lambda book_move: int(book_move['freq']), reverse=True)
+            # freqs = [m['freq'] for m in stats]
+            # print book_moves
+
+            moves_to_probe = []
+
+            for i, m in enumerate(book_moves):
+                # print m
+                if i == 0 and m['freq'] > int(initial_frequency/100):
+                    moves_to_probe.append(m)
+                elif m['freq'] > int(initial_frequency/100) and book_moves[i-1]['freq']-m['freq']/(book_moves[i-1]['freq']) < 0.25:
+                    moves_to_probe.append(m)
+                else:
+                    # Break if there is a move that does not qualify
+                    break
+
+            # print "moves to probe: {0}".format(moves_to_probe)
+
+
             if position_iter:
-
                 # Objective Algorithm:
-
-
                 # Practical Algorithm:
 
                 # 1. Go down the tree using the compound polyglot index. Look at breakdown of games, when there is early divergence, mark these as sidelines
@@ -1905,6 +1928,7 @@ class ChessProgram_app(App):
                 # 4. Create novelties for any color that improves evaluation by 0.3 (configurable)
                 # 5. From when main line dissolves into less than 5 games, figure out most common plans (moves) and display them.
                 # 6. Top players
+
 
 
 
@@ -4482,13 +4506,13 @@ class ChessProgram_app(App):
 
         return _file[fx] + _rank[fy] + _file[tx] + _rank[ty]
 
-    def get_polyglot_hash(self, fen, move=None):
+    def get_polyglot_stats(self, fen, move=None):
         board = chess.Bitboard(fen=fen)
         if move:
             board.push(chess.Move.from_uci(move))
-        return board.zobrist_hash()
+        return {'hash': board.zobrist_hash(), 'fen': board.fen()}
 
-    def get_book_stats(self, fen):
+    def get_book_stats(self, fen, format=True):
         db_index = self.ref_db_index_book
         _board = chess.Bitboard(fen)
         pos_hash = str(_board.zobrist_hash())
@@ -4522,16 +4546,20 @@ class ChessProgram_app(App):
                         # print "moves: {0}".format(db_index.Get(pos_hash+"_moves"))
 
             for i, m in enumerate(move_list):
-                pos_hash = str(self.get_polyglot_hash(fen, move=m.uci))
+                pos_hash = str(self.get_polyglot_stats(fen, move=m.uci)['hash'])
 
                 try:
                     move_list[i].freq = int(db_index.Get(pos_hash + "_freq"))
                 except KeyError:
                     move_list[i].freq = 1
+            if format:
+                move_list = sorted(move_list, key=lambda m: m.freq, reverse=True)[:5]
+            else:
+                move_list = sorted(move_list, key=lambda m: m.freq, reverse=True)
 
-            move_list = sorted(move_list, key=lambda m: m.freq, reverse=True)[:5]
             for m in move_list:
-                pos_hash = str(self.get_polyglot_hash(fen, move=m.uci))
+                result = self.get_polyglot_stats(fen, move=m.uci)
+                pos_hash = str(result['hash'])
 
                 try:
                     m.white_score = int(db_index.Get(pos_hash + "_white_score"))
@@ -4545,12 +4573,20 @@ class ChessProgram_app(App):
                 m.losses = (m.freq - m.draws - m.white_score) / 2
                 m.wins = m.losses + m.white_score
                 pct = (m.wins * 1.0 + 0.5 * m.draws) / m.freq * 100.0
-
-                records.append({'move': str(m.uci), 'san': unicode(self.convert_san_to_figurine(m.san)),
+                if format:
+                    records.append({'move': str(m.uci), 'san': unicode(self.convert_san_to_figurine(m.san)),
                                 'pct': "{0:.2f}".format(pct), 'freq': locale.format("%d", m.freq, grouping=True),
                                 'wins': locale.format("%d", m.wins, grouping=True),
                                 'draws': locale.format("%d", m.draws, grouping=True),
                                 'losses': locale.format("%d", m.losses, grouping=True)})
+                else:
+                    records.append({'move': str(m.uci), 'san': m.san,
+                                'pct': pct, 'freq': m.freq,
+                                'wins': m.wins,
+                                'draws': m.draws,
+                                'losses': m.losses,
+                                'fen': result['fen']})
+
                 results = {"records": records}
         except KeyError:
             results = {"records": []}
