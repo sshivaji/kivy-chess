@@ -1890,7 +1890,7 @@ class ChessProgram_app(App):
         # Bonus - create opening repertoire mode!
         stats = self.get_book_stats(root_position.board().fen(), format=False)['records']
         initial_frequency = sum([m['freq'] for m in stats])
-        print "initial_freq: {0}".format(initial_frequency)
+        # print "initial_freq: {0}".format(initial_frequency)
 
 
         # sorted(book_moves, key=lambda book_move: int(book_move['freq']), reverse=True)
@@ -1907,24 +1907,22 @@ class ChessProgram_app(App):
             for i, m in enumerate(book_moves):
                 # print m
                 # print (book_moves[i-1]['freq']-m['freq'])/(book_moves[i-1]['freq']*1.0)
-                print "move : {0}".format(m['move'])
-                print "init_freq : {0}".format(initial_frequency/100*1.0)
-                print "m_freq: {0}".format(m['freq'])
+                # print "move : {0}".format(m['move'])
+                # print "init_freq : {0}".format(initial_frequency/100*1.0)
+                # print "m_freq: {0}".format(m['freq'])
                 freq = int(m['freq'])
                 if i == 0 and freq > int(initial_frequency/100*1.0):
-                    print "move: {0} appended".format(m['move'])
+                    # print "move: {0} appended".format(m['move'])
                     moves_to_probe.append(m)
 
-                elif freq > int(initial_frequency/100*1.0) and (int(book_moves[i-1]['freq'])-freq)/(int(book_moves[i-1]['freq'])*1.0) < 0.25:
-                    print "move: {0} appended".format(m['move'])
-
+                elif freq > int(initial_frequency/100*1.0) and (int(book_moves[i-1]['freq'])-freq)/(int(book_moves[i-1]['freq'])*1.0) < 0.50:
+                    # print "move: {0} appended".format(m['move'])
                     moves_to_probe.append(m)
                 else:
                 #     # Break if there is a move that does not qualify
                     break
 
             # print "moves to probe: {0}".format(moves_to_probe)
-
             if moves_to_probe:
                 # Objective Algorithm:
                 # Practical Algorithm:
@@ -1937,23 +1935,14 @@ class ChessProgram_app(App):
                 # 5. From when main line dissolves into less than 5 games, figure out most common plans (moves) and display them.
                 # 6. Top players
 
-
+                # for m in moves_to_probe:
                 m = moves_to_probe.pop()
-                # print m
+                if m:
+                    h = self.get_polyglot_stats(m['fen'])['hash']
+                    self.go_to_move(None, str(h))
+                    # print "move: {0}, fen: {1}".format(m['move'], m['fen'])
+                    self.add_try_variation(m['move'])
 
-                self.add_try_variation(m['move'])
-                print m['move']
-                self.refresh_board(update=False)
-
-                # print moves_to_probe[0]
-                # print
-                # del moves_to_probe[0]
-
-                # self.chessboard = next(position_iter)
-                # sleep(params["interesting_sec_per_move"])
-                # print "position_iter is True"
-            # except StopIteration:
-            #     break
             else:
                 break
 
@@ -4599,7 +4588,7 @@ class ChessProgram_app(App):
                                 'wins': m.wins,
                                 'draws': m.draws,
                                 'losses': m.losses,
-                                'fen': result['fen']})
+                                'fen': fen})
 
                 results = {"records": records}
         except KeyError:
