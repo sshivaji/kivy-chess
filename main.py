@@ -1890,7 +1890,7 @@ class ChessProgram_app(App):
         # Bonus - create opening repertoire mode!
         stats = self.get_book_stats(root_position.board().fen(), format=False)['records']
         initial_frequency = sum([m['freq'] for m in stats])
-        # print "initial_freq: {0}".format(initial_frequency)
+        print "initial_freq: {0}".format(initial_frequency)
 
 
         # sorted(book_moves, key=lambda book_move: int(book_move['freq']), reverse=True)
@@ -1907,19 +1907,23 @@ class ChessProgram_app(App):
             for i, m in enumerate(book_moves):
                 # print m
                 # print (book_moves[i-1]['freq']-m['freq'])/(book_moves[i-1]['freq']*1.0)
-                # print "init_freq : {0}".format(initial_frequency/100*1.0)
-                # print "m_freq: {0}".format(m['freq'])
-                if i == 0 and m['freq'] > int(initial_frequency/100*1.0):
+                print "move : {0}".format(m['move'])
+                print "init_freq : {0}".format(initial_frequency/100*1.0)
+                print "m_freq: {0}".format(m['freq'])
+                freq = int(m['freq'])
+                if i == 0 and freq > int(initial_frequency/100*1.0):
+                    print "move: {0} appended".format(m['move'])
                     moves_to_probe.append(m)
 
-                elif m['freq'] > int(initial_frequency/100) and (book_moves[i-1]['freq']-m['freq'])/(book_moves[i-1]['freq']*1.0) < 0.25:
+                elif freq > int(initial_frequency/100*1.0) and (int(book_moves[i-1]['freq'])-freq)/(int(book_moves[i-1]['freq'])*1.0) < 0.25:
+                    print "move: {0} appended".format(m['move'])
+
                     moves_to_probe.append(m)
                 else:
                 #     # Break if there is a move that does not qualify
                     break
 
             # print "moves to probe: {0}".format(moves_to_probe)
-
 
             if moves_to_probe:
                 # Objective Algorithm:
@@ -1938,6 +1942,7 @@ class ChessProgram_app(App):
                 # print m
 
                 self.add_try_variation(m['move'])
+                print m['move']
                 self.refresh_board(update=False)
 
                 # print moves_to_probe[0]
@@ -1950,12 +1955,9 @@ class ChessProgram_app(App):
             # except StopIteration:
             #     break
             else:
-                pass
-
-            if not moves_to_probe:
-                print "No moves to probe"
-                # if not self.fwd(None, refresh=False, update=False):
                 break
+
+
 
 
             # Analyze the position
