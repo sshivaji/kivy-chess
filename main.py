@@ -1911,11 +1911,18 @@ class ChessProgram_app(App):
                 # print "init_freq : {0}".format(initial_frequency/100*1.0)
                 # print "m_freq: {0}".format(m['freq'])
                 freq = int(m['freq'])
+                if params['white_rep'] and self.chessboard.board().turn == chess.BLACK or params['black_rep'] and self.chessboard.board().turn == chess.WHITE:
+                    threshold = 0.5
+                    second_threshold = 0.75
+                else:
+                    threshold = 1.0
+                    second_threshold = 0.50
+
                 if i == 0 and freq > int(initial_frequency/100*1.0):
                     # print "move: {0} appended".format(m['move'])
                     moves_to_probe.append(m)
 
-                elif freq > int(initial_frequency/100*1.0) and (int(book_moves[i-1]['freq'])-freq)/(int(book_moves[i-1]['freq'])*1.0) < 0.50:
+                elif freq > int(initial_frequency/100*threshold) and (int(book_moves[i-1]['freq'])-freq)/(int(book_moves[i-1]['freq'])*1.0) < second_threshold:
                     # print "move: {0} appended".format(m['move'])
                     moves_to_probe.append(m)
                 else:
