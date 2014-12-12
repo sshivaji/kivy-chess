@@ -73,10 +73,7 @@ from uci import UCIEngine
 from Queue import Queue
 from os.path import expanduser
 
-
-
 CLOUD_ENGINE_EXEC = './stockfish'
-
 THINKING_TIME = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]"
 THINKING = "[color=000000][b][size=16]Thinking..[/size][/b][/color]"
 
@@ -961,6 +958,27 @@ class Annotation(BoxLayout):
             # Once expanded to full screen, you no longer have to dismiss the popup
             print e
 
+    def process_variation(self, value, bt):
+        if value == 'delete':
+            self.app.chessboard.parent.remove_variation(self.app.chessboard.move)
+        #
+        #
+        # eval = 'move' if value else 'remove'
+        #
+        # for nag in list(self.app.chessboard.nags):
+        #     if 0 < nag < 9 or eval == 'remove':
+        #         # Remove existing move evals if a move eval was passed
+        #         self.app.chessboard.nags.remove(nag)
+        #
+        # if eval == 'move':
+        #     self.app.chessboard.nags.add(value)
+        self.app.back(None)
+        self.app.refresh_board(update=True)
+        try:
+            bt.parent.parent.dismiss()
+        except AttributeError, e:
+            # Once expanded to full screen, you no longer have to dismiss the popup
+            print e
 
     def set_pos_eval(self, value, bt):
         eval = 'position' if value else 'remove'
@@ -1912,7 +1930,7 @@ class ChessProgram_app(App):
                 # print "m_freq: {0}".format(m['freq'])
                 freq = int(m['freq'])
                 if params['white_rep'] and self.chessboard.board().turn == chess.BLACK or params['black_rep'] and self.chessboard.board().turn == chess.WHITE:
-                    threshold = 0.5
+                    threshold = 1.0
                     second_threshold = 0.75
                 else:
                     threshold = 1.0
@@ -1949,6 +1967,7 @@ class ChessProgram_app(App):
                     self.go_to_move(None, str(h))
                     # print "move: {0}, fen: {1}".format(m['move'], m['fen'])
                     self.add_try_variation(m['move'])
+                    sleep(0.05)
 
             else:
                 break

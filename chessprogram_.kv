@@ -69,6 +69,24 @@
                 ActionButton:
                     text: 'Comment'
                     on_press: root.open_comment_dialog(self)
+        ActionView:
+            use_separator: True
+            ActionPrevious:
+                title: 'Variation'
+                with_previous: False
+            ActionGroup:
+                id: variation_action_group
+                mode: 'normal'
+                text: 'Variation'
+                ActionButton:
+                    text: 'Promote'
+                    on_press: root.process_variation('promote', self)
+                ActionButton:
+                    text: 'Delete'
+                    on_press: root.process_variation('delete', self)
+                ActionButton:
+                    text: 'Undo'
+                    on_press: root.undo(self)
 
 <GameControls>:
     ActionBar:
