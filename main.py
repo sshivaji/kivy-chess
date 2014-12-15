@@ -806,8 +806,8 @@ class GameControls(BoxLayout):
             # Once expanded to full screen, you no longer have to dismiss the popup
             print e
 
-    def save(self, bt):
-        self.app.save('')
+    def save(self, bt, replace=False):
+        self.app.save('', replace=replace)
         try:
             bt.parent.parent.dismiss()
         except AttributeError, e:
@@ -2884,6 +2884,7 @@ class ChessProgram_app(App):
         self.last_touch_up_move = None
         self.last_touch_down_setup = None
         self.last_touch_up_setup = None
+        self.loaded_game_num = None
         # self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin')
         # self.book = chess.polyglot.open_reader("book.bin")
 
@@ -3363,24 +3364,7 @@ class ChessProgram_app(App):
         rand_game_num = random.randint(0, total_games)
         self.load_game_from_index(rand_game_num)
 
-    def get_game(self, db_index, game_num):
-        # db_index = self.ref_db_index_book
-        if self.use_ref_db:
-            db_index = self.ref_db_index_book
-        first = db_index.Get("game_{0}_data".format(game_num)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
-        #        if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
-        #            second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
-        #        second = self.pgn_index["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
-        try:
-            second = db_index.Get("game_{0}_data".format(game_num + 1)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
-            second = int(second)
-        except KeyError:
-            second = None
-
-        file_name = db_index.Get("pgn_filename")
-        if not os.path.isfile(file_name):
-            file_name = file_name.replace("home", "Users")
-
+    def get_file_seek_segment(self, file_name, first, second):
         with open(file_name) as f:
             first = int(first)
 
@@ -3401,9 +3385,32 @@ class ChessProgram_app(App):
                     # print pos
                 if temp:
                     lines.append(temp)
-            # f.close()
-        # print lines
+                    # f.close()
         return lines
+
+    def get_game_seek_positions(self, db_index, game_num):
+        first = db_index.Get("game_{0}_data".format(game_num)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
+        # if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
+        #            second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
+        #        second = self.pgn_index["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
+        try:
+            second = db_index.Get("game_{0}_data".format(game_num + 1)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
+            second = int(second)
+        except KeyError:
+            second = None
+        return first, second
+
+    def get_game(self, db_index, game_num):
+        # db_index = self.ref_db_index_book
+        if self.use_ref_db:
+            db_index = self.ref_db_index_book
+        first, second = self.get_game_seek_positions(db_index, game_num)
+
+        file_name = db_index.Get("pgn_filename")
+        if not os.path.isfile(file_name):
+            file_name = file_name.replace("home", "Users")
+
+        return self.get_file_seek_segment(file_name, first, second)
 
     # def get_game(self, db_index, game_num):
     #     if self.use_ref_db:
@@ -3470,6 +3477,7 @@ class ChessProgram_app(App):
             self.custom_fen = 'startpos'
 
         self.refresh_board()
+        self.loaded_game_num = game_num
 
         # self.game_score = games[0]
 
@@ -4152,30 +4160,26 @@ class ChessProgram_app(App):
                     pass
         self.go_to_move(None, str(current_pos_hash))
 
-    def save(self, obj, filename='game.pgn'):
+    def save(self, obj, filename='game.pgn', replace=False):
         use_db = False
         pgn_file = None
         if self.db_index_book is not None:
-            use_db = True
+            # use_db = True
             # Write to the open database
-            # pgn_file = self.db_index_book.Get("pgn_filename")
-            f = open(pgn_file, 'ab')
-        else:
-            pgn_file = filename
-            if os.path.isfile(filename):
-                f = open(filename, 'a')
-            else:
-                f = open(filename, 'wb')
+            pgn_file = self.db_index_book.Get("pgn_filename")
+            if replace:
+                print "replace"
+                # print len(self.db_adapter.data)
+                print "game_num: {0}".format(self.loaded_game_num)
+                with open(pgn_file) as pgn:
+                    offsets = list(chess.pgn.scan_offsets(pgn))
+                    # self.assertEqual(len(offsets), 6)
 
-        # print "pgn_file : {0}".format(pgn_file)
-        # virtual_file = StringIO()
-        exporter = chess.pgn.FileExporter(f)
-        self.chessboard_root.export(exporter)
-        # print virtual_file.getvalue()
-        f.close()
-
-        if use_db:
-            # Rebuild index
+                    pgn.seek(offsets[self.loaded_game_num])
+                return
+            # if pgn_file:
+            #     f = open(pgn_file, 'ab')
+             # Rebuild index
             # db_folder_path = os.path.abspath(os.path.join(pgn_file, os.pardir))
             db_folder_path = self.gen_leveldb_path(pgn_file)
             del self.db_index_book
@@ -4185,6 +4189,23 @@ class ChessProgram_app(App):
             # print command
             os.system(command)
             self.db_index_book = leveldb.LevelDB(db_folder_path)
+
+        else:
+            pgn_file = filename
+            if os.path.isfile(filename):
+                f = open(filename, 'a')
+            else:
+                f = open(filename, 'wb')
+
+            # print "pgn_file : {0}".format(pgn_file)
+            # virtual_file = StringIO()
+            exporter = chess.pgn.FileExporter(f)
+            self.chessboard_root.export(exporter)
+            # print virtual_file.getvalue()
+            f.close()
+            return
+
+
 
     def touch_down_move(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
