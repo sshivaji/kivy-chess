@@ -4,6 +4,7 @@ except ImportError:
     from io import StringIO
 import textwrap
 from threading import Thread, RLock
+import shutil
 import traceback
 import sys
 import random
@@ -4168,15 +4169,41 @@ class ChessProgram_app(App):
             # Write to the open database
             pgn_file = self.db_index_book.Get("pgn_filename")
             if replace:
-                print "replace"
+                print "replacing"
                 # print len(self.db_adapter.data)
                 print "game_num: {0}".format(self.loaded_game_num)
-                with open(pgn_file) as pgn:
-                    offsets = list(chess.pgn.scan_offsets(pgn))
+                    # offsets = list(chess.pgn.scan_offsets(pgn))
                     # self.assertEqual(len(offsets), 6)
+                with open(pgn_file+".tmp", "wb") as tmp_pgn_file:
+                    first, second = self.get_game_seek_positions(self.db_index_book, self.loaded_game_num)
+                    # print "first: {0}".format(first)
+                    if first:
+                        first = int(first)
 
-                    pgn.seek(offsets[self.loaded_game_num])
-                return
+                    if first and first>1:
+                        # print "writing pre"
+                        before_replace_game = self.get_file_seek_segment(pgn_file, 0, first)
+                        tmp_pgn_file.write("\n".join(before_replace_game))
+                        tmp_pgn_file.write("\n")
+                        # print "\n".join(before_replace_game)
+                    exporter = chess.pgn.FileExporter(tmp_pgn_file)
+                    self.chessboard_root.export(exporter)
+                    # print "second: {0}".format(second)
+
+                    if second:
+                        second = int(second)
+
+                        # print "writing post"
+                        after_replace_game = self.get_file_seek_segment(pgn_file, second, None)
+                        tmp_pgn_file.write("\n".join(after_replace_game))
+                        tmp_pgn_file.write("\n")
+
+            shutil.copyfile(pgn_file+".tmp", pgn_file)
+            if os.path.exists(pgn_file+".tmp"):
+                os.remove(pgn_file+".tmp")
+
+                    # pgn.seek(offsets[self.loaded_game_num])
+                # return
             # if pgn_file:
             #     f = open(pgn_file, 'ab')
              # Rebuild index
