@@ -553,13 +553,14 @@ class ExtendedGame(chess.pgn.Game):
         super(chess.pgn.Game, self).__init__()
 
         self.headers = collections.OrderedDict()
-        self.headers["Event"] = "?"
-        self.headers["Site"] = "?"
-        self.headers["Date"] = "????.??.??"
-        self.headers["Round"] = "?"
         self.headers["White"] = "?"
         self.headers["Black"] = "?"
         self.headers["Result"] = "*"
+        self.headers["Round"] = "?"
+        self.headers["Event"] = "?"
+        self.headers["Site"] = "?"
+        self.headers["Date"] = "????.??.??"
+
         ExtendedGame.positions={}
 
     def add_variation(self, move, comment="", starting_comment="", nags=set()):
@@ -1943,6 +1944,7 @@ class ChessProgram_app(App):
         # self.engine_mode = ENGINE_ANALYSIS
         self.game_analysis = True
         root_position = self.chessboard
+        root_position_move_num = self.chessboard.board().fullmove_number
 
         # self.chessboard = self.chessboard_root
         self.use_internal_engine = True
@@ -1963,19 +1965,17 @@ class ChessProgram_app(App):
         # Bonus - create opening repertoire mode!
         stats = self.get_book_stats(root_position.board().fen(), format=False)['records']
         initial_frequency = sum([m['freq'] for m in stats])
+
         # print "initial_freq: {0}".format(initial_frequency)
-
-
         # sorted(book_moves, key=lambda book_move: int(book_move['freq']), reverse=True)
         moves_to_probe = []
-
+        position_stats = {}
         while True:
             # self.refresh_engine()
             stats = self.get_book_stats(self.chessboard.board().fen(), format=False)['records']
             book_moves = sorted(stats, key=lambda book_move: int(book_move['freq']), reverse=True)
             # freqs = [m['freq'] for m in stats]
             # print book_moves
-
 
             for i, m in enumerate(book_moves):
                 # print m
@@ -1986,7 +1986,7 @@ class ChessProgram_app(App):
                 freq = int(m['freq'])
                 if params['white_rep'] and self.chessboard.board().turn == chess.BLACK or params['black_rep'] and self.chessboard.board().turn == chess.WHITE:
                     threshold = 1.0
-                    second_threshold = 0.75
+                    second_threshold = 0.65
                 else:
                     threshold = 1.0
                     second_threshold = 0.50
@@ -2018,13 +2018,76 @@ class ChessProgram_app(App):
                 # for m in moves_to_probe:
                 m = moves_to_probe.pop()
                 if m:
+                    # print m
+                    # print self.chessboard.board().fullmove_number
+                    # if m['fen'] in position_fen_cache and self.chessboard.board().fullmove_number
                     h = self.get_polyglot_stats(m['fen'])['hash']
                     self.go_to_move(None, str(h))
                     # print "move: {0}, fen: {1}".format(m['move'], m['fen'])
+                    # position_fen_cache.add(m['fen'])
+                    if m['fen'] in position_stats:
+                        position_stats[m['fen']]['freq']+=1
+                    else:
+                        position_stats[m['fen']] = {'freq' : 1, 'fen': m['fen'], 'hash': str(h)}
                     self.add_try_variation(m['move'])
                     sleep(0.05)
 
             else:
+                # print "phase 2.."
+                use_ref_db = self.use_ref_db
+                self.use_ref_db = True
+
+                sorted_position_stats = sorted(position_stats.values(), key=lambda book_move: int(book_move['freq']), reverse=True)
+                for i, m in enumerate(sorted_position_stats):
+                    if i<5:
+                        # print m
+                        if self.go_to_move(None, m['hash']):
+                            db_game_list, game_ids = self.get_game_headers(self.ref_db_index_book, m['hash'], create_headers = True)
+                            white_players = {}
+                            black_players = {}
+                            for g in db_game_list:
+                                if g.white in white_players:
+                                    white_players[g.white] += 1
+                                else:
+                                    white_players = {g.white : 1}
+                                if g.black in black_players:
+                                    black_players[g.black] += 1
+                                else:
+                                    black_players = {g.black : 1}
+
+                                g = self.get_game_from_index(self.ref_db_index_book, int(g.id))
+                                for m in g:
+                                    print m
+                                # self.go_to_move(None, m['hash'])
+
+
+                            # top_white_players = sorted(white_players.values(), key=lambda book_move: int(book_move['freq']), reverse=True)
+                            top_white_players = []
+                            top_black_players = []
+                            # print "white_players:"
+                            # print white_players
+                            for k,v in white_players.iteritems():
+                                if v > 1:
+                                    top_white_players.append(k)
+                            for k,v in black_players.iteritems():
+                                if v > 1:
+                                    top_black_players.append(k)
+                            self.chessboard.comment = "Key position"
+                            if top_white_players:
+                                self.chessboard.comment += ", Top White players: {0}".format(",".join(top_white_players))
+                            if top_black_players:
+                                self.chessboard.comment += ", Top Black players: {0}".format(",".join(top_black_players))
+
+                            # self.chessboard.comment = "Key position, Top White players: {0}, Black players : {1}".format(",".join(top_white_players), ",".join(top_black_players))
+
+                            # sorted(db_game_list, key=lambda game: game.white, reverse=True)
+                            # db_game.white = tokens[0]
+                            # db_game.whiteelo = tokens[1]
+                            # db_game.black = tokens[2]
+
+                self.refresh_board(update=True)
+                self.use_ref_db = use_ref_db
+
                 break
 
 
@@ -3309,6 +3372,8 @@ class ChessProgram_app(App):
             # print "Move found!"
             self.chessboard = ExtendedGame.positions[pos_hash]
             self.refresh_board(update=False)
+            return True
+        return False
         # pass
 
     def is_position_inf_eval(self, mv):
@@ -3510,15 +3575,19 @@ class ChessProgram_app(App):
     #     # games = PgnFile.open_text(lines)
     #     return games
 
-    def load_game_from_index(self, game_num):
-        db_index = self.db_index_book
-        # games = self.get_game(db_index, game_num)
-
+    def get_game_from_index(self, db_index, game_num):
         game_text = "\n".join(self.get_game(db_index, game_num))
         # g = chess.pgn.read_game(game_text)
         # print g
         pgn = StringIO(textwrap.dedent(game_text))
         g = read_game(pgn)
+        return g
+
+    def load_game_from_index(self, game_num):
+        db_index = self.db_index_book
+        # games = self.get_game(db_index, game_num)
+
+        g = self.get_game_from_index(db_index, game_num)
         # print games[0].'White'
         self.chessboard = g
         # print g.headers
@@ -4534,6 +4603,69 @@ class ChessProgram_app(App):
         except KeyError:
             return "Unknown"
 
+    def get_game_headers(self, db_index, pos_hash, create_headers = False):
+        try:
+            game_ids = db_index.Get(pos_hash).split(',')[:-1]
+            # print "frequency: {0}".format(db_index.Get(pos_hash+"_freq"))
+            # print "score: {0}".format(db_index.Get(pos_hash+"_score"))
+            # print "draws: {0}".format(db_index.Get(pos_hash+"_draws"))
+            # print "moves: {0}".format(db_index.Get(pos_hash+"_white_score"))
+
+        except KeyError, e:
+            print "key not found!"
+            game_ids = []
+        db_game_list = []
+        filter_text = []
+        db_operator = ["-", " "]
+        db_text = self.db_filter_field.text
+        if db_text:
+            operator_match = False
+            for op in db_operator:
+                if op in db_text:
+                    filter_tokens = db_text.split(op)
+                    for i, f in enumerate(filter_tokens):
+                        filter_tokens[i] = f.strip()
+                    filter_text = filter_tokens
+                    operator_match = True
+                    break
+            if not operator_match:
+                filter_text = [db_text]
+        for i in game_ids:
+            db_game = DBGame(i)
+            if self.db_sort_criteria or len(filter_text) > 0 or create_headers:
+                record = self.get_game_header(i, "ALL")
+                tokens = record.split("|")
+                db_game.white = tokens[0]
+                db_game.whiteelo = tokens[1]
+                db_game.black = tokens[2]
+                db_game.blackelo = tokens[3]
+                db_game.result = tokens[4]
+                db_game.date = tokens[5]
+                db_game.event = tokens[6]
+                db_game.site = tokens[7]
+                db_game.eco = tokens[8]
+            if len(filter_text) > 0:
+                match = True
+                # print filter_text
+                for f in filter_text:
+                    if f in db_game.white or f in db_game.black or f in db_game.event or f in db_game.site:
+                        pass
+                    else:
+                        match = False
+                if match:
+                    db_game_list.append(db_game)
+                    # db_game_list.append(db_game)
+            else:
+                db_game_list.append(db_game)
+        if self.db_sort_criteria:
+            # print self.db_sort_criteria[0].key
+            sort_key = attrgetter(self.db_sort_criteria[0].key)
+            if self.db_sort_criteria[0].key == 'id':
+                sort_key = lambda v: int(v.id)
+
+            db_game_list = sorted(db_game_list, reverse=not self.db_sort_criteria[0].asc, key=sort_key)
+        return db_game_list, game_ids
+
     def update_database_panel(self):
         # pos_hash = str(self.chessboard.position.__hash__())
         pos_hash = str(self.chessboard.board().zobrist_hash())
@@ -4544,70 +4676,7 @@ class ChessProgram_app(App):
         else:
             db_index = self.db_index_book
         if db_index is not None and self.database_display:
-            try:
-                game_ids = db_index.Get(pos_hash).split(',')[:-1]
-                # print "frequency: {0}".format(db_index.Get(pos_hash+"_freq"))
-                # print "score: {0}".format(db_index.Get(pos_hash+"_score"))
-                # print "draws: {0}".format(db_index.Get(pos_hash+"_draws"))
-                # print "moves: {0}".format(db_index.Get(pos_hash+"_white_score"))
-
-            except KeyError, e:
-                print "key not found!"
-                game_ids = []
-
-            db_game_list = []
-            filter_text = []
-            db_operator = ["-", " "]
-            db_text = self.db_filter_field.text
-            if db_text:
-                operator_match = False
-                for op in db_operator:
-                    if op in db_text:
-                        filter_tokens = db_text.split(op)
-                        for i, f in enumerate(filter_tokens):
-                            filter_tokens[i] = f.strip()
-                        filter_text = filter_tokens
-                        operator_match = True
-                        break
-                if not operator_match:
-                    filter_text = [db_text]
-
-            for i in game_ids:
-                db_game = DBGame(i)
-                if self.db_sort_criteria or len(filter_text) > 0:
-                    record = self.get_game_header(i, "ALL")
-                    tokens = record.split("|")
-                    db_game.white = tokens[0]
-                    db_game.whiteelo = tokens[1]
-                    db_game.black = tokens[2]
-                    db_game.blackelo = tokens[3]
-                    db_game.result = tokens[4]
-                    db_game.date = tokens[5]
-                    db_game.event = tokens[6]
-                    db_game.site = tokens[7]
-                    db_game.eco = tokens[8]
-                if len(filter_text) > 0:
-                    match = True
-                    # print filter_text
-                    for f in filter_text:
-                        if f in db_game.white or f in db_game.black or f in db_game.event or f in db_game.site:
-                            pass
-                        else:
-                            match = False
-                    if match:
-                        db_game_list.append(db_game)
-                            # db_game_list.append(db_game)
-                else:
-                    db_game_list.append(db_game)
-
-
-            if self.db_sort_criteria:
-                # print self.db_sort_criteria[0].key
-                sort_key = attrgetter(self.db_sort_criteria[0].key)
-                if self.db_sort_criteria[0].key == 'id':
-                    sort_key = lambda v: int(v.id)
-
-                db_game_list = sorted(db_game_list, reverse = not self.db_sort_criteria[0].asc, key=sort_key)
+            db_game_list, game_ids = self.get_game_headers(db_index, pos_hash)
 
             self.db_stat_label.text = "{0} games".format(len(game_ids))
             self.db_adapter.data = db_game_list
