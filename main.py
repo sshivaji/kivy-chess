@@ -579,6 +579,14 @@ class ExtendedGame(chess.pgn.Game):
     def export_ref(self, exporter, comments=True, variations=True, _board=None, _after_variation=False):
         if _board is None:
             _board = self.board()
+        if self.headers:
+            exporter.start_headers()
+            for tagname, tagvalue in self.headers.items():
+                if not tagvalue.startswith("?") and tagvalue!="*":
+                    exporter.write_line('[color=006400]{0}[/color] : {1}'.format(tagname, tagvalue))
+
+                    # exporter.put_header(tagname, tagvalue)
+            exporter.end_headers()
 
         # The mainline move goes first.
         if self.variations:
@@ -807,13 +815,45 @@ class GameControls(BoxLayout):
             # Once expanded to full screen, you no longer have to dismiss the popup
             print e
 
-    def save(self, bt, replace=False):
-        self.app.save('', replace=replace)
-        try:
-            bt.parent.parent.dismiss()
-        except AttributeError, e:
-            # Once expanded to full screen, you no longer have to dismiss the popup
-            print e
+    @staticmethod
+    def add_text_widget(l, txt, label):
+        lay = BoxLayout()
+        lay.add_widget(Label(text=label))
+        lay.add_widget(txt)
+        l.add_widget(lay)
+
+    def save_game_dialog(self, bt, replace=False):
+        def update(bt):
+            for k in self.app.chessboard_root.headers.keys():
+                self.app.chessboard_root.headers[k] = mod_game_headers[k].text
+            self.app.save('', replace=replace)
+            popup.dismiss()
+            self.app.refresh_board(update=True)
+
+        l = BoxLayout(orientation="vertical")
+        bt.parent.parent.dismiss()
+
+        mod_game_headers = {}
+        for k,v in self.app.chessboard_root.headers.iteritems():
+            mod_game_headers[k] = TextInput(text=v)
+            self.add_text_widget(l, mod_game_headers[k], k)
+
+        close_button = Button(markup=True, text="Close", size_hint=(0.1,1))
+        close_button.bind(on_press=update)
+
+        l.add_widget(close_button)
+
+        popup = Popup(title='Save Game', content=l)
+        popup.open()
+
+
+    # def save_game_dialog(self, bt, replace=False):
+    #     self.app.save('', replace=replace)
+    #     try:
+    #         bt.parent.parent.dismiss()
+    #     except AttributeError, e:
+    #         # Once expanded to full screen, you no longer have to dismiss the popup
+    #         print e
 
     def save_games(self, bt):
         self.app.save_games('')
@@ -999,12 +1039,14 @@ class Annotation(BoxLayout):
             # Once expanded to full screen, you no longer have to dismiss the popup
             print e
 
+
     def open_comment_dialog(self, bt):
         def update_comments(comment):
             # print comment.text
             self.app.chessboard.comment = comment_text.text
             popup.dismiss()
             self.app.refresh_board(update=True)
+
 
         l = BoxLayout()
         bt.parent.parent.dismiss()
@@ -1014,7 +1056,19 @@ class Annotation(BoxLayout):
 
         close_button = Button(markup=True, text="Close", size_hint=(0.1,1))
         close_button.bind(on_press=update_comments)
+
         l.add_widget(comment_text)
+
+        # white_text = TextInput(text="White", markup=True, multiline=True, use_bubble = True)
+        # white_text.bind(on_text_validate=update_white)
+        #
+        # white = BoxLayout()
+        # white.add_widget(Label(text='White'))
+        # white.add_widget(white_text)
+        # l.add_widget(white)
+
+        # self.app.gen_uci_menu_item("Name", "Test", l)
+
         l.add_widget(close_button)
 
         popup = Popup(title='Comment', content=l, size_hint=(1, 0.25))

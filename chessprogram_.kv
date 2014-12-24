@@ -110,10 +110,10 @@
                     on_press: root.new(self)
                 ActionButton:
                     text: 'Save Game'
-                    on_press: root.save(self)
+                    on_press: root.save_game_dialog(self)
                 ActionButton:
                     text: 'Replace Game'
-                    on_press: root.save(self, replace=True)
+                    on_press: root.save_game_dialog(self, replace=True)
                 ActionButton:
                     text: 'Export Games'
                     on_press: root.save_games(self)
