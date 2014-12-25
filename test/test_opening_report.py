@@ -21,6 +21,8 @@ import os
 import unittest
 import leveldb
 from leveldict import LevelJsonDict
+from collections import Counter
+
 try:
     from StringIO import StringIO
 except ImportError:
@@ -107,27 +109,33 @@ class OpeningTestCase(unittest.TestCase):
             # print node.move
             # print node.board()
 
-    def test_load_complex_pgn(self):
+    def test_plans_pgn(self):
         # 131563
-
         db = leveldb.LevelDB('book/polyglot_index.db')
         # print db
-        g = self.get_game(db, 1)
-        node = g
-        # print node
-        while node.variations:
-            move = node.move
-            if move:
-                # print move.from_square
-                piece = node.parent.board().piece_type_at(move.from_square)
-                # print piece
-                captured_piece = node.parent.board().piece_type_at(move.to_square) if move else NONE
-                print node.san()
-                print "piece: {0}".format(self.get_piece_str(piece))
+        games = [self.get_game(db, 1), self.get_game(db, 2), self.get_game(db, 3)]
+        maneuver = Counter()
 
-                if captured_piece:
-                    print "captured piece: {0}".format(self.get_piece_str(captured_piece))
+        for node in games:
+            # node = g
+            # print node
+            while node.variations:
+                move = node.move
+                if move:
+                    # print move.from_square
+                    piece = node.parent.board().piece_type_at(move.from_square)
+                    # print piece
+                    captured_piece = node.parent.board().piece_type_at(move.to_square) if move else NONE
+                    maneuver[node.san()] += 1
 
-            node = node.variation(0)
+                    # print node.san()
+                    # print "piece: {0}".format(self.get_piece_str(piece))
+
+                    # if captured_piece:
+                    #     print "captured piece: {0}".format(self.get_piece_str(captured_piece))
+
+                node = node.variation(0)
+
+        print maneuver.most_common(5)
 if __name__ == '__main__':
     unittest.main()
