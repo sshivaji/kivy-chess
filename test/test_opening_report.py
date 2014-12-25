@@ -88,6 +88,25 @@ class OpeningTestCase(unittest.TestCase):
         # games = PgnFile.open_text(lines)
         return games
 
+    def get_piece_str(self, piece):
+        if piece == chess.KING:
+            return "king"
+        elif piece == chess.BISHOP:
+            return "bishop"
+        elif piece == chess.KNIGHT:
+            return "knight"
+        elif piece == chess.ROOK:
+            return "rook"
+        elif piece == chess.QUEEN:
+            return "queen"
+        elif piece == chess.PAWN:
+            return "pawn"
+            # print "\n"
+
+
+            # print node.move
+            # print node.board()
+
     def test_load_complex_pgn(self):
         # 131563
 
@@ -96,13 +115,19 @@ class OpeningTestCase(unittest.TestCase):
         g = self.get_game(db, 1)
         node = g
         # print node
-        while node.variations:              
+        while node.variations:
             move = node.move
-            piece = node.piece_type_at(move.from_square)
-            print piece
+            if move:
+                # print move.from_square
+                piece = node.parent.board().piece_type_at(move.from_square)
+                # print piece
+                captured_piece = node.parent.board().piece_type_at(move.to_square) if move else NONE
+                print node.san()
+                print "piece: {0}".format(self.get_piece_str(piece))
 
-            print node.move
-            # print node.board()
+                if captured_piece:
+                    print "captured piece: {0}".format(self.get_piece_str(captured_piece))
+
             node = node.variation(0)
 if __name__ == '__main__':
     unittest.main()
