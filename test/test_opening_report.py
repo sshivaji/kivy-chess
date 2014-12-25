@@ -37,6 +37,7 @@ DB_HEADER_MAP = {"White": 0, "WhiteElo": 1, "Black": 2,
                  "ECO": 8, INDEX_FILE_POS:9, "FEN":10}
 
 class OpeningTestCase(unittest.TestCase):
+
     def get_game(self, db_index, game_num):
         first = db_index.Get("game_{0}_data".format(game_num)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
         first = int(first)
@@ -105,28 +106,47 @@ class OpeningTestCase(unittest.TestCase):
             return "pawn"
             # print "\n"
 
-
             # print node.move
             # print node.board()
 
     def test_plans_pgn(self):
         # 131563
+
         db = leveldb.LevelDB('book/polyglot_index.db')
+        start_fen = 'rnbqkbnr/ppp2ppp/4p3/3p4/3PP3/8/PPPN1PPP/R1BQKBNR b KQkq - 1 3'
+        b = chess.Bitboard(start_fen)
+        pos_hash = str(b.zobrist_hash())
+
+        game_ids = db.Get(pos_hash).split(',')[:-1]
+
         # print db
-        games = [self.get_game(db, 1), self.get_game(db, 2), self.get_game(db, 3)]
+        games = []
+        for g in game_ids[:10]:
+            games.append(self.get_game(db, int(g)))
         maneuver = Counter()
 
         for node in games:
             # node = g
             # print node
+            start = False
+
             while node.variations:
+
                 move = node.move
                 if move:
                     # print move.from_square
-                    piece = node.parent.board().piece_type_at(move.from_square)
+                    # piece = node.parent.board().piece_type_at(move.from_square)
                     # print piece
-                    captured_piece = node.parent.board().piece_type_at(move.to_square) if move else NONE
-                    maneuver[node.san()] += 1
+                    # captured_piece = node.parent.board().piece_type_at(move.to_square) if move else NONE
+                    # print node.board().fen()
+                    fen = node.board().fen()
+                    if start:
+                        # print node.san()
+                        maneuver[node.san()] += 1
+                    if fen == start_fen:
+                        start = True
+                        # print "start_fen"
+
 
                     # print node.san()
                     # print "piece: {0}".format(self.get_piece_str(piece))
@@ -136,6 +156,6 @@ class OpeningTestCase(unittest.TestCase):
 
                 node = node.variation(0)
 
-        print maneuver.most_common(5)
+        print maneuver.most_common(10)
 if __name__ == '__main__':
     unittest.main()
