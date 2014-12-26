@@ -15,7 +15,9 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from Queue import PriorityQueue
+from Queue import PriorityQueue, Queue
+from Queue import Empty
+
 import chess
 import chess.pgn
 import heapq
@@ -26,6 +28,7 @@ import time
 from leveldict import LevelJsonDict
 from collections import Counter, defaultdict, OrderedDict
 from itertools import islice, izip, tee
+import operator
 
 try:
     from StringIO import StringIO
@@ -40,6 +43,18 @@ DB_HEADER_MAP = {"White": 0, "WhiteElo": 1, "Black": 2,
                  "BlackElo": 3, "Result": 4, "Date": 5, "Event": 6, "Site": 7,
                  "ECO": 8, INDEX_FILE_POS:9, "FEN":10}
 
+class DBSortCriteria(object):
+    def __init__(self, key, rank, asc, **kwargs):
+        self.key = key
+        self.rank = rank
+        self.asc = asc
+
+class DBGame(object):
+    def __init__(self, id, **kwargs):
+        self.id = id
+
+    def __repr__(self):
+        return "{0} {1} - {2} {3} {4} {5} {6}\n".format(self.white, self.whiteelo, self.black, self.blackelo, self.result, self.date, self.site)
 
 class PlanPriorityQueue(PriorityQueue):
     def __init__(self):
@@ -53,9 +68,104 @@ class PlanPriorityQueue(PriorityQueue):
     def get(self, *args, **kwargs):
         _, _, item = PriorityQueue.get(self, *args, **kwargs)
         return item
+    def get_nowait(self, *args, **kwargs):
+        item = PriorityQueue.get_nowait(self, *args, **kwargs)
+        # print item
+        return item
 
 
 class OpeningTestCase(unittest.TestCase):
+
+    def get_game_header(self, db_index, g, header, first_line=False):
+
+        try:
+
+            record = db_index.Get("game_{0}_data".format(g))
+            if header == "ALL":
+                return record
+            text = ""
+            text = record.split("|")[DB_HEADER_MAP[header]]
+            # try:
+            #     j = json.loads(record, "latin-1")
+            #     text = j[header]
+            # except UnicodeDecodeError:
+            #     print record
+            # except ValueError:
+            #     print record
+            #     j = json.loads(repair_json(record), "latin-1")
+            #     text = j[header]
+
+            # text = self.db_index_book.Get("game_{0}_{1}".format(g,header))
+            if first_line:
+#                text = self.pgn_index["game_index_{0}".format(g)][header]
+                if "," in text:
+                    return text.split(",")[0]
+            return text
+#            return self.pgn_index["game_index_{0}".format(g)][header]
+        except KeyError:
+            return "Unknown"
+
+    def get_game_headers(self, db_index, pos_hash, create_headers = False, db_filter_field = None, db_sort_criteria = None):
+        try:
+            game_ids = db_index.Get(pos_hash).split(',')[:-1]
+            # print "frequency: {0}".format(db_index.Get(pos_hash+"_freq"))
+            # print "score: {0}".format(db_index.Get(pos_hash+"_score"))
+            # print "draws: {0}".format(db_index.Get(pos_hash+"_draws"))
+            # print "moves: {0}".format(db_index.Get(pos_hash+"_white_score"))
+
+        except KeyError, e:
+            print "key not found!"
+            game_ids = []
+        db_game_list = []
+        filter_text = []
+        db_operator = ["-", " "]
+        db_text = db_filter_field
+        if db_text:
+            operator_match = False
+            for op in db_operator:
+                if op in db_text:
+                    filter_tokens = db_text.split(op)
+                    for i, f in enumerate(filter_tokens):
+                        filter_tokens[i] = f.strip()
+                    filter_text = filter_tokens
+                    operator_match = True
+                    break
+            if not operator_match:
+                filter_text = [db_text]
+        for i in game_ids:
+            db_game = DBGame(i)
+            record = self.get_game_header(db_index, i, "ALL")
+            tokens = record.split("|")
+            db_game.white = tokens[0]
+            db_game.whiteelo = tokens[1]
+            db_game.black = tokens[2]
+            db_game.blackelo = tokens[3]
+            db_game.result = tokens[4]
+            db_game.date = tokens[5]
+            db_game.event = tokens[6]
+            db_game.site = tokens[7]
+            db_game.eco = tokens[8]
+            if len(filter_text) > 0:
+                match = True
+                # print filter_text
+                for f in filter_text:
+                    if f in db_game.white or f in db_game.black or f in db_game.event or f in db_game.site:
+                        pass
+                    else:
+                        match = False
+                if match:
+                    db_game_list.append(db_game)
+                    # db_game_list.append(db_game)
+            else:
+                db_game_list.append(db_game)
+        if db_sort_criteria:
+            # print self.db_sort_criteria[0].key
+            sort_key = operator.attrgetter(db_sort_criteria[0].key)
+            if db_sort_criteria[0].key == 'id':
+                sort_key = lambda v: int(v.id)
+
+            db_game_list = sorted(db_game_list, reverse=not db_sort_criteria[0].asc, key=sort_key)
+        return db_game_list, game_ids
 
     def get_game(self, db_index, game_num):
         first = db_index.Get("game_{0}_data".format(game_num)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
@@ -136,12 +246,22 @@ class OpeningTestCase(unittest.TestCase):
         b = chess.Bitboard(start_fen)
         pos_hash = str(b.zobrist_hash())
 
-        game_ids = db.Get(pos_hash).split(',')[:-1]
+        # game_ids = db.Get(pos_hash).split(',')[:-1]
+            # def get_game_headers(self, db_index, pos_hash, create_headers = False, db_filter_field = None, db_sort_criteria = None):
+        db_sort_criteria = [DBSortCriteria('whiteelo', 1, True), DBSortCriteria('blackelo', 1, True)]
+        db_sort_criteria = [DBSortCriteria('whiteelo', 1, True)]
+
+        db_sort_criteria[0].asc = False
+        # db_sort_criteria[1].asc = False
+
+        game_list, game_ids = self.get_game_headers(db, pos_hash, db_sort_criteria=db_sort_criteria)
+
 
         # print db
         games = []
-        for g in game_ids[:10]:
-            games.append(self.get_game(db, int(g)))
+        for g in game_list[:50]:
+            # print g
+            games.append(self.get_game(db, int(g.id)))
         moves = defaultdict(Counter)
         # san_set = set()
         games1, games2 = tee(games, 2)
@@ -197,13 +317,14 @@ class OpeningTestCase(unittest.TestCase):
 
         # plans = Counter()
         white_plans_priority = PlanPriorityQueue()
-        black_plans_priority = PriorityQueue(maxsize=5)
+        black_plans_priority = PlanPriorityQueue()
 
         for node in games2:
             white_plans = OrderedDict()
             black_plans = OrderedDict()
             # game_plan_list = []
             # game_plans = Counter()
+            headers = node.headers
             while node.variations:
                 move = node.move
                 if move:
@@ -217,8 +338,8 @@ class OpeningTestCase(unittest.TestCase):
                         black_plans[node.san()] = node.board().fullmove_number
                 node = node.variation(0)
 
-            white_plans_priority.put(white_plans, 1.0/len(white_plans))
-            # black_plans_priority.put(black_plans, 1.0/len(black_plans))
+            white_plans_priority.put((white_plans, headers), 1.0/len(white_plans))
+            black_plans_priority.put((black_plans, headers), 1.0/len(black_plans))
 
 
             # if not plans:
@@ -228,10 +349,26 @@ class OpeningTestCase(unittest.TestCase):
             # print "white_plans: {0}".format(white_plans)
             # print "black_plans: {0}".format(black_plans)
 
+        # print white_plans_priority[:5]
+        # print len(white_plans_priority)
         for i in range(5):
-            print white_plans_priority.get()
-            print "black_plans: "
-            # print black_plans_priority.get()
+            try:
+                white_plan = white_plans_priority.get_nowait()
+                # print white_plan
+                sorted_white_plans = sorted(white_plan[0].items(), key=operator.itemgetter(1))
+                print "white_plans: {0}".format(sorted_white_plans)
+
+            except Empty:
+                break
+
+        for i in range(5):
+            try:
+                black_plan = black_plans_priority.get_nowait()
+                sorted_black_plans = sorted(black_plan[0].items(), key=operator.itemgetter(1))
+                print "black_plans: {0}".format(sorted_black_plans)
+            except Empty:
+                break
+            # print
         # print white_plans_priority.get()
         # print white_plans_priority.get()
 
