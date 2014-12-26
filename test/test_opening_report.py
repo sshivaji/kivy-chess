@@ -15,13 +15,17 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from Queue import PriorityQueue
 import chess
 import chess.pgn
+import heapq
 import os
 import unittest
 import leveldb
+import time
 from leveldict import LevelJsonDict
-from collections import Counter
+from collections import Counter, defaultdict, OrderedDict
+from itertools import islice, izip, tee
 
 try:
     from StringIO import StringIO
@@ -35,6 +39,21 @@ INDEX_FILE_POS = "last_pos"
 DB_HEADER_MAP = {"White": 0, "WhiteElo": 1, "Black": 2,
                  "BlackElo": 3, "Result": 4, "Date": 5, "Event": 6, "Site": 7,
                  "ECO": 8, INDEX_FILE_POS:9, "FEN":10}
+
+
+class PlanPriorityQueue(PriorityQueue):
+    def __init__(self):
+        PriorityQueue.__init__(self)
+        self.counter = 0
+
+    def put(self, item, priority):
+        PriorityQueue.put(self, (priority, self.counter, item))
+        self.counter += 1
+
+    def get(self, *args, **kwargs):
+        _, _, item = PriorityQueue.get(self, *args, **kwargs)
+        return item
+
 
 class OpeningTestCase(unittest.TestCase):
 
@@ -123,15 +142,17 @@ class OpeningTestCase(unittest.TestCase):
         games = []
         for g in game_ids[:10]:
             games.append(self.get_game(db, int(g)))
-        maneuver = Counter()
+        moves = defaultdict(Counter)
+        # san_set = set()
+        games1, games2 = tee(games, 2)
 
-        for node in games:
+        for node in games1:
             # node = g
             # print node
             start = False
-
+            # san_set &= san_set
+            # game_moves = Counter()
             while node.variations:
-
                 move = node.move
                 if move:
                     # print move.from_square
@@ -142,11 +163,11 @@ class OpeningTestCase(unittest.TestCase):
                     fen = node.board().fen()
                     if start:
                         # print node.san()
-                        maneuver[node.san()] += 1
+                        moves[node.board().turn][node.san()] += 1
+
+                        # san_set.add(node.san())
                     if fen == start_fen:
                         start = True
-                        # print "start_fen"
-
 
                     # print node.san()
                     # print "piece: {0}".format(self.get_piece_str(piece))
@@ -155,7 +176,73 @@ class OpeningTestCase(unittest.TestCase):
                     #     print "captured piece: {0}".format(self.get_piece_str(captured_piece))
 
                 node = node.variation(0)
+            # if not moves:
+            #     moves = game_moves
+            # else:
+            #     print moves
+            #     print "game_moves: {0}".format(game_moves)
+            #     moves = moves | game_moves
+            # plans += Counter(izip(san, islice(san, 1, None)))
 
-        print maneuver.most_common(10)
+        # print moves.most_common(5)
+        common_white_moves = moves[chess.BLACK].most_common(15)
+        common_black_moves = moves[chess.WHITE].most_common(15)
+
+        # print common_moves
+        white_common_moves = [item[0] for item in common_white_moves]
+        black_common_moves = [item[0] for item in common_black_moves]
+
+        print "white plans: {0}".format(white_common_moves)
+        print "black plans: {0}".format(black_common_moves)
+
+        # plans = Counter()
+        white_plans_priority = PlanPriorityQueue()
+        black_plans_priority = PriorityQueue(maxsize=5)
+
+        for node in games2:
+            white_plans = OrderedDict()
+            black_plans = OrderedDict()
+            # game_plan_list = []
+            # game_plans = Counter()
+            while node.variations:
+                move = node.move
+                if move:
+                    # print node.san()
+                    if node.san() in white_common_moves:
+                        # print node.san()
+                        # game_plan_list.append(node.san())
+                        # game_plans[node.san()]+=1
+                        white_plans[node.san()] = node.board().fullmove_number
+                    elif node.san() in black_common_moves:
+                        black_plans[node.san()] = node.board().fullmove_number
+                node = node.variation(0)
+
+            white_plans_priority.put(white_plans, 1.0/len(white_plans))
+            # black_plans_priority.put(black_plans, 1.0/len(black_plans))
+
+
+            # if not plans:
+            #     plans = game_plans
+            # else:
+            #     plans = plans | game_plans
+            # print "white_plans: {0}".format(white_plans)
+            # print "black_plans: {0}".format(black_plans)
+
+        for i in range(5):
+            print white_plans_priority.get()
+            print "black_plans: "
+            # print black_plans_priority.get()
+        # print white_plans_priority.get()
+        # print white_plans_priority.get()
+
+        # print white_plans_priority.get()
+
+        # print black_plans_priority.get()
+
+
+        # print plans
+
+        # print san_set
+        # print plans.most_common(5)
 if __name__ == '__main__':
     unittest.main()
