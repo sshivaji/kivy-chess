@@ -9,7 +9,7 @@ import traceback
 import sys
 import random
 from functools import partial
-
+import cPickle
 import kivy
 from kivy.config import ConfigParser
 
@@ -73,6 +73,8 @@ import re
 from uci import UCIEngine
 from Queue import Queue
 from os.path import expanduser
+
+
 
 CLOUD_ENGINE_EXEC = './stockfish'
 THINKING_TIME = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]"
@@ -462,8 +464,9 @@ def read_game(handle, error_handler=_raise):
                 # Found a start variation token.
                 if variation_stack[-1].parent:
                     variation_stack.append(variation_stack[-1].parent)
-
-                    board = copy.deepcopy(board_stack[-1])
+                    board = cPickle.loads(cPickle.dumps(board_stack[-1]))
+                    #board = marshal.loads(marshal.dumps(board_stack[-1]))
+                    #board = copy.deepcopy(board_stack[-1])
                     board.pop()
                     board_stack.append(board)
 
@@ -522,6 +525,8 @@ class ExtendedGameNode(chess.pgn.GameNode):
         self.starting_comment = ""
         self.comment = ""
         self.variations = []
+        self.board_cached = None
+
 
     def board(self):
         """
@@ -529,11 +534,16 @@ class ExtendedGameNode(chess.pgn.GameNode):
 
         Its a copy, so modifying the board will not alter the game.
         """
-        board = self.parent.board()
-        board.push(self.move)
+        if not self.board_cached:
+            self.board_cached = self.parent.board()
+            self.board_cached.push(self.move)
+        _board = cPickle.loads(cPickle.dumps(self.board_cached, -1))
+        #_board = marshal.loads(marshal.dumps(self.board_cached, -1))
+
+        return _board
         # ExtendedGame.positions[str(self.board().zobrist_hash())] = self
 
-        return board
+#        return board
 
     def add_variation(self, move, comment="", starting_comment="", nags=set()):
         """Creates a child node with the given attributes."""
@@ -736,7 +746,10 @@ class StringExporter(object):
 
     def put_move(self, board, move, main_line=True):
         # print "main_line : {0}".format(main_line)
-        _board = copy.deepcopy(board)
+        _board = cPickle.loads(cPickle.dumps(board, -1))
+        #_board = marshal.loads(marshal.dumps(board, -1))
+        
+        #_board = copy.deepcopy(board)
         _board.push(move)
         san = board.san(move)
         move_string = u"[ref={0}][size={1}] {2} [/size][/ref]".format(_board.zobrist_hash(), 18, ChessProgram_app.convert_san_to_figurine(san))
@@ -2030,7 +2043,7 @@ class ChessProgram_app(App):
                     else:
                         position_stats[m['fen']] = {'freq' : 1, 'fen': m['fen'], 'hash': str(h)}
                     self.add_try_variation(m['move'])
-                    sleep(0.05)
+                    sleep(0.01)
 
             else:
                 # print "phase 2.."
@@ -3636,7 +3649,7 @@ class ChessProgram_app(App):
     @staticmethod
     def sf_stop():
         sf.stop()
-        sleep(0.05)
+        sleep(0.01)
 
     def stop_engine(self):
         self.sf_stop()
@@ -4078,7 +4091,7 @@ class ChessProgram_app(App):
                                 else:
                                     output.children[0].text = external_engine_output
             else:
-                sleep(0.05)
+                sleep(0.01)
 
     def parse_analysis(self, line, figurine=True, raw=False):
         out_scores = self.parse_score(line, figurine=figurine, raw=raw)
