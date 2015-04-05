@@ -3286,7 +3286,7 @@ class ChessProgram_app(App):
 
         def update_fen(self, fen):
             fen += " {0} KQkq - 0 1".format(self.setup_chessboard.turn)
-            self.setup_chessboard = Position(fen)
+            self.setup_chessboard = chess.Bitboard(fen)
 
         def render_setup_board(bt):
             if bt.text == "Clear":
@@ -3328,8 +3328,13 @@ class ChessProgram_app(App):
             if not can_castle:
                 castling_fen = '-'
 
+            # print "castling_fen: {0}".format(castling_fen)
+            # print "old_fen: {0}".format(fen)
             # TODO: Support fen positions where castling is not possible even if king and rook are on right squares
-            fen = fen.replace("KQkq", castling_fen)
+            fen = fen.replace("-", castling_fen, 1)
+            # print "new fen: {0}".format(fen)
+
+            self.setup_chessboard = chess.Bitboard(fen)
             if self.process_fen(fen):
                 self.refresh_board()
                 self.root.current = 'main'
