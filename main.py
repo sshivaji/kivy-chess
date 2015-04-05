@@ -3284,6 +3284,10 @@ class ChessProgram_app(App):
                 # print "white to move"
                 self.setup_chessboard.turn = 'w'
 
+        def update_fen(self, fen):
+            fen += " {0} KQkq - 0 1".format(self.setup_chessboard.turn)
+            self.setup_chessboard = Position(fen)
+
         def render_setup_board(bt):
             if bt.text == "Clear":
                 self.setup_chessboard.clear()
@@ -3291,11 +3295,12 @@ class ChessProgram_app(App):
             elif bt.text == "DGT":
                 if self.dgt_fen:
                     fen = self.dgt_fen.split()[0]
-                    fen += " {0} KQkq - 0 1".format(self.setup_chessboard.turn)
-                    self.setup_chessboard = Position(fen)
+                    bt.update_fen(fen)
 
             else:
                 self.setup_chessboard = chess.Bitboard()
+                fen = self.setup_chessboard.fen()
+                bt.update(fen)
             self.setup_board._update_position(None, self.setup_chessboard.fen())
 
         def validate_setup_board(value):
