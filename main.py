@@ -4425,9 +4425,13 @@ class ChessProgram_app(App):
             self.last_touch_up_setup = -1
 
         # print "square: {0}".format(square)
+        # print "self.last_touch_down_setup:"
         # print self.last_touch_down_setup
+
+        # print "self.last_touch_up_setup:"
         # print self.last_touch_up_setup
-        if self.last_touch_up_setup and self.last_touch_down_setup and self.last_touch_up_setup != self.last_touch_down_setup:
+
+        if self.last_touch_up_setup is not None and self.last_touch_down_setup is not None and self.last_touch_up_setup != self.last_touch_down_setup:
             # print "processing.."
             # print "touch_down_setup:"
             # print self.last_touch_down_setup
