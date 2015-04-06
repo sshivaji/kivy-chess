@@ -3279,10 +3279,10 @@ class ChessProgram_app(App):
         def setup_board_change_tomove(value):
             if value.state == "normal":
                 # print "black to move"
-                self.setup_chessboard.turn = 'b'
+                self.setup_chessboard.turn = chess.BLACK
             else:
                 # print "white to move"
-                self.setup_chessboard.turn = 'w'
+                self.setup_chessboard.turn = chess.WHITE
 
         def update_fen(self, fen):
             fen += " {0} KQkq - 0 1".format(self.setup_chessboard.turn)
@@ -3296,11 +3296,11 @@ class ChessProgram_app(App):
                 if self.dgt_fen:
                     fen = self.dgt_fen.split()[0]
                     bt.update_fen(fen)
-
-            else:
-                self.setup_chessboard = chess.Bitboard()
-                fen = self.setup_chessboard.fen()
-                bt.update(fen)
+            # else:
+            #     print bt.text
+            #     # self.setup_chessboard = chess.Bitboard()
+            #     fen = self.setup_chessboard.fen()
+            #     bt.update_fen(fen)
             self.setup_board._update_position(None, self.setup_chessboard.fen())
 
         def validate_setup_board(value):
