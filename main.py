@@ -680,7 +680,7 @@ class StringExporter(object):
     def __init__(self, columns=80):
         self.lines = []
         self.columns = columns
-        self.current_line = ""
+        self.current_line = u""
 
     def flush_current_line(self):
         if self.current_line:
@@ -690,8 +690,11 @@ class StringExporter(object):
     def write_token(self, token):
         if self.columns is not None and self.columns - len(self.current_line) < len(token):
             self.flush_current_line()
-        self.current_line += token
-
+        # print token
+        try:
+            self.current_line += token
+        except UnicodeDecodeError:
+            pass
     def write_line(self, line=""):
         self.flush_current_line()
         self.lines.append(line.rstrip())
@@ -1820,6 +1823,7 @@ class ChessProgram_app(App):
 
     def load_uci_engine(self, obj, f, mevent):
         uci_engine = self.start_uci_engine(f)
+        # print uci_engine.engine_info
 
         self.gen_uci_menu_item("Name", uci_engine.engine_info['name'], self.other_engine_panel, internal = False)
 
