@@ -681,6 +681,7 @@ class StringExporter(object):
         self.lines = []
         self.columns = columns
         self.current_line = u""
+        self.depth = 0
 
     def flush_current_line(self):
         if self.current_line:
@@ -695,6 +696,7 @@ class StringExporter(object):
             self.current_line += token
         except UnicodeDecodeError:
             pass
+
     def write_line(self, line=""):
         self.flush_current_line()
         self.lines.append(line.rstrip())
@@ -714,14 +716,22 @@ class StringExporter(object):
     def end_headers(self):
         self.write_line()
 
+    def depth_font(self):
+        font_size = 18-self.depth
+        if font_size<11:
+            font_size = 11
+        return font_size
+
     def start_variation(self):
           # if not main_line:
           #   move_string = u"[color=3333ff] " + move_string + u" [/color]"
           #
-        self.write_token("\n    ([color=3333ff]")
+        self.depth+=1
+        self.write_token("\n{0}[size={1}][color=3333ff]".format(" "*self.depth*6, self.depth_font()))
 
     def end_variation(self):
-        self.write_token(")[/color]  ")
+        self.depth-=1
+        self.write_token("[/color][/size]\n  ")
 
     def put_starting_comment(self, comment):
         # self.put_comment(comment)
@@ -755,7 +765,7 @@ class StringExporter(object):
         #_board = copy.deepcopy(board)
         _board.push(move)
         san = board.san(move)
-        move_string = u"[ref={0}][size={1}] {2} [/size][/ref]".format(_board.zobrist_hash(), 18, ChessProgram_app.convert_san_to_figurine(san))
+        move_string = u"[ref={0}][size={1}] {2} [/size][/ref]".format(_board.zobrist_hash(), self.depth_font(), ChessProgram_app.convert_san_to_figurine(san))
             # print move_string
         self.write_token(move_string)
         # print "[ref={0}][size={1}] {2} [/size][/ref]".format(_board.zobrist_hash(), 18, board.san(move))
