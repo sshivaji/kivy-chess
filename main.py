@@ -3514,7 +3514,9 @@ class ChessProgram_app(App):
     def get_file_seek_segment(self, file_name, first, second):
         with open(file_name) as f:
             first = int(first)
-
+            if first<0:
+                first = 0
+            # print "first: {0}".format(first)
             f.seek(first)
             line = 1
             lines = []
@@ -3622,10 +3624,13 @@ class ChessProgram_app(App):
         # print g
         # print self.chessboard.headers.headers
         self.chessboard_root = self.chessboard
-        if self.chessboard_root.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
-            self.custom_fen = self.chessboard_root.headers['FEN']
-        else:
-            self.custom_fen = 'startpos'
+        try:
+            if self.chessboard_root.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
+                self.custom_fen = self.chessboard_root.headers['FEN']
+            else:
+                self.custom_fen = 'startpos'
+        except AttributeError:
+            self.custom_fen = 'startpos' # No attribute headers in chessboard_root
 
         self.refresh_board()
         self.loaded_game_num = game_num
