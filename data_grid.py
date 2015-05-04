@@ -80,7 +80,7 @@ class DataGrid(GridLayout):
 
         tmp.halign = cell[1]
         tmp.valign = 'middle'
-        if top_header:
+        if callback and top_header:
             tmp.bind(size=(tmp.setter('text_size')), on_press=callback, on_ref_press=callback)
         else:
             tmp.bind(size=(tmp.setter('text_size')))
@@ -116,8 +116,8 @@ class DataGrid(GridLayout):
                 count_02 = 0
                 for cell in row:
                     cell_text = '[color=000000]' + cell + '[/color]'
-                    tmp = TableCell(text=cell_text, id="Body", size_hint_x=None, size_hint_y=None, height=30, width=10)
-                    tmp.bind(size=(tmp.setter('text_size')), bold=True)
+                    tmp = TableCell(text=cell_text, id="Body", size_hint_x=None, size_hint_y=None, height=30, width=10, bold=True)
+                    tmp.bind(size=(tmp.setter('text_size')))
                     tmp.halign = "center"
                     tmp.valign = "middle"
                     tmp.cell_pos = [count_01, count_02]

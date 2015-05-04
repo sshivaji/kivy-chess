@@ -4498,15 +4498,15 @@ class ChessProgram_app(App):
             self.process_move()
 
     def add_try_variation(self, move):
-        if type(move) is str:
+        if type(move) is str and len(move)==4:
             move = chess.Move.from_uci(move)
-        # print move
-        for v in self.chessboard.variations:
-            # print "variation: {0}".format(v.move)
-            if v.move == move:
-                self.chessboard = v
-                return
-        self.chessboard = self.chessboard.add_variation(move)
+        if type(move) is chess.Move:
+            for v in self.chessboard.variations:
+                # print "variation: {0}".format(v.move)
+                if v.move == move:
+                    self.chessboard = v
+                    return
+            self.chessboard = self.chessboard.add_variation(move)
 
     def update_player_time(self):
         color = chess.WHITE
