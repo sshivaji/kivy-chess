@@ -726,9 +726,11 @@ class StringExporter(object):
           # if not main_line:
           #   move_string = u"[color=3333ff] " + move_string + u" [/color]"
           #
-        self.depth+=1
-        self.write_token("\n{0}[size={1}][color=3333ff]".format(" "*self.depth*6, self.depth_font()))
-
+        self.depth += 1
+        if self.depth == 1:
+            self.write_token("\n{0}[size={1}][color=3333ff]".format(" "*self.depth*6, self.depth_font()))
+        else:
+            self.write_token("\n{0}[size={1}][color=2f4f2f]".format(" "*self.depth*6, self.depth_font()))
     def end_variation(self):
         self.depth-=1
         self.write_token("[/color][/size]\n  ")
