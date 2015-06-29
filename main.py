@@ -2051,7 +2051,7 @@ class ChessProgram_app(App):
                     # print self.chessboard.board().fullmove_number
                     # if m['fen'] in position_fen_cache and self.chessboard.board().fullmove_number
                     h = self.get_polyglot_stats(m['fen'])['hash']
-                    self.go_to_move(None, str(h))
+                    self.go_to_move(None, str(h), update_board=False)
                     # print "move: {0}, fen: {1}".format(m['move'], m['fen'])
                     # position_fen_cache.add(m['fen'])
                     if m['fen'] in position_stats:
@@ -2059,10 +2059,9 @@ class ChessProgram_app(App):
                     else:
                         position_stats[m['fen']] = {'freq' : 1, 'fen': m['fen'], 'hash': str(h)}
                     self.add_try_variation(m['move'])
-                    sleep(0.01)
+                    # sleep(0.01)
 
             else:
-                # print "phase 2.."
                 use_ref_db = self.use_ref_db
                 self.use_ref_db = True
 
@@ -2084,12 +2083,10 @@ class ChessProgram_app(App):
                                 else:
                                     black_players = {g.black : 1}
 
-                                g = self.get_game_from_index(self.ref_db_index_book, int(g.id))
-                                for m in g:
-                                    print m
-                                # self.go_to_move(None, m['hash'])
-
-
+                                # g = self.get_game_from_index(self.ref_db_index_book, int(g.id))
+                                # for m in g:
+                                #     print m
+                                # # self.go_to_move(None, m['hash'])
                             # top_white_players = sorted(white_players.values(), key=lambda book_move: int(book_move['freq']), reverse=True)
                             top_white_players = []
                             top_black_players = []
@@ -3403,14 +3400,15 @@ class ChessProgram_app(App):
     def go_to_settings(self, instance):
         self.root.current='settings'
 
-    def go_to_move(self, label, pos_hash):
+    def go_to_move(self, label, pos_hash, update_board=True):
         # print pos_hash
         # print "finding move"
         # print "Current pos hash : {0}".format(ExtendedGame.positions)
         if ExtendedGame.positions.has_key(pos_hash):
             # print "Move found!"
             self.chessboard = ExtendedGame.positions[pos_hash]
-            self.refresh_board(update=False)
+            if update_board:
+                self.refresh_board(update=False)
             return True
         return False
         # pass
