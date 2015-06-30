@@ -52,3 +52,23 @@ class LevelJsonDict(LevelDict):
     def rangescan(self, start=None, end=None):
         for k, v in LevelDict.rangescan(self, start, end):
             yield k, json.loads(v)
+
+class PartitionedLevelDB(object):
+    def __init__(self, path):
+        """Constructor for Partitioned Leveldb access"""
+        self.path = path
+        self.db = leveldb.LevelDB(self.path)
+        self.num_passes = self.db.Get('numPasses')
+
+
+    def get_partitioned(self, key, num=False):
+        out = ''
+        if num:
+            out = 0
+
+        for k,v in self.db.RangeIter(key_from=key+'_p_0', key_to=key+'_p_{0}'.format(self.num_passes)):
+            if num:
+                v = int(v)
+
+            out += v
+        return out
