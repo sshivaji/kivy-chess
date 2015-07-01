@@ -17,13 +17,8 @@ Screenshots
 Techical Information:
 
 To Build
-   1. Download Kivy
-   2. Install and test that kivy works
-   3. The libchess.so library needs to be built, go to https://github.com/sshivaji/python-chess, switch to the pgn branch.
-   4. Then execute "sudo python setup.py install".
-   5. Go to the pyfish tree at https://github.com/jromang/Stockfish/tree/pyfish (switch to branch pyfish), execute "sudo python setup.py install". Eventually pyfish will replace libchess entirely.
-   6. Install leveldb for database functionality, "sudo pip install leveldb"
-   7. Finally, Execute "kivy main.py"
+   1. Run ./install.sh
+   2. Execute ./chesspython/bin/python main.py
 
 To load large databases
    
@@ -31,7 +26,7 @@ To load large databases
    
 To save large database location
 
-   1. Go to the github.com/sshivaji/polyglot project.
+   1. Go to the github.com/sshivaji/polyglot project. Switch to the leveldb branch
    2. Execute ``sudo make install``
    3. Copy/move polyglot leveldb index folder to kivy-chess/book/
  
