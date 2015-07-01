@@ -3049,7 +3049,7 @@ class ChessProgram_app(App):
             from leveldict import LevelJsonDict
             # import leveldb
             # from chess.leveldict import LevelDict
-            self.user_book = LevelJsonDict('book/custom/watson.db')
+            self.user_book = LevelJsonDict('book/custom.db')
             self.ref_db_index_book = leveldb.LevelDB('book/polyglot_index.db')
             self.db_index_book = None
 #            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
