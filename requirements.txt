@@ -3,4 +3,4 @@ pyserial
 boto
 python-dateutil
 leveldb==0.193
-python-chess==0.6.0
+gmpy2

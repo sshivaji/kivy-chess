@@ -1,7 +1,7 @@
 from UserDict import DictMixin
 import leveldb
 import json
-
+import logging
 
 class LevelDict(object, DictMixin):
     """Dict Wrapper around the Google LevelDB Database"""
