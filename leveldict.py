@@ -8,7 +8,10 @@ class LevelDict(object, DictMixin):
     def __init__(self, path):
         """Constructor for LevelDict"""
         self.path = path
-        self.db = leveldb.LevelDB(self.path)
+        try:
+            self.db = leveldb.LevelDB(self.path)
+        except leveldb.LevelDBError:
+            logging.info("leveldb error with jsondict")
 
     def __getitem__(self, key):
         return self.db.Get(key)
