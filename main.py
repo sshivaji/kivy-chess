@@ -1,3 +1,6 @@
+import threading
+import leveldict
+
 try:
     from StringIO import StringIO
 except ImportError:
@@ -1789,14 +1792,16 @@ class ChessProgram_app(App):
         leveldb_path = self.open_create_index(f)
         if leveldb_path:
             self.db_popup.dismiss()
-            self.db_index_book = leveldb.LevelDB(leveldb_path)
+            # self.db_index_book = leveldb.LevelDB(leveldb_path)
+            self.db_index_book = leveldict.PartitionedLevelDB(leveldb_path)
 
     def process_ref_database(self, obj, f, mevent):
         leveldb_path = self.open_create_index(f)
 
         if leveldb_path:
             self.db_popup.dismiss()
-            self.ref_db_index_book = leveldb.LevelDB(leveldb_path)
+            self.ref_db_index_book = leveldict.PartitionedLevelDB(leveldb_path)
+            # self.ref_db_index_book = leveldb.LevelDB(leveldb_path)
 
     def start_uci_engine_thread(self):
         self.uci_engine_thread = Thread(target=self.update_external_engine_output, args=(None,))
@@ -3050,7 +3055,9 @@ class ChessProgram_app(App):
             # import leveldb
             # from chess.leveldict import LevelDict
             self.user_book = LevelJsonDict('book/custom.db')
-            self.ref_db_index_book = leveldb.LevelDB('book/polyglot_index.db')
+            # self.ref_db_index_book = leveldb.LevelDB('book/polyglot_index.db')
+            self.ref_db_index_book = leveldict.PartitionedLevelDB('book/polyglot_index.db')
+
             self.db_index_book = None
 #            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
 
@@ -3548,12 +3555,12 @@ class ChessProgram_app(App):
         return lines
 
     def get_game_seek_positions(self, db_index, game_num):
-        first = db_index.Get("game_{0}_data".format(game_num)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
+        first = db_index.Get("game_{0}_data".format(game_num), regular=True).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
         # if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
         #            second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
         #        second = self.pgn_index["game_index_{0}".format(game_num+1)][INDEX_FILE_POS]
         try:
-            second = db_index.Get("game_{0}_data".format(game_num + 1)).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
+            second = db_index.Get("game_{0}_data".format(game_num + 1), regular=True).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
             second = int(second)
         except KeyError:
             second = None
@@ -3565,7 +3572,7 @@ class ChessProgram_app(App):
             db_index = self.ref_db_index_book
         first, second = self.get_game_seek_positions(db_index, game_num)
 
-        file_name = db_index.Get("pgn_filename")
+        file_name = db_index.Get("pgn_filename", regular=True)
         if not os.path.isfile(file_name):
             file_name = file_name.replace("home", "Users")
 
@@ -4622,9 +4629,10 @@ class ChessProgram_app(App):
         try:
             ref_db = self.use_ref_db
             if ref_db:
-                record = self.ref_db_index_book.Get("game_{0}_data".format(g))
+                record = self.ref_db_index_book.Get("game_{0}_data".format(g), regular=True)
             else:
-                record = self.db_index_book.Get("game_{0}_data".format(g))
+                record = self.db_index_book.Get("game_{0}_data".format(g), regular=True)
+            # print "Reocrd: {0}".format(record)
             if header == "ALL":
                 return record
             text = ""
@@ -4651,7 +4659,7 @@ class ChessProgram_app(App):
 
     def get_game_headers(self, db_index, pos_hash, create_headers = False):
         try:
-            game_ids = db_index.Get(pos_hash).split(',')[:-1]
+            game_ids = db_index.Get(pos_hash)
             # print "frequency: {0}".format(db_index.Get(pos_hash+"_freq"))
             # print "score: {0}".format(db_index.Get(pos_hash+"_score"))
             # print "draws: {0}".format(db_index.Get(pos_hash+"_draws"))
@@ -4760,6 +4768,7 @@ class ChessProgram_app(App):
         return {'hash': board.zobrist_hash(), 'fen': board.fen()}
 
     def get_book_stats(self, fen, format=True):
+        # print "Getting book stats!"
         db_index = self.ref_db_index_book
         _board = chess.Bitboard(fen)
         pos_hash = str(_board.zobrist_hash())
@@ -4768,11 +4777,14 @@ class ChessProgram_app(App):
         records = []
         move_list = []
         try:
-            moves = db_index.Get(pos_hash + "_moves").split(',')[:-1]
+            # print "book_pos_hash: {0}".format(pos_hash)
+            moves = db_index.Get(pos_hash + "_moves")
+            # print moves
             for m in moves:
                 mv = int(m)
                 if mv:
                     move = self.get_move_from_int(mv)
+                    # print move
                     if move == "e1h1":
                         move = "e1g1"
                     elif move == "e1a1":
@@ -4796,7 +4808,7 @@ class ChessProgram_app(App):
                 pos_hash = str(self.get_polyglot_stats(fen, move=m.uci)['hash'])
 
                 try:
-                    move_list[i].freq = int(db_index.Get(pos_hash + "_freq"))
+                    move_list[i].freq = int(db_index.Get(pos_hash + "_freq", num=True))
                 except KeyError:
                     move_list[i].freq = 1
             if format:
@@ -4809,17 +4821,20 @@ class ChessProgram_app(App):
                 pos_hash = str(result['hash'])
 
                 try:
-                    m.white_score = int(db_index.Get(pos_hash + "_white_score"))
+                    m.white_score = int(db_index.Get(pos_hash + "_white_score", num=True))
                 except KeyError:
                     m.white_score = 0
                 try:
-                    m.draws = int(db_index.Get(pos_hash + "_draws"))
+                    m.draws = int(db_index.Get(pos_hash + "_draws", num=True))
                 except KeyError:
                     m.draws = 0
 
                 m.losses = (m.freq - m.draws - m.white_score) / 2
                 m.wins = m.losses + m.white_score
-                pct = (m.wins * 1.0 + 0.5 * m.draws) / m.freq * 100.0
+                if m.freq:
+                    pct = (m.wins * 1.0 + 0.5 * m.draws) / m.freq * 100.0
+                else:
+                    pct = 0
                 if format:
                     records.append({'move': str(m.uci), 'san': unicode(self.convert_san_to_figurine(m.san)),
                                 'pct': "{0:.2f}".format(pct), 'freq': locale.format("%d", m.freq, grouping=True),
@@ -5145,7 +5160,11 @@ class ChessProgram_app(App):
             self.variation_dropdown.open(self.b)
 
         self.refresh_engine()
-        self.update_book_panel()
+        # engine_thread = threading.Timer(0, engine.go, [time.uci()])
+            # engine_thread.start()
+        book_thread = threading.Timer(0, self.update_book_panel, [])
+        book_thread.start()
+        # self.update_book_panel()
         if self.dgt_show_next_move and len(self.chessboard.variations)>0:
             self.write_to_dgt(str(self.chessboard.variations[0].move), move=True, beep=False)
         # print self.speak_move_queue

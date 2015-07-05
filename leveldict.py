@@ -63,15 +63,29 @@ class PartitionedLevelDB(object):
         self.db = leveldb.LevelDB(self.path)
         self.num_passes = self.db.Get('numPasses')
 
+    def Get(self, key, regular=False, *args, **kwargs):
+
+        if regular:
+
+            return self.db.Get(key)
+        else:
+            return self.get_partitioned(key, *args, **kwargs)
 
     def get_partitioned(self, key, num=False):
-        out = ''
+        out = set()
         if num:
             out = 0
+        # print key
+
 
         for k,v in self.db.RangeIter(key_from=key+'_p_0', key_to=key+'_p_{0}'.format(self.num_passes)):
             if num:
-                v = int(v)
+                out += int(v)
+            else:
+                for e in v.split(","):
+                    if e:
+                        out.add(e)
 
-            out += v
+            # out += v
+        # print out
         return out
