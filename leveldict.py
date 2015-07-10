@@ -61,8 +61,10 @@ class PartitionedLevelDB(object):
         """Constructor for Partitioned Leveldb access"""
         self.path = path
         self.db = leveldb.LevelDB(self.path)
-        self.num_passes = self.db.Get('numPasses')
-
+        try:
+            self.num_passes = self.db.Get('numPasses')
+        except KeyError:
+            self.num_passes = 0
     def Get(self, key, regular=False, *args, **kwargs):
 
         if regular:
