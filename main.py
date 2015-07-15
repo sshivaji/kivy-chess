@@ -5149,7 +5149,7 @@ class ChessProgram_app(App):
                 # btn = ScrollableLabel('[color=000000][b]%s[/b][/color]' % self.chessboard.comment, font_name='img/CAChess.ttf',
                 #                           font_size=17)
 
-                btn = Button(markup=True, id="comment", font_size=20, text='[color=ffffff]{0}[/color]'.format(self.chessboard.comment), size_hint_y=None, height=100)
+                btn = Button(markup=True, id="comment", font_size=18, text='[color=ffffff]{0}[/color]'.format(self.chessboard.comment), size_hint_y=None, height=200)
                 btn.background_color = get_color_from_hex('#000000')
 
                 # btn.bind(on_release=lambda btn: self.select_variation(btn.id))
