@@ -72,7 +72,6 @@ class BlueButton(Button):
         #     self.background = Rectangle(size_hint=(1,1))
 
 
-
 class ScrollableGrid(ScrollView):
     def __init__(self, table_header, footer, editable, top_level_header=None, callback=None, *args, **kwargs):
         super(ScrollableGrid, self).__init__(**kwargs)

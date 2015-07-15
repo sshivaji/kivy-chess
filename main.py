@@ -4987,9 +4987,9 @@ class ChessProgram_app(App):
             fen = self.chessboard.board().fen()
 
             results = self.get_book_stats(fen)
-
-            for r in results["records"]:
-                self.book_panel.grid.add_row([u"[ref={0}]{1}[/ref]".format(r['move'], r['san']), r['freq'], r['pct'], r['wins'], r['draws'], r['losses']], callback=self.add_book_moves)
+            if "records" in results:
+                for r in results["records"]:
+                    self.book_panel.grid.add_row([u"[ref={0}]{1}[/ref]".format(r['move'], r['san']), r['freq'], r['pct'], r['wins'], r['draws'], r['losses']], callback=self.add_book_moves)
 
             self.book_panel.grid.add_row(["[color=3333ff][ref=add_to_user_book]+White[/ref][/color]",
                                           ("[color=3333ff][ref=%s]Remove[/ref][/color]" % DELETE_FROM_USER_BOOK), '',''], callback=self.add_book_moves_white)
@@ -5142,21 +5142,35 @@ class ChessProgram_app(App):
                 self.game_score.children[0].text = u"[color=000000]{0}[/color]".format(all_moves)
         if self.variation_dropdown:
             self.variation_dropdown.dismiss()
-        if len(self.chessboard.variations) > 1:
+
+        if len(self.chessboard.variations) > 1 or self.chessboard.comment:
             self.variation_dropdown = DropDown()
-            for i,v in enumerate(self.chessboard.variations):
-                                    # san = pos.san(mv)
+            if self.chessboard.comment:
+                # btn = ScrollableLabel('[color=000000][b]%s[/b][/color]' % self.chessboard.comment, font_name='img/CAChess.ttf',
+                #                           font_size=17)
 
-                btn = Button(id=str(i), text='{0}'.format(self.chessboard.board().san(v.move)), size_hint_y=None, height=20)
+                btn = Button(markup=True, id="comment", font_size=20, text='[color=ffffff]{0}[/color]'.format(self.chessboard.comment), size_hint_y=None, height=100)
+                btn.background_color = get_color_from_hex('#000000')
 
-                # for each button, attach a callback that will call the select() method
-                # on the dropdown. We'll pass the text of the button as the data of the
-                # selection.
-                btn.bind(on_release=lambda btn: self.select_variation(btn.id))
+                # btn.bind(on_release=lambda btn: self.select_variation(btn.id))
                 # print i
-
                 # then add the button inside the dropdown
                 self.variation_dropdown.add_widget(btn)
+
+            if len(self.chessboard.variations) > 1:
+                for i,v in enumerate(self.chessboard.variations):
+                                        # san = pos.san(mv)
+
+                    btn = Button(id=str(i), text='{0}'.format(self.chessboard.board().san(v.move)), size_hint_y=None, height=20)
+
+                    # for each button, attach a callback that will call the select() method
+                    # on the dropdown. We'll pass the text of the button as the data of the
+                    # selection.
+                    btn.bind(on_release=lambda btn: self.select_variation(btn.id))
+                    # print i
+
+                    # then add the button inside the dropdown
+                    self.variation_dropdown.add_widget(btn)
             self.variation_dropdown.open(self.b)
 
         self.refresh_engine()
