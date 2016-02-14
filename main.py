@@ -1,4 +1,7 @@
 import threading
+
+from kivy.graphics.instructions import InstructionGroup
+
 import leveldict
 
 try:
@@ -2493,6 +2496,7 @@ class ChessProgram_app(App):
 
         self.ref_db_open_item = SettingItem(panel=board_panel, title="Open Reference Database") #create instance of one item in left side panel
         self.ref_db_open_item.bind(on_release=self.open_database)
+        self.last_highlight=None
 
         database_panel.add_widget(self.db_open_item)
         database_panel.add_widget(self.ref_db_open_item)
@@ -3412,7 +3416,6 @@ class ChessProgram_app(App):
         # print "finding move"
         # print "Current pos hash : {0}".format(ExtendedGame.positions)
         if ExtendedGame.positions.has_key(pos_hash):
-            # print "Move found!"
             self.chessboard = ExtendedGame.positions[pos_hash]
             if update_board:
                 self.refresh_board(update=False)
@@ -5122,6 +5125,19 @@ class ChessProgram_app(App):
             # self.uci_engine.sendFen(self.custom_fen)
             self.start_pos_changed = False
 
+    @staticmethod
+    def get_x(label, ref_x):
+        """ Return the x value of the ref/anchor relative to the canvas """
+        # print(ref_x)
+        return label.center_x - label.texture_size[0] * 0.5 + ref_x
+
+    @staticmethod
+    def get_y(label, ref_y):
+        """ Return the y value of the ref/anchor relative to the canvas """
+        # Note the inversion of direction, as y values start at the top of
+        # the texture and increase downwards
+        return label.center_y + label.texture_size[1] * 0.5 - ref_y
+
     def refresh_board(self, update=True, spoken=False):
         self.grid._update_position(self.chessboard.move, self.chessboard.board().fen())
 
@@ -5140,6 +5156,8 @@ class ChessProgram_app(App):
 
             if all_moves:
                 self.game_score.children[0].text = u"[color=000000]{0}[/color]".format(all_moves)
+                self.game_score.children[0].texture_update()
+
         if self.variation_dropdown:
             self.variation_dropdown.dismiss()
 
@@ -5187,6 +5205,39 @@ class ChessProgram_app(App):
                 for e in self.speak_move_queue:
                     self.speak_move_queue = []
                     os.system("say "+e)
+        current_pos_hash = str(self.chessboard.board().zobrist_hash())
+        if hasattr(self.game_score.label,"refs"):
+            # print ("refs:{0}".format(self.game_score.label.refs))
+            if current_pos_hash in self.game_score.label.refs:
+                # print(self.game_score.label.refs[current_pos_hash][0][0])
+                # print(self.game_score.label.canvas)
+                # if self.last_highlight:
+                    # print (self.game_score.label.canvas.children)
+                    # for i, o in enumerate(self.game_score.label.canvas.children):
+                    #     if type(o) is kivy.graphics.vertex_instructions.Rectangle:
+                    #         self.game_score.label.canvas.remove(o)
+
+                with self.game_score.label.canvas.before:
+                    self.highlight_color = get_color_from_hex('#add8e6')
+
+                    Color(*self.highlight_color)
+                    # print("ref: {0}".format(self.game_score.label.refs[current_pos_hash]))
+                    box = self.game_score.label.refs[current_pos_hash][0]
+
+                    x1, y1, x2, y2 = box
+
+                    # print(highlight.get_group('highlight'))
+                    # self.last_highlight = Rectangle(pos=(self.get_x(self.game_score.label, x1),
+                    #                self.get_y(self.game_score.label, y2)),
+                    #           size=(abs(x2-x1),
+                    #                 abs(y2-y1)))
+                    # self.last_highlight.group='highlight'
+                    # self.game_score.label.canvas.add(r)
+                    #
+                    # self.game_score.label.canvas.remove(r)
+                    # # print (self.last_highlight)
+                    # self.game_score.label.canvas.add(highlight)
+
 
 if __name__ == '__main__':
     ChessProgram_app().run()
