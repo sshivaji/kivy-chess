@@ -27,19 +27,17 @@ class Arrow(InstructionGroup):
         for th in head_angles:
             yield [points[2], points[3], points[2] + head_length * cos(th), points[3] + head_length * sin(th)]
 
+
 class ScrollableLabel(ScrollView):
     def __init__(self, text, ref_callback=None, font_size=13, font_name='DroidSans', *args, **kwargs):
         super(ScrollableLabel, self).__init__(*args, **kwargs)
         with self.canvas.before:
             Color(*get_color_from_hex('#ffffe0'), mode='rgba')
-
-            # Color(0.7, .02, 0.91, mode="hsv")
-            # Color(.69, .93, .93)
             self.background = Rectangle(size_hint=(1,1))
 
-        self.label = Label(text=text, font_size=font_size, font_name=font_name, size_hint_y=None, pos_hint={'x':0.1, 'y':0.1})
+        self.label = Label(text=text, font_size=font_size, font_name=font_name,
+                           size_hint_y=None, pos_hint={'x': 0.1, 'y': 0.1})
         self.label.bind(texture_size=self._set_summary_height, on_ref_press=ref_callback)
-        # self.label.text=text
         self.label.markup=True
 
         self.add_widget(self.label)
@@ -56,20 +54,12 @@ class ScrollableLabel(ScrollView):
         self.background.size = size
         self.label.text_size = (size[0]-50, None)
 
+
 class BlueButton(Button):
     def __init__(self, *args, **kwargs):
         super(Button, self).__init__(*args, **kwargs)
         self.background_down = 'img/background_pressed.png'
         self.background_normal = 'img/background_header.png'
-
-        # self.background_normal =
-        # with self.canvas.before:
-        #     Color(*get_color_from_hex('#ffffe0'), mode='rgba')
-        #     self.color =  (43./255., 153./255., 1.0)
-        #
-        #     # Color(0.7, .02, 0.91, mode="hsv")
-        #     # Color(.69, .93, .93)
-        #     self.background = Rectangle(size_hint=(1,1))
 
 
 class ScrollableGrid(ScrollView):

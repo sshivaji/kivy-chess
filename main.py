@@ -5207,36 +5207,19 @@ class ChessProgram_app(App):
                     os.system("say "+e)
         current_pos_hash = str(self.chessboard.board().zobrist_hash())
         if hasattr(self.game_score.label,"refs"):
-            # print ("refs:{0}".format(self.game_score.label.refs))
             if current_pos_hash in self.game_score.label.refs:
-                # print(self.game_score.label.refs[current_pos_hash][0][0])
-                # print(self.game_score.label.canvas)
-                # if self.last_highlight:
-                    # print (self.game_score.label.canvas.children)
-                    # for i, o in enumerate(self.game_score.label.canvas.children):
-                    #     if type(o) is kivy.graphics.vertex_instructions.Rectangle:
-                    #         self.game_score.label.canvas.remove(o)
-
+                self.game_score.label.canvas.before.clear()
                 with self.game_score.label.canvas.before:
-                    self.highlight_color = get_color_from_hex('#add8e6')
+                    self.highlight_color = get_color_from_hex('#eef7fa')
 
                     Color(*self.highlight_color)
-                    # print("ref: {0}".format(self.game_score.label.refs[current_pos_hash]))
                     box = self.game_score.label.refs[current_pos_hash][0]
-
                     x1, y1, x2, y2 = box
-
-                    # print(highlight.get_group('highlight'))
-                    # self.last_highlight = Rectangle(pos=(self.get_x(self.game_score.label, x1),
-                    #                self.get_y(self.game_score.label, y2)),
-                    #           size=(abs(x2-x1),
-                    #                 abs(y2-y1)))
-                    # self.last_highlight.group='highlight'
-                    # self.game_score.label.canvas.add(r)
-                    #
-                    # self.game_score.label.canvas.remove(r)
-                    # # print (self.last_highlight)
-                    # self.game_score.label.canvas.add(highlight)
+                    self.last_highlight = Rectangle(pos=(self.get_x(self.game_score.label, x1),
+                                   self.get_y(self.game_score.label, y2)),
+                              size=(abs(x2-x1),
+                                    abs(y2-y1)))
+                    self.game_score.scroll_y = self.game_score.convert_distance_to_scroll(x2, y2)
 
 
 if __name__ == '__main__':
