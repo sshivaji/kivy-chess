@@ -65,13 +65,23 @@ class PartitionedLevelDB(object):
             self.num_passes = self.db.Get('numPasses')
         except KeyError:
             self.num_passes = 0
+
     def Get(self, key, regular=False, *args, **kwargs):
-
         if regular:
-
             return self.db.Get(key)
         else:
             return self.get_partitioned(key, *args, **kwargs)
+
+    def extract_games(self, num, out, v):
+        if num:
+            out += int(v)
+        else:
+            for e in v.split(","):
+                if e:
+                    out.add(e)
+
+                    # out += v
+        return out
 
     def get_partitioned(self, key, num=False):
         out = set()
@@ -79,15 +89,12 @@ class PartitionedLevelDB(object):
             out = 0
         # print key
 
+        if self.num_passes:
+            for k,v in self.db.RangeIter(key_from=key+'_p_0', key_to=key+'_p_{0}'.format(self.num_passes)):
+                out = self.extract_games(num, out, v)
+        else:
+            for k,v in self.db.RangeIter(key_from=key, key_to=key):
+                out = self.extract_games(num, out, v)
 
-        for k,v in self.db.RangeIter(key_from=key+'_p_0', key_to=key+'_p_{0}'.format(self.num_passes)):
-            if num:
-                out += int(v)
-            else:
-                for e in v.split(","):
-                    if e:
-                        out.add(e)
-
-            # out += v
         # print out
         return out

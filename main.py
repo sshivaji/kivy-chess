@@ -322,7 +322,8 @@ except ImportError:
 config = ConfigParser()
 
 def _raise(error):
-    raise error
+    pass
+    # raise error
 
 
 def read_game(handle, error_handler=_raise):
@@ -4732,6 +4733,7 @@ class ChessProgram_app(App):
             db_index = self.ref_db_index_book
         else:
             db_index = self.db_index_book
+        # print("db_index_book: {0}".format(self.db_index_book))
         if db_index is not None and self.database_display:
             db_game_list, game_ids = self.get_game_headers(db_index, pos_hash)
 
@@ -5163,17 +5165,17 @@ class ChessProgram_app(App):
 
         if len(self.chessboard.variations) > 1 or self.chessboard.comment:
             self.variation_dropdown = DropDown()
-            if self.chessboard.comment:
-                # btn = ScrollableLabel('[color=000000][b]%s[/b][/color]' % self.chessboard.comment, font_name='img/CAChess.ttf',
-                #                           font_size=17)
-
-                btn = Button(markup=True, id="comment", font_size=18, text='[color=ffffff]{0}[/color]'.format(self.chessboard.comment), size_hint_y=None, height=200)
-                btn.background_color = get_color_from_hex('#000000')
-
-                # btn.bind(on_release=lambda btn: self.select_variation(btn.id))
-                # print i
-                # then add the button inside the dropdown
-                self.variation_dropdown.add_widget(btn)
+            # if self.chessboard.comment:
+            #     # btn = ScrollableLabel('[color=000000][b]%s[/b][/color]' % self.chessboard.comment, font_name='img/CAChess.ttf',
+            #     #                           font_size=17)
+            #
+            #     btn = Button(markup=True, id="comment", font_size=18, text='[color=ffffff]{0}[/color]'.format(self.chessboard.comment), size_hint_y=None, height=200)
+            #     btn.background_color = get_color_from_hex('#000000')
+            #
+            #     # btn.bind(on_release=lambda btn: self.select_variation(btn.id))
+            #     # print i
+            #     # then add the button inside the dropdown
+            #     self.variation_dropdown.add_widget(btn)
 
             if len(self.chessboard.variations) > 1:
                 for i,v in enumerate(self.chessboard.variations):
@@ -5206,6 +5208,7 @@ class ChessProgram_app(App):
                     self.speak_move_queue = []
                     os.system("say "+e)
         current_pos_hash = str(self.chessboard.board().zobrist_hash())
+        # print("current_pos_hash: {0}".format(current_pos_hash))
         if hasattr(self.game_score.label,"refs"):
             if current_pos_hash in self.game_score.label.refs:
                 self.game_score.label.canvas.before.clear()
@@ -5219,7 +5222,11 @@ class ChessProgram_app(App):
                                    self.get_y(self.game_score.label, y2)),
                               size=(abs(x2-x1),
                                     abs(y2-y1)))
-                    self.game_score.scroll_y = self.game_score.convert_distance_to_scroll(x2, y2)
+                    # distance_to_scroll = self.game_score.convert_distance_to_scroll(x2, y2)
+                    # self.game_score.scroll_y+= distance_to_scroll[1]
+                    # self.game_score.scroll_x+= distance_to_scroll[0]
+                    # self.game_score.height= max(self.minimum_height, self.game_score.height)
+
 
 
 if __name__ == '__main__':
