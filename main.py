@@ -5222,9 +5222,18 @@ class ChessProgram_app(App):
                                    self.get_y(self.game_score.label, y2)),
                               size=(abs(x2-x1),
                                     abs(y2-y1)))
-                    # distance_to_scroll = self.game_score.convert_distance_to_scroll(x2, y2)
-                    # self.game_score.scroll_y+= distance_to_scroll[1]
+
+                    # self.game_score.change_position('', (x1,y1))
+
+                    # print("texture_size: {0}".format(self.game_score.label.texture_size))
+                    # print("scroll y: {0}".format(y2/self.game_score.label.height*1.0))
+                    # print("y: {0}, height: {1}".format(y1, self.game_score.label.height))
+                    self.game_score.scroll_y= 1-y1*1.0/self.game_score.label.height
+                    # distance_to_scroll = self.game_score.convert_distance_to_scroll(abs(x1-x2), abs(y1-y2))
+                    # print(self.game_score.label.height)
                     # self.game_score.scroll_x+= distance_to_scroll[0]
+                    # self.game_score.update_from_scroll()
+
                     # self.game_score.height= max(self.minimum_height, self.game_score.height)
 
 
