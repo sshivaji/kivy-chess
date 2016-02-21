@@ -3419,7 +3419,7 @@ class ChessProgram_app(App):
         if ExtendedGame.positions.has_key(pos_hash):
             self.chessboard = ExtendedGame.positions[pos_hash]
             if update_board:
-                self.refresh_board(update=False)
+                self.refresh_board(update=False, highlight=False)
             return True
         return False
         # pass
@@ -5140,7 +5140,7 @@ class ChessProgram_app(App):
         # the texture and increase downwards
         return label.center_y + label.texture_size[1] * 0.5 - ref_y
 
-    def refresh_board(self, update=True, spoken=False):
+    def refresh_board(self, update=True, spoken=False, highlight=True):
         self.grid._update_position(self.chessboard.move, self.chessboard.board().fen())
 
         if self.chessboard.move:
@@ -5207,35 +5207,23 @@ class ChessProgram_app(App):
                 for e in self.speak_move_queue:
                     self.speak_move_queue = []
                     os.system("say "+e)
-        current_pos_hash = str(self.chessboard.board().zobrist_hash())
-        # print("current_pos_hash: {0}".format(current_pos_hash))
-        if hasattr(self.game_score.label,"refs"):
-            if current_pos_hash in self.game_score.label.refs:
-                self.game_score.label.canvas.before.clear()
-                with self.game_score.label.canvas.before:
-                    self.highlight_color = get_color_from_hex('#eef7fa')
+        if highlight:
+            if hasattr(self.game_score.label,"refs"):
+                current_pos_hash = str(self.chessboard.board().zobrist_hash())
+                if current_pos_hash in self.game_score.label.refs:
+                    self.game_score.label.canvas.before.clear()
+                    with self.game_score.label.canvas.before:
+                        self.highlight_color = get_color_from_hex('#eef7fa')
 
-                    Color(*self.highlight_color)
-                    box = self.game_score.label.refs[current_pos_hash][0]
-                    x1, y1, x2, y2 = box
-                    self.last_highlight = Rectangle(pos=(self.get_x(self.game_score.label, x1),
-                                   self.get_y(self.game_score.label, y2)),
-                              size=(abs(x2-x1),
-                                    abs(y2-y1)))
+                        Color(*self.highlight_color)
+                        box = self.game_score.label.refs[current_pos_hash][0]
+                        x1, y1, x2, y2 = box
+                        self.last_highlight = Rectangle(pos=(self.get_x(self.game_score.label, x1),
+                                       self.get_y(self.game_score.label, y2)),
+                                  size=(abs(x2-x1),
+                                        abs(y2-y1)))
 
-                    # self.game_score.change_position('', (x1,y1))
-
-                    # print("texture_size: {0}".format(self.game_score.label.texture_size))
-                    # print("scroll y: {0}".format(y2/self.game_score.label.height*1.0))
-                    # print("y: {0}, height: {1}".format(y1, self.game_score.label.height))
-                    self.game_score.scroll_y= 1-y1*1.0/self.game_score.label.height
-                    # distance_to_scroll = self.game_score.convert_distance_to_scroll(abs(x1-x2), abs(y1-y2))
-                    # print(self.game_score.label.height)
-                    # self.game_score.scroll_x+= distance_to_scroll[0]
-                    # self.game_score.update_from_scroll()
-
-                    # self.game_score.height= max(self.minimum_height, self.game_score.height)
-
+                        self.game_score.scroll_y= 1-y1*1.0/self.game_score.label.height
 
 
 if __name__ == '__main__':

@@ -32,7 +32,7 @@ class ScrollableLabel(ScrollView):
     def __init__(self, text, ref_callback=None, font_size=13, font_name='DroidSans', *args, **kwargs):
         super(ScrollableLabel, self).__init__(*args, **kwargs)
         with self.canvas.before:
-            Color(*get_color_from_hex('#ffffe0'), mode='rgba')
+            Color(*get_color_from_hex('#ffffef'), mode='rgba')
             self.background = Rectangle(size_hint=(1,1))
 
         self.label = Label(text=text, font_size=font_size, font_name=font_name,
