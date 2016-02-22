@@ -2928,7 +2928,11 @@ class ChessProgram_app(App):
         record = self.get_game_header(rec.id, "ALL")
         return self.generate_rows(rec, record)
 
+    def to_window(self, x, y):
+        return [100,100]
+
     def build(self):
+        self.y = None
         self.custom_fen = None
         self.pyfish_fen = 'startpos'
         self.variation_dropdown = None
