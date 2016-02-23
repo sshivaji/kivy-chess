@@ -94,14 +94,12 @@
         ActionView:
             use_separator: True
             ActionPrevious:
-                title: 'Game'
                 with_previous: False
 
             ActionOverflow:
             ActionGroup:
                 id: game_action_group
                 mode: 'spinner'
-                text: 'Game'
                 ActionButton:
                     text: 'Settings'
                     on_press: root.go_to_settings(self)
@@ -112,10 +110,10 @@
                     text: 'Save Game'
                     on_press: root.save_game_dialog(self)
                 ActionButton:
-                    text: 'Replace Game'
+                    text: 'Replace'
                     on_press: root.save_game_dialog(self, replace=True)
                 ActionButton:
-                    text: 'Export Games'
+                    text: 'Export'
                     on_press: root.save_games(self)
 
 <OpeningAnalysisPopup>:
@@ -276,33 +274,36 @@
 
 <EngineControls>:
     ActionBar:
-        size_hint_y: 1
+        size_hint_y: 2
         ActionView:
             use_separator: True
             ActionPrevious:
-                title: 'Engine'
                 with_previous: False
 
             ActionOverflow:
             ActionButton:
-                text: 'Analysis'
+                text: 'Book'
                 on_press: root.toggle_engine(ENGINE_ANALYSIS)
             ActionButton:
+                text: 'Analysis'
+                on_press: root.toggle_engine(ENGINE_ANALYSIS)            
+            ActionGroup:
+                id: opening_action_group
+                mode: 'spinner'
                 text: 'Play'
-                on_press: root.toggle_engine(ENGINE_PLAY)
-
-            ActionButton:
-                text: 'Train'
-                on_press: root.toggle_engine(ENGINE_TRAINING)
-
-            ActionButton:
-                text: 'Review'
-                on_press: root.analyze_game(self)
-
-            ActionButton:
-                text: 'Opening'
-                on_press: root.analyze_opening(self)
-
+                ActionButton:
+                    text: 'Opening'
+                    on_press: root.analyze_opening(self)
+                ActionButton:
+                    text: 'Review'
+                    on_press: root.analyze_game(self)
+                ActionButton:
+                    text: 'Play'
+                    on_press: root.toggle_engine(ENGINE_PLAY)
+                    
+                ActionButton:
+                    text: 'Train'
+                    on_press: root.toggle_engine(ENGINE_TRAINING)
             ActionGroup:
                 id: game_action_group
                 mode: 'spinner'
