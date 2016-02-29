@@ -5218,7 +5218,6 @@ class ChessProgram_app(App):
                     self.game_score.label.canvas.before.clear()
                     with self.game_score.label.canvas.before:
                         self.highlight_color = get_color_from_hex('#eef7fa')
-
                         Color(*self.highlight_color)
                         box = self.game_score.label.refs[current_pos_hash][0]
                         x1, y1, x2, y2 = box
@@ -5226,7 +5225,7 @@ class ChessProgram_app(App):
                                        self.get_y(self.game_score.label, y2)),
                                   size=(abs(x2-x1),
                                         abs(y2-y1)))
-
+                        self.game_score._scroll_y_mouse= 1-y1*1.0/self.game_score.label.height
                         self.game_score.scroll_y= 1-y1*1.0/self.game_score.label.height
 
 
