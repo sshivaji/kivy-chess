@@ -24,7 +24,7 @@
     ActionBar:
         size_hint_y: 1
         ActionView:
-            use_separator: True
+            use_separator: False
             ActionPrevious:
                 title: 'Move'
                 with_previous: False
@@ -72,12 +72,11 @@
         ActionView:
             use_separator: True
             ActionPrevious:
-                title: 'Variation'
                 with_previous: False
             ActionGroup:
                 id: variation_action_group
                 mode: 'normal'
-                text: 'Variation'
+                text: 'Var'
                 ActionButton:
                     text: 'Promote'
                     on_press: root.process_variation('promote', self)
@@ -286,7 +285,7 @@
                 on_press: root.toggle_engine(ENGINE_ANALYSIS)
             ActionButton:
                 text: 'Analysis'
-                on_press: root.toggle_engine(ENGINE_ANALYSIS)            
+                on_press: root.toggle_engine(ENGINE_ANALYSIS)
             ActionGroup:
                 id: opening_action_group
                 mode: 'spinner'
@@ -300,7 +299,7 @@
                 ActionButton:
                     text: 'Play'
                     on_press: root.toggle_engine(ENGINE_PLAY)
-                    
+
                 ActionButton:
                     text: 'Train'
                     on_press: root.toggle_engine(ENGINE_TRAINING)
@@ -315,4 +314,3 @@
                 ActionButton:
                     text: 'Stop Engine'
                     on_press: root.stop_cloud_engine(self)
-

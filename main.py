@@ -770,7 +770,7 @@ class StringExporter(object):
         # print "main_line : {0}".format(main_line)
         _board = cPickle.loads(cPickle.dumps(board, -1))
         #_board = marshal.loads(marshal.dumps(board, -1))
-        
+
         #_board = copy.deepcopy(board)
         _board.push(move)
         san = board.san(move)
@@ -2362,7 +2362,7 @@ class ChessProgram_app(App):
             self.chessboard = ExtendedGame()
         else:
             try:
-                bitboard = chess.Bitboard()
+                bitboard = chess.Board()
                 bitboard.set_fen(fen)
                 if bitboard.status() != chess.STATUS_VALID:
                     # print "invalid fen.."
@@ -3005,7 +3005,7 @@ class ChessProgram_app(App):
         # self.curr_train_eng_score = None
         self.analysis_queue = Queue()
 
-        self.setup_chessboard = chess.Bitboard()
+        self.setup_chessboard = chess.Board()
         self.setup_chessboard.clear()
 
         self.squares = []
@@ -3315,7 +3315,7 @@ class ChessProgram_app(App):
 
         def update_fen(self, fen):
             fen += " {0} KQkq - 0 1".format(self.setup_chessboard.turn)
-            self.setup_chessboard = chess.Bitboard(fen)
+            self.setup_chessboard = chess.Board(fen)
 
         def render_setup_board(bt):
             if bt.text == "Clear":
@@ -3363,7 +3363,7 @@ class ChessProgram_app(App):
             fen = fen.replace("-", castling_fen, 1)
             # print "new fen: {0}".format(fen)
 
-            self.setup_chessboard = chess.Bitboard(fen)
+            self.setup_chessboard = chess.Board(fen)
             if self.process_fen(fen):
                 self.refresh_board()
                 self.root.current = 'main'
@@ -4771,7 +4771,7 @@ class ChessProgram_app(App):
         return _file[fx] + _rank[fy] + _file[tx] + _rank[ty]
 
     def get_polyglot_stats(self, fen, move=None):
-        board = chess.Bitboard(fen=fen)
+        board = chess.Board(fen=fen)
         if move:
             board.push(chess.Move.from_uci(move))
         return {'hash': board.zobrist_hash(), 'fen': board.fen()}
@@ -4779,7 +4779,7 @@ class ChessProgram_app(App):
     def get_book_stats(self, fen, format=True):
         # print "Getting book stats!"
         db_index = self.ref_db_index_book
-        _board = chess.Bitboard(fen)
+        _board = chess.Board(fen)
         pos_hash = str(_board.zobrist_hash())
         # print self.chessboard.board()
         results = {}
@@ -4803,7 +4803,7 @@ class ChessProgram_app(App):
                     elif move == "e8h8":
                         move = "e8g8"
                     try:
-                        bit_board = chess.Bitboard(fen)
+                        bit_board = chess.Board(fen)
                         san = bit_board.san(chess.Move.from_uci(move))
                         move_list.append(ChessMove(move, san))
                     except ValueError:
