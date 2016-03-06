@@ -770,7 +770,7 @@ class StringExporter(object):
         # print "main_line : {0}".format(main_line)
         _board = cPickle.loads(cPickle.dumps(board, -1))
         #_board = marshal.loads(marshal.dumps(board, -1))
-        
+
         #_board = copy.deepcopy(board)
         _board.push(move)
         san = board.san(move)
@@ -5120,7 +5120,7 @@ class ChessProgram_app(App):
                           winc=int(self.time_inc_white * 1000), binc=int(self.time_inc_black * 1000))
         if self.uci_engine:
             self.uci_engine.stop()
-            self.uci_engine.reportMoves(self.chessboard.get_prev_moves())
+            self.uci_engine.reportMoves(self.get_prev_moves(self.chessboard))
             if self.start_pos_changed:
                 self.uci_engine.sendFen(self.pyfish_fen)
                 # self.start_pos_changed = False
