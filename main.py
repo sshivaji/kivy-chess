@@ -1809,7 +1809,9 @@ class ChessProgram_app(App):
 
     def start_uci_engine_thread(self):
         self.uci_engine_thread = Thread(target=self.update_external_engine_output, args=(None,))
+        # self.use_internal_engine = False
         self.uci_engine_thread.daemon = True # thread dies with the program
+
         self.uci_engine_thread.start()
 
     def start_uci_engine(self, f, cloud=False, cloud_hostname=None, cloud_username=None, cloud_private_key_file=None):
@@ -2224,7 +2226,6 @@ class ChessProgram_app(App):
                 curr_eng_score = self.convert_mate_to_score(self.external_engine_raw_scores[0]['score'])
             else:
                 curr_eng_score = self.convert_mate_to_score(self.internal_engine_raw_scores[0]['score'])
-
 
             try:
                 if last_eng_score:
@@ -4130,10 +4131,10 @@ class ChessProgram_app(App):
                                 # print "enternal_output: "
                                 # print external_engine_output
 
-                                if self.use_internal_engine and self.internal_engine_output:
-                                    output.children[0].text = self.internal_engine_output + external_engine_output
-                                else:
-                                    output.children[0].text = external_engine_output
+                                # if self.use_internal_engine and self.internal_engine_output:
+                                    # output.children[0].text = self.internal_engine_output + external_engine_output
+                                # else:
+                                output.children[0].text = external_engine_output
             else:
                 sleep(0.01)
 
@@ -5107,7 +5108,8 @@ class ChessProgram_app(App):
             if self.engine_mode == ENGINE_ANALYSIS:
                 # if self.engine_running:
                 # print self.get_prev_moves(self.chessboard)
-                sf.go(fen=self.pyfish_fen, moves=self.get_prev_moves(self.chessboard), infinite=True)
+                if not self.uci_engine:
+                    sf.go(fen=self.pyfish_fen, moves=self.get_prev_moves(self.chessboard), infinite=True)
                 # print "Started engine"
                 # self.engine_running = True
             elif self.engine_mode == ENGINE_TRAINING:
