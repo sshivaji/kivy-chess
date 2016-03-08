@@ -1855,13 +1855,13 @@ class ChessProgram_app(App):
         self.db_popup.dismiss()
 
     def open_database(self, x):
-        self.fileChooser = fileChooser = FileChooserListView(path='~')
+        self.fileChooser = fileChooser = FileChooserListView(path='.')
         fileChooser.bind(on_submit=self.process_database)
 
         self.open_db_popup()
 
     def open_engine(self, x):
-        self.fileChooser = fileChooser = FileChooserListView(path='~')
+        self.fileChooser = fileChooser = FileChooserListView(path='.')
         fileChooser.bind(on_submit=self.load_uci_engine)
 
         self.open_db_popup('Select a UCI engine executable')
@@ -1873,7 +1873,7 @@ class ChessProgram_app(App):
         self.db_popup.open()
 
     def open_ref_database(self, x):
-        self.fileChooser = fileChooser = FileChooserListView(path='~')
+        self.fileChooser = fileChooser = FileChooserListView(path='.')
         fileChooser.bind(on_submit=self.process_ref_database)
 
         self.open_db_popup()
