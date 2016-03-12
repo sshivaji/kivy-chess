@@ -21,8 +21,8 @@ git checkout leveldb
 cd src
 sudo make install
 cd ../..
-git clone https://github.com/sshivaji/daydreamer
-cd daydreamer
+git clone https://github.com/sshivaji/ctgreader
+cd ctgreader
 sudo make install
 cd ..
 #../chesspython/bin/python setup.py install
