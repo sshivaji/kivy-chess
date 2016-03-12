@@ -28,6 +28,8 @@ from kivy_util import ScrollableLabel
 from kivy_util import ScrollableGrid
 from kivy_util import Arrow
 from kivy_util import BlueButton
+from kivy_util import which
+from kivy_util import run_command
 
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
@@ -67,6 +69,7 @@ from kivy.properties import ListProperty
 
 #from ChessBoard import ChessBoard
 import spur
+import json
 from sets import Set
 import itertools as it
 from operator import attrgetter
@@ -3035,6 +3038,10 @@ class ChessProgram_app(App):
         # Make this an option later
         self.use_tb = False
        # sf.set_option('SyzygyPath', '/Users/shiv/chess/tb/syzygy')
+        self.ctg_reader_cmd = which('ctg_reader')
+        self.ctg_book = None
+        if os.path.isfile('book/book.ctg') and self.ctg_reader_cmd:
+            self.ctg_book = 'book/book.ctg'
 
         self.book_display = True
         self.database_display = False
@@ -3070,8 +3077,6 @@ class ChessProgram_app(App):
 
             self.db_index_book = None
 #            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
-
-
 #            print "Created userbook"
         except ImportError:
             self.user_book = None
@@ -3161,7 +3166,9 @@ class ChessProgram_app(App):
                                          ['Win %', 'center', 'left', 'option', 0.3, 'visible'],
                                          ['Wins', 'center', 'left', 'option', 0.3, 'visible'],
                                          ['Draws', 'center', 'left', 'option', 0.3, 'visible'],
-                                         ['Losses', 'center', 'left', 'option', 0.3, 'visible']],
+                                         ['Losses', 'center', 'left', 'option', 0.3, 'visible'],
+                                         ['Weight', 'center', 'left', 'option', 0.3, 'visible'],
+                                         ],
                                          '',
                                          '',
                                          top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display, no_color=True)
@@ -4777,7 +4784,37 @@ class ChessProgram_app(App):
             board.push(chess.Move.from_uci(move))
         return {'hash': board.zobrist_hash(), 'fen': board.fen()}
 
+    def get_ctg_book_stats(self, fen, format=True):
+        # print(fen)
+        records = []
+        tmp_board = chess.Board(fen)
+        output = run_command(self.ctg_reader_cmd + ' '+self.ctg_book+ ' \"'+fen+'\"')
+        for line in output:
+            j = json.loads(line)
+            # print(j)
+            # {u'perf_score': 358656, u'losses': 12, u'draws': 96, u'nag': 0, u'weight': 10082, u'perf_games': 121, u'wins': 13, u'move': u'a2a4', u'avg_score': 358912, u'note': 37, u'rec': 128, u'avg_games': 121}
+            # tmp_board.push(chess.Move.from_uci(j['move']))
+            # print(tmp_board.pop().san())
+            # print (tmp_board.san(j['move']))
+            san = tmp_board.san(chess.Move.from_uci(j['move']))
+            # print(san)
+
+            pct = (j['wins'] * 1.0 + 0.5 * j['draws']) / (j['perf_games']+0.000000001) * 100.0
+            # print(type(j['weight']))
+
+            records.append({'move': j['move'], 'san': san, 'weight': j['weight'], 'nag': j['nag'],
+                        'pct': "{0:.2f}".format(pct), 'freq': j['perf_games'],
+                        'wins': locale.format("%d", j['wins'], grouping=True),
+                        'draws': locale.format("%d", j['draws'], grouping=True),
+                        'losses': locale.format("%d", j['losses'], grouping=True)})
+
+        records = sorted(records, key=lambda p: p['freq'], reverse = True)
+        # records = filter(record)
+
+        return {"records": records}
+
     def get_book_stats(self, fen, format=True):
+        # print (self.ctg_book)
         # print "Getting book stats!"
         db_index = self.ref_db_index_book
         _board = chess.Board(fen)
@@ -4847,7 +4884,7 @@ class ChessProgram_app(App):
                     pct = 0
                 if format:
                     records.append({'move': str(m.uci), 'san': unicode(self.convert_san_to_figurine(m.san)),
-                                'pct': "{0:.2f}".format(pct), 'freq': locale.format("%d", m.freq, grouping=True),
+                                'pct': "{0:.2f}".format(pct), 'freq': m.freq,
                                 'wins': locale.format("%d", m.wins, grouping=True),
                                 'draws': locale.format("%d", m.draws, grouping=True),
                                 'losses': locale.format("%d", m.losses, grouping=True)})
@@ -4995,11 +5032,15 @@ class ChessProgram_app(App):
             #     db_index = self.ref_db_index_book
             #     print db_index
             fen = self.chessboard.board().fen()
-
-            results = self.get_book_stats(fen)
+            if self.ctg_book:
+                results = self.get_ctg_book_stats(fen)
+            else:
+                results = self.get_book_stats(fen)
             if "records" in results:
                 for r in results["records"]:
-                    self.book_panel.grid.add_row([u"[ref={0}]{1}[/ref]".format(r['move'], r['san']), r['freq'], r['pct'], r['wins'], r['draws'], r['losses']], callback=self.add_book_moves)
+                    if not 'weight' in r:
+                        r['weight'] = 0
+                    self.book_panel.grid.add_row([u"[ref={0}]{1}[/ref]".format(r['move'], r['san']), locale.format("%d", r['freq'], grouping=True) , r['pct'], r['wins'], r['draws'], r['losses'], "{0}".format(r['weight'])], callback=self.add_book_moves)
 
             self.book_panel.grid.add_row(["[color=3333ff][ref=add_to_user_book]+White[/ref][/color]",
                                           ("[color=3333ff][ref=%s]Remove[/ref][/color]" % DELETE_FROM_USER_BOOK), '',''], callback=self.add_book_moves_white)
