@@ -273,16 +273,13 @@
 
 <EngineControls>:
     ActionBar:
-        size_hint_y: 2
+        size_hint_y: None
         ActionView:
             use_separator: True
             ActionPrevious:
                 with_previous: False
 
             ActionOverflow:
-            ActionButton:
-                text: 'Book'
-                on_press: root.toggle_engine(ENGINE_ANALYSIS)
             ActionButton:
                 text: 'Analysis'
                 on_press: root.toggle_engine(ENGINE_ANALYSIS)

@@ -55,6 +55,9 @@ from kivy.adapters.listadapter import ListAdapter
 from kivy.uix.listview import ListItemButton, CompositeListItem, ListView
 from kivy.uix.dropdown import DropDown
 from kivy.uix.filechooser import FileChooserListView
+from kivy.uix.tabbedpanel import TabbedPanel
+from kivy.uix.tabbedpanel import TabbedPanelHeader
+
 
 from kivy.app import App
 from kivy.uix.widget import Widget
@@ -3157,7 +3160,7 @@ class ChessProgram_app(App):
 
         self.engine_score = ScrollableLabel(ENGINE_HEADER, font_name='img/CAChess.ttf', font_size=17, ref_callback=self.add_eng_moves)
         self.engine_box.add_widget(self.engine_score)
-        self.info_grid.add_widget(self.engine_box)
+        # self.info_grid.add_widget(self.engine_box)
 
         # book_grid = GridLayout(cols = 2, rows = 1, spacing = 1, size_hint=(0.3, 1))
 
@@ -3173,7 +3176,8 @@ class ChessProgram_app(App):
                                          '',
                                          top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display, no_color=True)
 
-        self.info_grid.add_widget(self.book_panel)
+
+        # self.info_grid.add_widget(tp)
         integers_dict = \
         {str(i): {'text': str(i), 'is_selected': False} for i in range(100)}
         # print integers_dict
@@ -3220,6 +3224,8 @@ class ChessProgram_app(App):
         # info_grid.add_widget(book_grid)
 
         # parent.add_widget(Label(size_hint=(0.5,1)))
+
+
         parent.add_widget(self.info_grid)
         grandparent.add_widget(parent)
         database_grid = BoxLayout(size_hint=(1, 0.4), orientation='vertical')
@@ -3277,7 +3283,29 @@ class ChessProgram_app(App):
         database_grid.add_widget(database_controls)
         database_grid.add_widget(database_header)
         database_grid.add_widget(self.database_list_view)
-        grandparent.add_widget(database_grid)
+
+        tp = TabbedPanel(size_hint=(1, 0.4))
+
+
+        th = TabbedPanelHeader(text='Engine')
+        th.content = self.engine_box
+        tp.add_widget(th)  # grandparent.add_widget(database_grid)
+
+        # th = TabbedPanelHeader(text='Book')
+        # th.content = self.book_panel
+        tp.default_tab_text = 'Book'
+        tp.default_tab_content = self.book_panel
+
+        # tp.add_widget(th)
+
+        th = TabbedPanelHeader(text='Database')
+        th.content = database_grid
+        tp.add_widget(th)
+
+        # self.info_grid.add_widget(self.engine_box)
+
+        grandparent.add_widget(tp)
+
         self.refresh_board()
 
         platform = kivy.utils.platform()
