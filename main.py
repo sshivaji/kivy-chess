@@ -3173,8 +3173,7 @@ class ChessProgram_app(App):
                                          ['Weight', 'center', 'left', 'option', 0.3, 'visible'],
                                          ],
                                          '',
-                                         '',
-                                         top_level_header=['Book', 'center', 'center', 'string', 0.4, 'visible'], callback=self.update_book_display, no_color=True)
+                                         '', callback=self.update_book_display, no_color=True)
 
 
         # self.info_grid.add_widget(tp)
@@ -3228,7 +3227,7 @@ class ChessProgram_app(App):
 
         parent.add_widget(self.info_grid)
         grandparent.add_widget(parent)
-        database_grid = BoxLayout(size_hint=(1, 0.4), orientation='vertical')
+        database_grid = BoxLayout(orientation='vertical')
 
         database_controls = BoxLayout(size_hint=(1, 0.25))
         ref_db_label = Button(text=SHOW_REF_GAMES, on_press=self.update_database_display)
