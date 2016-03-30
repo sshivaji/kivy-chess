@@ -3101,7 +3101,7 @@ class ChessProgram_app(App):
         self.update_grid_border(0,0,0)
         Window.bind(on_resize=self.update_grid_border)
 
-        self.b = BoxLayout(size_hint=(0.15, 0.15))
+        self.b = BoxLayout(size_hint=(1, 0.1))
         comment_bt = Annotation(self)
         self.b.add_widget(comment_bt)
 
@@ -3144,7 +3144,7 @@ class ChessProgram_app(App):
         # box.add_widget()
         parent.add_widget(self.grid)
 
-        self.info_grid = GridLayout(cols=1, rows=4, spacing=20, padding=(8, 8), orientation='vertical')
+        self.info_grid = GridLayout(cols=1, rows=2, spacing=10, padding=(8, 8), orientation='vertical')
         self.info_grid.add_widget(self.b)
 
         self.game_score = ScrollableLabel('[color=000000][b]%s[/b][/color]' % GAME_HEADER, font_name='img/CAChess.ttf',
@@ -3174,6 +3174,17 @@ class ChessProgram_app(App):
                                          ],
                                          '',
                                          '', callback=self.update_book_display, no_color=True)
+
+        # CTG book panel fields:
+        # Move (with !, ?, !?..), move color (green, blue or red?)
+        # N (number of games)
+        # % score
+        # Average rating
+        # Performance rating
+        # Extras after what CB has:
+        # %wins
+        # %draws
+        # %losses
 
 
         # self.info_grid.add_widget(tp)
@@ -4932,128 +4943,6 @@ class ChessProgram_app(App):
     def update_book_panel(self, ev=None):
 
         if self.book_display:
-#             user_book_moves_set = set()
-#             # pos_hash = str(self.chessboard.position.__hash__())
-#             pos_hash = str(self.chessboard.board().zobrist_hash())
-#
-#             # print pos_hash
-#             user_book_moves = None
-#             if self.user_book is not None:
-#                 # self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
-#                 #            print "found user_book\n"
-#                 move_text = ""
-#
-#                 if pos_hash in self.user_book:
-# #                    print "found position"
-#     #                print self.user_book[self.chessboard.position.fen]
-#                     user_book_moves = self.user_book[pos_hash]
-#                     # print user_book_moves
-#                     try:
-#                         col = user_book_moves["color"]
-#                     except KeyError:
-#                         print user_book_moves
-#                         col = ["white"]
-#                     color = "bold"
-#                     if "white" in col and "black" not in col:
-#                         color = "3333ff"
-#                     elif "white" in col and "black" in col:
-#                         color = "ff0000"
-#                     # elif "white" not in col and "black" in col:
-#                     #     color = "bold"
-#
-#                     user_book_moves = user_book_moves["moves"]
-#                     # print user_book_moves
-#                     if user_book_moves:
-#                         for m in user_book_moves:
-#                             # print m
-#                             pos = Position(fen)
-#                             move_info = pos.make_move(chess.Move.from_uci(m.encode("utf-8")))
-#                             san = move_info.san
-#                             move_text += "[ref={0}]{1}[/ref]\n".format(m, san)
-#                             user_book_moves_set.add(m)
-#
-#                     if ev is not None:
-#                         j = self.user_book[pos_hash]
-#                         j["eval"] = self.convert_inf_eval_to_int(ev)
-#                         self.user_book[pos_hash] = j
-#                 else:
-#                     # Not found
-#                     #     print "pos not found"
-#                         self.user_book[pos_hash] = {"moves":[], "annotation":"", "color": [],
-#                                                                       "eval":5, "games":[], "misc":""}
-#
-#             p = chess.Bitboard(fen)
-#             # print p
-#             # self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
-#             book_entries = 0
-# #            self.book_panel.grid.remove_all_data_rows()
-#             self.book_panel.reset_grid()
-#             polyglot_entries = list(self.book.get_entries_for_position(p))
-# #            if user_book_moves:
-# #                for m in user_book_moves:
-# #                    print m
-#             for p in polyglot_entries:
-#                 # print p
-#                 # print p.raw_move
-#                 p.in_user_book = False
-# #                print str(p.move)
-# #                print user_book_moves
-#                 if user_book_moves and str(p.move()) in user_book_moves:
-#                     p.in_user_book = True
-#                     user_book_moves_set.remove(str(p.move()))
-#
-#             polyglot_entries = sorted(polyglot_entries, key=lambda p: p.in_user_book, reverse = True)
-#
-#             # print user_book_moves_set
-#             for m in user_book_moves_set:
-#                 try:
-#                     pos = chess.Bitboard(fen)
-#                     move_info = pos.push(chess.Move.from_uci(m.encode("utf-8")))
-#                     san = move_info.san
-#
-#                     # print "color:{0}".format(color)
-#
-#                     if color == "bold":
-#                         self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(m, san), ''], callback=self.add_book_moves)
-#                     else:
-#                         self.book_panel.grid.add_row(["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(m, san, color), ''], callback=self.add_book_moves)
-#
-#                 except Exception, ex:
-#                     raise
-#
-#              # 'key', 'learn', 'move', 'raw_move', 'weight'
-#             for e in polyglot_entries:
-#                 # print e.move
-#                 try:
-#                     pos = chess.Bitboard(fen)
-#                     # print fen
-#                     # move_info = pos.make_move(Move.from_uci(e.move.uci))
-#                     mv = e.move()
-#                     san = pos.san(mv)
-#
-#                     pos.push(mv)
-#
-#
-#                     if e.in_user_book:
-#                         weight = str(e.weight)
-#                         if color == "bold":
-#                             self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(mv, san), weight], callback=self.add_book_moves)
-#                         else:
-#                             self.book_panel.grid.add_row(["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(mv, san, color), weight], callback=self.add_book_moves)
-#                         # self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
-#                     else:
-#                         self.book_panel.grid.add_row(["[ref={0}]{1}[/ref]".format(mv, san), str(e.weight)], callback=self.add_book_moves)
-#                     book_entries += 1
-#                     if book_entries >= 5:
-#                         break
-#                 except Exception, ex:
-#                     raise
-#
-#             # current_eval = self.user_book[pos_hash]["eval"]
-#             current_eval = None
-#             # print "current_eval:"+str(current_eval)
-#             weight = self.convert_int_eval_to_inf(current_eval)
-            # print weight
             self.book_panel.reset_grid()
             # if self.use_ref_db:
             #     db_index = self.ref_db_index_book
@@ -5295,8 +5184,9 @@ class ChessProgram_app(App):
                                        self.get_y(self.game_score.label, y2)),
                                   size=(abs(x2-x1),
                                         abs(y2-y1)))
-                        self.game_score._scroll_y_mouse= 1-y1*1.0/self.game_score.label.height
-                        self.game_score.scroll_y= 1-y1*1.0/self.game_score.label.height
+                        # 1.1 instead of 1 below for text to be more in the middle
+                        self.game_score._scroll_y_mouse= 1-y1*1.1/self.game_score.label.height
+                        self.game_score.scroll_y= 1-y1*1.1/self.game_score.label.height
 
 
 if __name__ == '__main__':
