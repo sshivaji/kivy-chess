@@ -3177,6 +3177,8 @@ class ChessProgram_app(App):
 
         # CTG book panel fields:
         # Move (with !, ?, !?..), move color (green, blue or red?)
+        # Note: 161: !, 131: !!, 37: !?, 34: ?,
+        # rec: 64: dont play in tournaments
         # N (number of games)
         # % score
         # Average rating
@@ -4839,8 +4841,20 @@ class ChessProgram_app(App):
 
             pct = (j['wins'] * 1.0 + 0.5 * j['draws']) / (j['perf_games']+0.000000001) * 100.0
             # print(type(j['weight']))
+            # Note: 161: !, 131: !!, 37: !?, 34: ?,
+            # san = j['move']
+            note = j['note']
 
-            records.append({'move': j['move'], 'san': san, 'weight': j['weight'], 'nag': j['nag'],
+            if note == 161:
+                san+='!'
+            elif note == 131:
+                san+='!!'
+            elif note == 37:
+                san+='!?'
+            elif note == 34:
+                san+='?'
+
+            records.append({'move': j['move'], 'san': san, 'weight': j['weight'],
                         'pct': "{0:.2f}".format(pct), 'freq': j['perf_games'],
                         'wins': locale.format("%d", j['wins'], grouping=True),
                         'draws': locale.format("%d", j['draws'], grouping=True),
