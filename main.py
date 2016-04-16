@@ -1790,9 +1790,18 @@ class ChessProgram_app(App):
             pgn_path = f[0]
             leveldb_path = self.gen_leveldb_path(pgn_path)
             if not os.path.exists(leveldb_path):
-                command = "polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".format(pgn_path, leveldb_path)
+                pgn = open(pgn_path)
+                node = chess.pgn.read_game(pgn)
+                # for el in node:
+                    # print(el)
+
+                while node.variations:
+                    print(node.move)
+                    node = node.variation(0)
+                # print(game)
+                # command = "polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".format(pgn_path, leveldb_path)
                 # print command
-                os.system(command)
+                # os.system(command)
         return leveldb_path
 
     def gen_leveldb_path(self, fname):
@@ -4837,7 +4846,6 @@ class ChessProgram_app(App):
             # print(tmp_board.pop().san())
             # print (tmp_board.san(j['move']))
             san = tmp_board.san(chess.Move.from_uci(j['move']))
-            # print(san)
 
             pct = (j['wins'] * 1.0 + 0.5 * j['draws']) / (j['perf_games']+0.000000001) * 100.0
             # print(type(j['weight']))
