@@ -1791,12 +1791,19 @@ class ChessProgram_app(App):
             leveldb_path = self.gen_leveldb_path(pgn_path)
             if not os.path.exists(leveldb_path):
                 pgn = open(pgn_path)
+                headers = chess.pgn.scan_headers(pgn)
+                for h in headers:
+                    print h
+                pgn = open(pgn_path)
+
                 node = chess.pgn.read_game(pgn)
                 # for el in node:
                     # print(el)
 
                 while node.variations:
                     print(node.move)
+                    board = node.board()
+                    print(board.zobrist_hash())
                     node = node.variation(0)
                 # print(game)
                 # command = "polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".format(pgn_path, leveldb_path)
