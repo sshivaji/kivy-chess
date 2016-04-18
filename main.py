@@ -1864,19 +1864,19 @@ class ChessProgram_app(App):
                             if draw:
                                 position_index[position_hash]['draws'] += 1
                     i+=1
-                    db = leveldict.LevelDict(leveldb_path)
-                    for k,v in game_index.items():
-                        db["game_{0}_data".format(k)] = v
-                    db["total_game_count"] = str(i)
-                    db["pgn_filename"] = pgn_path
-                    db["numPasses"] = "0"
+                db = leveldict.LevelDict(leveldb_path)
+                for k,v in game_index.items():
+                    db["game_{0}_data".format(k)] = v
+                db["total_game_count"] = str(i)
+                db["pgn_filename"] = pgn_path
+                db["numPasses"] = "0"
 
-                    for k,v in position_index.items():
-                        # print (v['game_ids'])
-                        db[k+"_p_0"] = ",".join(v['game_ids'])
-                        db["{0}_moves_p_0".format(k)] = ",".join(v['moves'])
-                        db["{0}_white_score_p_0".format(k)] = str(v['white_score'])
-                        db["{0}_draws_p_0".format(k)] = str(v['draws'])
+                for k,v in position_index.items():
+                    # print (v['game_ids'])
+                    db[k+"_p_0"] = ",".join(v['game_ids'])
+                    db["{0}_moves_p_0".format(k)] = ",".join(v['moves'])
+                    db["{0}_white_score_p_0".format(k)] = str(v['white_score'])
+                    db["{0}_draws_p_0".format(k)] = str(v['draws'])
 
                 # print(position_index)
                 # print(game)

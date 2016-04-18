@@ -12,6 +12,7 @@ class LevelDict(object, DictMixin):
             self.db = leveldb.LevelDB(self.path)
         except leveldb.LevelDBError:
             logging.info("leveldb error with jsondict")
+            raise
 
     def __getitem__(self, key):
         return self.db.Get(key)
