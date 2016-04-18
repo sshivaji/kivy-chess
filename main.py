@@ -1790,21 +1790,80 @@ class ChessProgram_app(App):
             pgn_path = f[0]
             leveldb_path = self.gen_leveldb_path(pgn_path)
             if not os.path.exists(leveldb_path):
+                position_index = {}
                 pgn = open(pgn_path)
                 headers = chess.pgn.scan_headers(pgn)
-                for h in headers:
-                    print h
+                # print(headers)
+                # print [h[1] for h in headers]
+                # for h in headers:
+                    # print h
+#                 [OrderedDict([('Event', 'Asian Team Chp'), ('Site', '?'), ('Date', '2016.03.28'), ('Round', '?'), ('White', 'Aboudi, M.'), ('Black', 'Adhiban, B.
+# '), ('Result', '1/2-1/2'), ('EventDate', '2016.03.28'), ('WhiteElo', '2137'), ('BlackElo', '2663'), ('Annotator', 'Vichovich'), ('PlyCount', '83'
+# )])]
+                for i, h in enumerate(headers):
+                    game_num = i
+                    try:
+                        white_elo = int(h[1]['WhiteElo'])
+                    except:
+                        white_elo = 2400
+                    try:
+                        black_elo = int(h[1]['BlackElo'])
+                    except:
+                        black_elo = 2400
+                    if 'ECO' in h[1]:
+                        eco = h[1]['ECO']
+                    else:
+                        eco = '*'
+                    if 'FEN' in h[1]:
+                        fen = h[1]['FEN']
+                    else:
+                        fen = '*'
+
+                    game_info = "{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}|{10}|{11}|{12}".format(h[1]['White'],white_elo,
+                    h[1]['Black'], black_elo, h[1]['Result'], h[1]['Date'], h[1]['Event'], h[1]['Site'], eco, h[0], fen)
+
                 pgn = open(pgn_path)
 
-                node = chess.pgn.read_game(pgn)
-                # for el in node:
-                    # print(el)
+                # for i, node in enumerate(chess.pgn.read_game(pgn)):
+                i = 0
+                while 1:
+                    node = chess.pgn.read_game(pgn)
+                    if not node:
+                        break
+                # node = chess.pgn.read_game(pgn)
+                # print(node)
+                    result = node.headers["Result"]
+                    draw = False
+                    if result == '1/2-1/2':
+                        result = 0
+                        draw = True
+                    elif result == '1-0':
+                        result = 1
+                    elif result == '0-1':
+                        result = -1
+                    else:
+                        result = 0
 
-                while node.variations:
-                    print(node.move)
-                    board = node.board()
-                    print(board.zobrist_hash())
-                    node = node.variation(0)
+                    while node.variations:
+                        # print(node.move)
+                        board = node.board()
+                        position_hash = str(board.zobrist_hash())
+                        # print(board.zobrist_hash())
+                        node = node.variation(0)
+
+                        if position_hash in position_index:
+                            position_index[position_hash]['n']+=1
+                            position_index[position_hash]['white_score'] += result
+                            if draw:
+                                position_index[position_hash]['draws'] += 1
+                            position_index[position_hash]['moves'].add(node.move.uci())
+                            position_index[position_hash]['game_ids'].append(i)
+                        else:
+                            position_index[position_hash] = {'n': 1, 'white_score': result, 'draws': 0, 'moves':[node.move.uci()], 'game_ids':i}
+                            if draw:
+                                position_index[position_hash]['draws'] += 1
+                        i+=1
+                # print(position_index)
                 # print(game)
                 # command = "polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".format(pgn_path, leveldb_path)
                 # print command
