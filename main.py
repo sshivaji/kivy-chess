@@ -1791,36 +1791,10 @@ class ChessProgram_app(App):
             leveldb_path = self.gen_leveldb_path(pgn_path)
             if not os.path.exists(leveldb_path):
                 position_index = {}
+                game_index = {}
                 pgn = open(pgn_path)
-                headers = chess.pgn.scan_headers(pgn)
-                # print(headers)
-                # print [h[1] for h in headers]
-                # for h in headers:
-                    # print h
-#                 [OrderedDict([('Event', 'Asian Team Chp'), ('Site', '?'), ('Date', '2016.03.28'), ('Round', '?'), ('White', 'Aboudi, M.'), ('Black', 'Adhiban, B.
-# '), ('Result', '1/2-1/2'), ('EventDate', '2016.03.28'), ('WhiteElo', '2137'), ('BlackElo', '2663'), ('Annotator', 'Vichovich'), ('PlyCount', '83'
-# )])]
-                for i, h in enumerate(headers):
-                    game_num = i
-                    try:
-                        white_elo = int(h[1]['WhiteElo'])
-                    except:
-                        white_elo = 2400
-                    try:
-                        black_elo = int(h[1]['BlackElo'])
-                    except:
-                        black_elo = 2400
-                    if 'ECO' in h[1]:
-                        eco = h[1]['ECO']
-                    else:
-                        eco = '*'
-                    if 'FEN' in h[1]:
-                        fen = h[1]['FEN']
-                    else:
-                        fen = '*'
-
-                    game_info = "{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}|{10}|{11}|{12}".format(h[1]['White'],white_elo,
-                    h[1]['Black'], black_elo, h[1]['Result'], h[1]['Date'], h[1]['Event'], h[1]['Site'], eco, h[0], fen)
+                offsets = chess.pgn.scan_offsets(pgn)
+                offset_list = [o for o in offsets]
 
                 pgn = open(pgn_path)
 
@@ -1843,6 +1817,31 @@ class ChessProgram_app(App):
                         result = -1
                     else:
                         result = 0
+                    # print(node.headers)
+
+                    # for i, h in enumerate(headers):
+                    headers = node.headers
+                    game_num = i
+                    try:
+                        white_elo = int(headers['WhiteElo'])
+                    except:
+                        white_elo = 2400
+                    try:
+                        black_elo = int(headers['BlackElo'])
+                    except:
+                        black_elo = 2400
+                    if 'ECO' in headers:
+                        eco = headers['ECO']
+                    else:
+                        eco = '*'
+                    if 'FEN' in headers:
+                        fen = headers['FEN']
+                    else:
+                        fen = '*'
+                    game_info = "{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}|{10}".format(headers['White'],white_elo,
+                    headers['Black'], black_elo, headers['Result'], headers['Date'], headers['Event'], headers['Site'], eco, offset_list[i], fen)
+                    game_index[game_num] = game_info
+                    # print(game_info)
 
                     while node.variations:
                         # print(node.move)
@@ -1857,12 +1856,28 @@ class ChessProgram_app(App):
                             if draw:
                                 position_index[position_hash]['draws'] += 1
                             position_index[position_hash]['moves'].add(node.move.uci())
-                            position_index[position_hash]['game_ids'].append(i)
+                            position_index[position_hash]['game_ids'].append(str(i))
                         else:
-                            position_index[position_hash] = {'n': 1, 'white_score': result, 'draws': 0, 'moves':[node.move.uci()], 'game_ids':i}
+                            position_index[position_hash] = {'n': 1, 'white_score': result, 'draws': 0, 'moves':set(), 'game_ids':[str(i)]}
+                            position_index[position_hash]['moves'].add(node.move.uci())
+
                             if draw:
                                 position_index[position_hash]['draws'] += 1
-                        i+=1
+                    i+=1
+                    db = leveldict.LevelDict(leveldb_path)
+                    for k,v in game_index.items():
+                        db["game_{0}_data".format(k)] = v
+                    db["total_game_count"] = str(i)
+                    db["pgn_filename"] = pgn_path
+                    db["numPasses"] = "0"
+
+                    for k,v in position_index.items():
+                        # print (v['game_ids'])
+                        db[k+"_p_0"] = ",".join(v['game_ids'])
+                        db["{0}_moves_p_0".format(k)] = ",".join(v['moves'])
+                        db["{0}_white_score_p_0".format(k)] = str(v['white_score'])
+                        db["{0}_draws_p_0".format(k)] = str(v['draws'])
+
                 # print(position_index)
                 # print(game)
                 # command = "polyglot make-book -pgn '{0}' -leveldb '{1}' -min-game 1".format(pgn_path, leveldb_path)
