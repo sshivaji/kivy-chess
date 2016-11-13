@@ -5099,24 +5099,34 @@ class ChessProgram_app(App):
             san = san.replace(k, v)
         return san
 
-    def get_prev_moves(self, board, format="raw"):
-        # temp_board = self.chessboard
+    def get_prev_move(self, figurine=True):
+        filler = ''
+        # current turn is toggle from previous
+        # add in a dot if is now white to move
+        if self.chessboard.position.turn == 'w':
+            filler = '.'
+        san = self.chessboard.san
+        if figurine:
+            san = self.convert_san_to_figurine(san)
+        return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
 
-        if board:
-            if format == "raw":
-                move = []
-                if board.move:
-                    move = [str(board.move)]
-
-
-            if board.parent:
-                # print board.parent
-
-                move = self.get_prev_moves(board.parent) + move
-            # print move
-            return move
-
-        return []
+    # def get_prev_moves(self, board, format="raw"):
+    #     # temp_board = self.chessboard
+    #
+    #     if board:
+    #         if format == "raw":
+    #             move = []
+    #             if board.move:
+    #                 move = [str(board.move)]
+    #
+    #         if board.parent:
+    #             # print board.parent
+    #
+    #             move = self.get_prev_moves(board.parent) + move
+    #         # print move
+    #         return move
+    #
+    #     return []
 
 
     # def get_prev_move(self, figurine = True):
@@ -5151,17 +5161,12 @@ class ChessProgram_app(App):
 
         # return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
 
-
     def update_board_position(self, *args):
         if self.game_analysis:
-            self.grid._update_position(self.chessboard.move, self.chessboard.board().fen())
-
-            exporter = StringExporter(columns=None)
-            self.chessboard_root.export_ref(exporter)
-            all_moves = unicode(exporter)
-
+            self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
+            all_moves = self.chessboard_root.game_score(figurine=True)
             if all_moves:
-                self.game_score.children[0].text=u"[color=000000]{0}[/color]".format(all_moves)
+                self.game_score.children[0].text = u"[color=000000]{0}[/color]".format(all_moves)
         else:
             return False
 
@@ -5169,7 +5174,7 @@ class ChessProgram_app(App):
         if self.engine_mode != ENGINE_PLAY:
             self.sf_stop()
         if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
-            self.custom_fen = self.chessboard_root.headers['FEN']
+            self.custom_fen = self.chessboard_root.headers.headers['FEN']
         if self.custom_fen:
             self.pyfish_fen = self.custom_fen
             # sf.position(self.custom_fen, self.chessboard.get_prev_moves())
@@ -5179,22 +5184,20 @@ class ChessProgram_app(App):
         if self.use_internal_engine:
             if self.engine_mode == ENGINE_ANALYSIS:
                 # if self.engine_running:
-                # print self.get_prev_moves(self.chessboard)
-                if not self.uci_engine:
-                    sf.go(fen=self.pyfish_fen, moves=self.get_prev_moves(self.chessboard), infinite=True)
+                sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), infinite=True)
                 # print "Started engine"
                 # self.engine_running = True
             elif self.engine_mode == ENGINE_TRAINING:
                 sf.set_option('skill level', '17')
-                sf.go(fen=self.pyfish_fen, moves=self.get_prev_moves(self.chessboard), depth=15)
+                sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(), depth=15)
             else:
                 if self.engine_mode == ENGINE_PLAY and self.engine_computer_move:
-                    sf.go(fen=self.pyfish_fen, moves=self.get_prev_moves(self.chessboard),
+                    sf.go(fen=self.pyfish_fen, moves=self.chessboard.get_prev_moves(),
                           wtime=int(self.time_white * 1000), btime=int(self.time_black * 1000),
                           winc=int(self.time_inc_white * 1000), binc=int(self.time_inc_black * 1000))
         if self.uci_engine:
             self.uci_engine.stop()
-            self.uci_engine.reportMoves(self.get_prev_moves(self.chessboard))
+            self.uci_engine.reportMoves(self.chessboard.get_prev_moves())
             if self.start_pos_changed:
                 self.uci_engine.sendFen(self.pyfish_fen)
                 # self.start_pos_changed = False
@@ -5204,6 +5207,7 @@ class ChessProgram_app(App):
         if self.start_pos_changed:
             # self.uci_engine.sendFen(self.custom_fen)
             self.start_pos_changed = False
+
 
     @staticmethod
     def get_x(label, ref_x):
@@ -5258,11 +5262,12 @@ class ChessProgram_app(App):
             #     # then add the button inside the dropdown
             #     self.variation_dropdown.add_widget(btn)
 
+
             if len(self.chessboard.variations) > 1:
                 for i,v in enumerate(self.chessboard.variations):
                                         # san = pos.san(mv)
 
-                    btn = Button(id=str(i), text='{0}'.format(self.chessboard.board().san(v.move)), size_hint_y=None, height=20)
+                    btn = Button(id=str(i), text='{0}'.format(v.san), size_hint_y=None, height=20)
 
                     # for each button, attach a callback that will call the select() method
                     # on the dropdown. We'll pass the text of the button as the data of the
