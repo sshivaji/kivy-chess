@@ -86,6 +86,24 @@ from uci import UCIEngine
 from Queue import Queue
 from os.path import expanduser
 
+try:
+    import libchess
+except ImportError:
+    from chess import libchess
+
+from libchess import Position
+# from chess.libchess import SanNotation
+# from chess.libchess import MoveError
+from libchess import Move
+from chess.game import Game
+from chess.game_node import PIECE_FONT_MAP
+from chess import PgnFile
+#from chess import PgnIndex
+from chess.game_node import GameNode
+from chess.game_node import NAG_TO_READABLE_MAP, READABLE_TO_NAG_MAP
+from libchess import Piece
+from libchess import Square
+from chess.game_header_bag import GameHeaderBag
 
 
 CLOUD_ENGINE_EXEC = './stockfish'
@@ -111,8 +129,8 @@ THINKING = "[color=000000][b][size=16]Thinking..[/size][/b][/color]"
 # # from libchess import Square
 # from chess.game_header_bag import GameHeaderBag
 import chess
-import chess.pgn
-import chess.polyglot
+# import chess.pgn
+# import chess.polyglot
 import copy
 import stockfish as sf
 import collections
@@ -376,7 +394,7 @@ def read_game(handle, error_handler=_raise):
 
     Returns the parsed game or `None` if the EOF is reached.
     """
-    game = ExtendedGame()
+    game = Game()
     found_game = False
     found_content = False
 
@@ -530,147 +548,147 @@ class ChessMove(object):
         self.uci = uci
         self.san = san
 
-class ExtendedGameNode(chess.pgn.GameNode):
-    def __init__(self):
-        self.parent = None
-        self.move = None
-        self.nags = set()
-        self.starting_comment = ""
-        self.comment = ""
-        self.variations = []
-        self.board_cached = None
+# class GameNode(chess.pgn.GameNode):
+#     def __init__(self):
+#         self.parent = None
+#         self.move = None
+#         self.nags = set()
+#         self.starting_comment = ""
+#         self.comment = ""
+#         self.variations = []
+#         self.board_cached = None
+#
+#
+#     def board(self):
+#         """
+#         Gets a bitboard with the position of the node.
+#
+#         Its a copy, so modifying the board will not alter the game.
+#         """
+#         if not self.board_cached:
+#             self.board_cached = self.parent.board()
+#             self.board_cached.push(self.move)
+#         _board = cPickle.loads(cPickle.dumps(self.board_cached, -1))
+#         #_board = marshal.loads(marshal.dumps(self.board_cached, -1))
+#
+#         return _board
+#         # Game.positions[str(self.board().zobrist_hash())] = self
+#
+# #        return board
+#
+#     def add_variation(self, move, comment="", starting_comment="", nags=set()):
+#         """Creates a child node with the given attributes."""
+#         node = GameNode()
+#         node.move = move
+#         node.nags = set(nags)
+#         node.parent = self
+#         node.comment = comment
+#         node.starting_comment = starting_comment
+#         self.variations.append(node)
+#
+#         Game.positions[str(node.board().zobrist_hash())] = node
+#         return node
 
-
-    def board(self):
-        """
-        Gets a bitboard with the position of the node.
-
-        Its a copy, so modifying the board will not alter the game.
-        """
-        if not self.board_cached:
-            self.board_cached = self.parent.board()
-            self.board_cached.push(self.move)
-        _board = cPickle.loads(cPickle.dumps(self.board_cached, -1))
-        #_board = marshal.loads(marshal.dumps(self.board_cached, -1))
-
-        return _board
-        # ExtendedGame.positions[str(self.board().zobrist_hash())] = self
-
-#        return board
-
-    def add_variation(self, move, comment="", starting_comment="", nags=set()):
-        """Creates a child node with the given attributes."""
-        node = ExtendedGameNode()
-        node.move = move
-        node.nags = set(nags)
-        node.parent = self
-        node.comment = comment
-        node.starting_comment = starting_comment
-        self.variations.append(node)
-
-        ExtendedGame.positions[str(node.board().zobrist_hash())] = node
-        return node
-
-class ExtendedGame(chess.pgn.Game):
-    def __init__(self):
-        super(chess.pgn.Game, self).__init__()
-
-        self.headers = collections.OrderedDict()
-        self.headers["White"] = "?"
-        self.headers["Black"] = "?"
-        self.headers["Result"] = "*"
-        self.headers["Round"] = "?"
-        self.headers["Event"] = "?"
-        self.headers["Site"] = "?"
-        self.headers["Date"] = "????.??.??"
-
-        ExtendedGame.positions={}
-
-    def add_variation(self, move, comment="", starting_comment="", nags=set()):
-        """Creates a child node with the given attributes."""
-        node = ExtendedGameNode()
-        node.move = move
-        node.nags = set(nags)
-        node.parent = self
-        node.comment = comment
-        node.starting_comment = starting_comment
-        ExtendedGame.positions[str(node.board().zobrist_hash())] = node
-
-        # ExtendedGame.positions[str(self.board().zobrist_hash())] = self
-        self.variations.append(node)
-        return node
-
-    def export_ref(self, exporter, comments=True, variations=True, _board=None, _after_variation=False):
-        if _board is None:
-            _board = self.board()
-        if self.headers:
-            exporter.start_headers()
-            for tagname, tagvalue in self.headers.items():
-                if not tagvalue.startswith("?") and tagvalue!="*":
-                    exporter.write_line('[color=006400]{0}[/color] : {1}'.format(tagname, tagvalue))
-
-                    # exporter.put_header(tagname, tagvalue)
-            exporter.end_headers()
-
-        # The mainline move goes first.
-        if self.variations:
-            main_variation = self.variations[0]
-
-            # Append fullmove number.
-            exporter.put_fullmove_number(_board.turn, _board.fullmove_number, _after_variation)
-
-            # Append SAN.
-            exporter.put_move(_board, main_variation.move)
-
-            if comments:
-                # Append NAGs.
-                exporter.put_nags(main_variation.nags)
-
-                # Append the comment.
-                if main_variation.comment:
-                    exporter.put_comment(main_variation.comment)
-
-        # Then export sidelines.
-        if variations:
-            for variation in it.islice(self.variations, 1, None):
-                # Start variation.
-                exporter.start_variation()
-
-                # Append starting comment.
-                if comments and variation.starting_comment:
-                    exporter.put_starting_comment(variation.starting_comment)
-
-                # Append fullmove number.
-                exporter.put_fullmove_number(_board.turn, _board.fullmove_number, True)
-
-                # Append SAN.
-                exporter.put_move(_board, variation.move, main_line=variation.is_main_variation())
-
-                if comments:
-                    # Append NAGs.
-                    exporter.put_nags(variation.nags)
-
-                    # Append the comment.
-                    if variation.comment:
-                        exporter.put_comment(variation.comment)
-
-                # Recursively append the next moves.
-                _board.push(variation.move)
-                variation.export(exporter, comments, variations, _board, False)
-                _board.pop()
-
-                # End variation.
-                exporter.end_variation()
-
-        # The mainline is continued last.
-        if self.variations:
-            main_variation = self.variations[0]
-
-            # Recursively append the next moves.
-            _board.push(main_variation.move)
-            main_variation.export(exporter, comments, variations, _board, variations and len(self.variations) > 1)
-            _board.pop()
-
+# class Game(chess.pgn.Game):
+#     def __init__(self):
+#         super(chess.pgn.Game, self).__init__()
+#
+#         self.headers = collections.OrderedDict()
+#         self.headers["White"] = "?"
+#         self.headers["Black"] = "?"
+#         self.headers["Result"] = "*"
+#         self.headers["Round"] = "?"
+#         self.headers["Event"] = "?"
+#         self.headers["Site"] = "?"
+#         self.headers["Date"] = "????.??.??"
+#
+#         Game.positions={}
+#
+#     def add_variation(self, move, comment="", starting_comment="", nags=set()):
+#         """Creates a child node with the given attributes."""
+#         node = GameNode()
+#         node.move = move
+#         node.nags = set(nags)
+#         node.parent = self
+#         node.comment = comment
+#         node.starting_comment = starting_comment
+#         Game.positions[str(node.board().zobrist_hash())] = node
+#
+#         # Game.positions[str(self.board().zobrist_hash())] = self
+#         self.variations.append(node)
+#         return node
+#
+#     def export_ref(self, exporter, comments=True, variations=True, _board=None, _after_variation=False):
+#         if _board is None:
+#             _board = self.board()
+#         if self.headers:
+#             exporter.start_headers()
+#             for tagname, tagvalue in self.headers.items():
+#                 if not tagvalue.startswith("?") and tagvalue!="*":
+#                     exporter.write_line('[color=006400]{0}[/color] : {1}'.format(tagname, tagvalue))
+#
+#                     # exporter.put_header(tagname, tagvalue)
+#             exporter.end_headers()
+#
+#         # The mainline move goes first.
+#         if self.variations:
+#             main_variation = self.variations[0]
+#
+#             # Append fullmove number.
+#             exporter.put_fullmove_number(_board.turn, _board.fullmove_number, _after_variation)
+#
+#             # Append SAN.
+#             exporter.put_move(_board, main_variation.move)
+#
+#             if comments:
+#                 # Append NAGs.
+#                 exporter.put_nags(main_variation.nags)
+#
+#                 # Append the comment.
+#                 if main_variation.comment:
+#                     exporter.put_comment(main_variation.comment)
+#
+#         # Then export sidelines.
+#         if variations:
+#             for variation in it.islice(self.variations, 1, None):
+#                 # Start variation.
+#                 exporter.start_variation()
+#
+#                 # Append starting comment.
+#                 if comments and variation.starting_comment:
+#                     exporter.put_starting_comment(variation.starting_comment)
+#
+#                 # Append fullmove number.
+#                 exporter.put_fullmove_number(_board.turn, _board.fullmove_number, True)
+#
+#                 # Append SAN.
+#                 exporter.put_move(_board, variation.move, main_line=variation.is_main_variation())
+#
+#                 if comments:
+#                     # Append NAGs.
+#                     exporter.put_nags(variation.nags)
+#
+#                     # Append the comment.
+#                     if variation.comment:
+#                         exporter.put_comment(variation.comment)
+#
+#                 # Recursively append the next moves.
+#                 _board.push(variation.move)
+#                 variation.export(exporter, comments, variations, _board, False)
+#                 _board.pop()
+#
+#                 # End variation.
+#                 exporter.end_variation()
+#
+#         # The mainline is continued last.
+#         if self.variations:
+#             main_variation = self.variations[0]
+#
+#             # Recursively append the next moves.
+#             _board.push(main_variation.move)
+#             main_variation.export(exporter, comments, variations, _board, variations and len(self.variations) > 1)
+#             _board.pop()
+#
 
 class StringExporter(object):
     """
@@ -767,7 +785,7 @@ class StringExporter(object):
             self.write_token("$" + str(nag) + " ")
 
     def put_fullmove_number(self, turn, fullmove_number, variation_start):
-        if turn == chess.WHITE:
+        if turn == 'w':
             self.write_token(str(fullmove_number) + ".")
         elif variation_start:
             self.write_token(str(fullmove_number) + "... ")
@@ -1135,7 +1153,7 @@ class ChessBoardWidget(Widget):
             # print('ANIMMOVE : ' + anim.move)
             # self.fen = sf.get_fen(self._game.start_position, self._game.moves+[anim.move])
             # self._game.moves.append(anim.move)
-            self.set_position(self.app.chessboard.board().fen())
+            self.set_position(self.app.chessboard.position.fen)
             self.app.process_move(anim.move)
 
             # if self.to_x and self.to_y:
@@ -1149,7 +1167,6 @@ class ChessBoardWidget(Widget):
         else:
             self._moving_piece_from = -1
             self._moving_piece = '.'
-
 
     def _update_position(self, prev_move, fen):
         # print "UPDATING WITH MOVE" + str(fen)
@@ -1370,7 +1387,8 @@ class ChessBoardWidget(Widget):
         # self.highlight_color = (0.5, 0.5, 0.5)
         if 'setup' in kwargs:
             # print self.app
-            self.fen = self.app.chessboard.board().fen()
+
+            self.fen = self.app.chessboard.position.fen
             # print self.fen
             self.setup_board = True
         else:
@@ -1473,6 +1491,7 @@ class ChessBoardWidget(Widget):
 
         return super(ChessBoardWidget, self).on_touch_move(touch)
 
+
     @staticmethod
     def square_name(i):
         return 'abcdefgh'[i % 8] + str(8 - i / 8)
@@ -1512,7 +1531,7 @@ class ChessBoardWidget(Widget):
         # print "move after hint : {0}".format(move)
         if move:
             if move[:2] != self.square_name(square) and move[-2:] != self.square_name(square):
-                print "hint move not applicable"
+                print ("hint move not applicable")
                 return
             if move[:2] == move[-2:]:
                 return
@@ -1521,6 +1540,7 @@ class ChessBoardWidget(Widget):
 
         if move in sf.legal_moves(self.fen):
             # print "legal check"
+            # print("move: {0}".format(move))
             self._moving_piece_pos[0], self._moving_piece_pos[1] = self._to_coordinates(
                 self._moving_piece_from) if self._animate_from_origin else (touch.x - self.square_size / 2, touch.y - self.square_size / 2)
             animation = Animation(_moving_piece_pos=self._to_coordinates(square), duration=0.1, t='in_out_sine')
@@ -1539,7 +1559,6 @@ class ChessBoardWidget(Widget):
                     move = self.square_name(self._moving_piece_from) + self.square_name(square) + button.piece
                     if move in sf.legal_moves(self.fen):
                         # print "Promotion move"
-                        # print move
                         self.app.process_move(move)
                         self.app.hint_move = None
                         # self._game.moves.append(move)
@@ -2023,7 +2042,7 @@ class ChessProgram_app(App):
         curr_eng_score = curr_eng_score.strip()
         if curr_eng_score.startswith('mate'):
             curr_eng_score = 1000
-            if self.chessboard.board().turn == chess.BLACK:
+            if self.chessboard.board().turn == 'b':
                 curr_eng_score *= -1
         curr_eng_score = float(curr_eng_score)
 
@@ -2120,7 +2139,7 @@ class ChessProgram_app(App):
                 # print "init_freq : {0}".format(initial_frequency/100*1.0)
                 # print "m_freq: {0}".format(m['freq'])
                 freq = int(m['freq'])
-                if params['white_rep'] and self.chessboard.board().turn == chess.BLACK or params['black_rep'] and self.chessboard.board().turn == chess.WHITE:
+                if params['white_rep'] and self.chessboard.board().turn == 'b' or params['black_rep'] and self.chessboard.board().turn == 'w':
                     threshold = 1.0
                     second_threshold = 0.65
                 else:
@@ -2456,7 +2475,7 @@ class ChessProgram_app(App):
         fen = fen.strip()
         # print fen
         if fen == INITIAL_BOARD_FEN:
-            self.chessboard = ExtendedGame()
+            self.chessboard = Game()
         else:
             try:
                 bitboard = chess.Board()
@@ -2468,7 +2487,7 @@ class ChessProgram_app(App):
                 # print 'invaild fen'
                 return
             else:
-                g = ExtendedGame()
+                g = Game()
                 g.setup(fen)
 
                 self.chessboard = g
@@ -3039,7 +3058,7 @@ class ChessProgram_app(App):
         self.engine_computer_move = True
         self.computer_move_FEN_reached = False
 
-        self.engine_comp_color = chess.BLACK
+        self.engine_comp_color = 'b'
 
         self.engine_level = '20'
         self.sf_options = {}
@@ -3085,7 +3104,7 @@ class ChessProgram_app(App):
         # games = PgnFile.open("test/french_watson.pgn")
 ##        first_game = games[5]
 #
-        self.chessboard = ExtendedGame()
+        self.chessboard = Game()
         self.chessboard_root = self.chessboard
         self.ponder_move = None
         self.hint_move = None
@@ -3102,8 +3121,8 @@ class ChessProgram_app(App):
         # self.curr_train_eng_score = None
         self.analysis_queue = Queue()
 
-        self.setup_chessboard = chess.Board()
-        self.setup_chessboard.clear()
+        self.setup_chessboard = Position()
+        self.setup_chessboard.clear_board()
 
         self.squares = []
         self.setup_board_squares = []
@@ -3446,10 +3465,10 @@ class ChessProgram_app(App):
         def setup_board_change_tomove(value):
             if value.state == "normal":
                 # print "black to move"
-                self.setup_chessboard.turn = chess.BLACK
+                self.setup_chessboard.turn = 'b'
             else:
                 # print "white to move"
-                self.setup_chessboard.turn = chess.WHITE
+                self.setup_chessboard.turn = 'w'
 
         def update_fen(self, fen):
             fen += " {0} KQkq - 0 1".format(self.setup_chessboard.turn)
@@ -3457,7 +3476,7 @@ class ChessProgram_app(App):
 
         def render_setup_board(bt):
             if bt.text == "Clear":
-                self.setup_chessboard.clear()
+                self.setup_chessboard.clear_board()
 #                clearBoard()
             elif bt.text == "DGT":
                 if self.dgt_fen:
@@ -3557,9 +3576,9 @@ class ChessProgram_app(App):
     def go_to_move(self, label, pos_hash, update_board=True):
         # print pos_hash
         # print "finding move"
-        # print "Current pos hash : {0}".format(ExtendedGame.positions)
-        if ExtendedGame.positions.has_key(pos_hash):
-            self.chessboard = ExtendedGame.positions[pos_hash]
+        # print "Current pos hash : {0}".format(Game.positions)
+        if Game.positions.has_key(pos_hash):
+            self.chessboard = Game.positions[pos_hash]
             if update_board:
                 self.refresh_board(update=False, highlight=False)
             return True
@@ -3775,30 +3794,44 @@ class ChessProgram_app(App):
         g = read_game(pgn)
         return g
 
+    # def load_game_from_index(self, game_num):
+    #     db_index = self.db_index_book
+    #     # games = self.get_game(db_index, game_num)
+    #
+    #     g = self.get_game_from_index(db_index, game_num)
+    #     # print games[0].'White'
+    #     self.chessboard = g
+    #     # print g.headers
+    #     # print games
+    #     # print g
+    #     # print self.chessboard.headers.headers
+    #     self.chessboard_root = self.chessboard
+    #     try:
+    #         if self.chessboard_root.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
+    #             self.custom_fen = self.chessboard_root.headers['FEN']
+    #         else:
+    #             self.custom_fen = 'startpos'
+    #     except AttributeError:
+    #         self.custom_fen = 'startpos' # No attribute headers in chessboard_root
+    #
+    #     self.refresh_board()
+    #     self.loaded_game_num = game_num
+    #
+    #     # self.game_score = games[0]
+
     def load_game_from_index(self, game_num):
         db_index = self.db_index_book
-        # games = self.get_game(db_index, game_num)
-
-        g = self.get_game_from_index(db_index, game_num)
+        games = self.get_game(db_index, game_num)
         # print games[0].'White'
-        self.chessboard = g
-        # print g.headers
-        # print games
-        # print g
+        self.chessboard = games[0]
         # print self.chessboard.headers.headers
         self.chessboard_root = self.chessboard
-        try:
-            if self.chessboard_root.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
-                self.custom_fen = self.chessboard_root.headers['FEN']
-            else:
-                self.custom_fen = 'startpos'
-        except AttributeError:
-            self.custom_fen = 'startpos' # No attribute headers in chessboard_root
+        if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
+            self.custom_fen = self.chessboard_root.headers.headers['FEN']
+        else:
+            self.custom_fen = 'startpos'
 
         self.refresh_board()
-        self.loaded_game_num = game_num
-
-        # self.game_score = games[0]
 
     def add_book_moves_white(self, mv, ref_move = None):
         self.add_book_moves(mv, ref_move=ref_move, color="white")
@@ -3847,18 +3880,18 @@ class ChessProgram_app(App):
     def reset_clock_update(self):
         self.time_last = datetime.datetime.now()
 
-    def time_add_increment(self, color=chess.WHITE):
-        if color == chess.WHITE:
+    def time_add_increment(self, color='w'):
+        if color == 'w':
             self.time_white+=self.time_inc_white
         else:
             self.time_black+=self.time_inc_black
 
-    def update_time(self, color=chess.WHITE):
+    def update_time(self, color='w'):
         current = datetime.datetime.now()
         seconds_elapsed = (current - self.time_last).total_seconds()
 #        print "seconds_elapsed:{0}".format(seconds_elapsed)
         self.time_last = current
-        if color == chess.WHITE:
+        if color == 'w':
             self.time_white-=seconds_elapsed
         else:
             self.time_black-=seconds_elapsed
@@ -3873,7 +3906,7 @@ class ChessProgram_app(App):
         self.time_black = 60
         self.time_inc_black = 3
         # print "color : {0}".format(self.engine_comp_color)
-        if self.engine_comp_color == chess.WHITE:
+        if self.engine_comp_color == 'w':
             # print "engine is white"
             # Swap time allotments if comp is black (comp gets less time)
             self.time_white, self.time_black = self.time_black, self.time_white
@@ -3951,7 +3984,7 @@ class ChessProgram_app(App):
         return True if platform.startswith('mac') else False
 
     def new(self, obj):
-        self.chessboard = ExtendedGame()
+        self.chessboard = Game()
         self.chessboard_root = self.chessboard
         self.custom_fen = 'startpos'
         self.refresh_board(update=True)
@@ -4067,7 +4100,7 @@ class ChessProgram_app(App):
                     print "Cannot convert Mate number of moves to a int"
                     print e
             # print self.chessboard.board().turn
-            if self.chessboard.board().turn == chess.BLACK:
+            if self.chessboard.board().turn == 'b':
                 if score:
                     score *= -1
             if score_type == "mate":
@@ -4177,7 +4210,7 @@ class ChessProgram_app(App):
                 #     variation = self.generate_move_list(move_list, move_num=False)
                 # else:
                 move_number = self.chessboard.board().fullmove_number*2
-                if self.chessboard.board().turn == chess.WHITE:
+                if self.chessboard.board().turn == 'w':
                     move_number -= 1
                 variation = self.generate_move_list(move_list, start_move_num=move_number, eval=str(infos[i]["score"])+"/"+str(infos[i]["depth"]))
 
@@ -4551,16 +4584,12 @@ class ChessProgram_app(App):
             f.close()
             return
 
-
-
     def touch_down_move(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
             return
 
-        # print "touch_move"
-        # print touch
         mv = img.name
-        squares = self.chessboard.board()
+        squares = self.chessboard.position
 
         if squares[mv]:
             self.last_touch_down_move = mv
@@ -4570,135 +4599,97 @@ class ChessProgram_app(App):
             return
             # print "touch_move"
         # print touch
-        # print img.piece
-        # print img.name
-        try:
-            mv = img.name
-            self.piece = img.name
-            self.last_touch_down_setup = mv
-        except AttributeError:
-            square = img._to_square(touch)
-            square_name = img.square_name(square)
-            try:
-                square = chess.SQUARES[getattr(chess, square_name.upper())]
-                # print img.square_name(square)
-                self.last_touch_down_setup = square
-                # print square
-            except AttributeError:
-                self.last_touch_down_setup = -1
+        mv = img.name
+        self.last_touch_down_setup = mv
 
     def touch_up_setup(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
             return
-        try:
-            square = img._to_square(touch)
-            square_name = img.square_name(square)
-            square = chess.SQUARES[getattr(chess, square_name.upper())]
-            # square = img._to_chess_square(square_name)
-            self.last_touch_up_setup = square
-
-        except AttributeError:
-            # Empty square, remove piece
-            self.last_touch_up_setup = -1
-
-        # print "square: {0}".format(square)
-        # print "self.last_touch_down_setup:"
-        # print self.last_touch_down_setup
-
-        # print "self.last_touch_up_setup:"
-        # print self.last_touch_up_setup
-
-        if self.last_touch_up_setup is not None and self.last_touch_down_setup is not None and self.last_touch_up_setup != self.last_touch_down_setup:
-            # print "processing.."
-            # print "touch_down_setup:"
-            # print self.last_touch_down_setup
-#            # print len(self.last_touch_down_setup)
-#             print "touch_up_setup:"
-#             print self.last_touch_up_setup
+        self.last_touch_up_setup = img.name
+        if self.last_touch_up_setup and self.last_touch_down_setup and self.last_touch_up_setup != self.last_touch_down_setup:
+            #            print "touch_down_setup:"
+            #            print self.last_touch_down_setup
+            #            # print len(self.last_touch_down_setup)
+            #            print "touch_up_setup:"
+            #            print self.last_touch_up_setup
             # print len(self.last_touch_up_setup)
-            # print self.last_touch_down_setup
-            # print self.last_touch_up_setup
             try:
-                if type(self.last_touch_down_setup) is int and type(self.last_touch_up_setup) is int and self.last_touch_up_setup > -1:
-                    # sq = Square(self.last_touch_up_setup)
-                    # self.setup_chessboard[sq] = self.setup_chessboard[Square(self.last_touch_down_setup)]
-                    # self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.setup_chessboard[self.last_touch_up_setup])
-                    # del self.setup_chessboard[self.last_touch_down_setup]
-                    # self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)], self.setup_chessboard[self.last_touch_down_setup])
-                    self.setup_chessboard.set_piece_at(self.last_touch_up_setup, self.setup_chessboard.piece_at(self.last_touch_down_setup))
-                    self.setup_chessboard.remove_piece_at(self.last_touch_down_setup)
-                    self.setup_board._update_position(None, self.setup_chessboard.fen())
+                if len(self.last_touch_down_setup) == 1 and len(self.last_touch_up_setup) == 2:
+                    sq = Square(self.last_touch_up_setup)
+                    self.setup_chessboard[sq] = Piece(self.last_touch_down_setup)
+                    self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)],
+                                          self.setup_chessboard[self.last_touch_up_setup])
 
+                elif len(self.last_touch_down_setup) == 2 and len(self.last_touch_up_setup) == 1:
+                    del self.setup_chessboard[self.last_touch_down_setup]
+                    self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)],
+                                          self.setup_chessboard[self.last_touch_down_setup])
 
-                elif type(self.last_touch_down_setup) is int and self.last_touch_up_setup == -1:
-                    # print "removing piece.."
-                    self.setup_chessboard.remove_piece_at(self.last_touch_down_setup)
-                    self.setup_board._update_position(None, self.setup_chessboard.fen())
-
-                elif type(self.last_touch_down_setup) is str and type(self.last_touch_up_setup) is int:
-                    # sq = Square(self.last_touch_up_setup)
-                    if self.last_touch_down_setup == '.':
-                        return
-                    self.setup_chessboard.set_piece_at(self.last_touch_up_setup, chess.Piece.from_symbol(self.last_touch_down_setup))
-                    self.setup_board._update_position(None, self.setup_chessboard.fen())
-
-                    # self.setup_chessboard[self.last_touch_up_setup] = self.last_touch_down_setup
-                    # self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)], self.setup_chessboard[self.last_touch_up_setup])
-
+                elif len(self.last_touch_down_setup) == 2 and len(self.last_touch_up_setup) == 2:
+                    sq = Square(self.last_touch_up_setup)
+                    self.setup_chessboard[sq] = self.setup_chessboard[Square(self.last_touch_down_setup)]
+                    self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_up_setup)],
+                                          self.setup_chessboard[self.last_touch_up_setup])
+                    del self.setup_chessboard[self.last_touch_down_setup]
+                    self.fill_chess_board(self.setup_board_squares[SQUARES.index(self.last_touch_down_setup)],
+                                          self.setup_chessboard[self.last_touch_down_setup])
             except ValueError:
-                return
-            except AttributeError:
                 return
 
     def touch_up_move(self, img, touch):
         if not img.collide_point(touch.x, touch.y):
             return
-        # print "touch_move"
-        # print touch
-#        mv = img.name
+            #        mv = img.name
         self.last_touch_up_move = img.name
         if self.last_touch_up_move and self.last_touch_down_move and self.last_touch_up_move != self.last_touch_down_move:
             self.process_move()
 
     def add_try_variation(self, move):
-        if type(move) is str and len(move)==4:
-            move = chess.Move.from_uci(move)
-        if type(move) is chess.Move:
+        try:
+            if type(move) is str:
+                self.chessboard = self.chessboard.add_variation(Move.from_uci(move))
+            else:
+                self.chessboard = self.chessboard.add_variation(move)
+        except ValueError:
             for v in self.chessboard.variations:
-                # print "variation: {0}".format(v.move)
-                if v.move == move:
+                if str(v.move) == move:
                     self.chessboard = v
-                    return
-            self.chessboard = self.chessboard.add_variation(move)
+
+
+    # def add_try_variation(self, move):
+    #     if type(move) is str and len(move)==4:
+    #         move = chess.Move.from_uci(move)
+    #     if type(move) is chess.Move:
+    #         for v in self.chessboard.variations:
+    #             # print "variation: {0}".format(v.move)
+    #             if v.move == move:
+    #                 self.chessboard = v
+    #                 return
+    #         self.chessboard = self.chessboard.add_variation(move)
 
     def update_player_time(self):
-        color = chess.WHITE
-        if self.engine_comp_color == chess.WHITE:
-            color = chess.BLACK
+        color = 'w'
+        if self.engine_comp_color == 'w':
+            color = 'b'
         self.update_time(color=color)
 
     def update_player_inc(self):
-        color = chess.WHITE
-        if self.engine_comp_color == chess.WHITE:
-            color = chess.BLACK
+        color = 'w'
+        if self.engine_comp_color == 'w':
+            color = 'b'
         self.time_add_increment(color=color)
 
     def is_promotion(self, move):
         from_rank = move[1]
         to_rank = move[3]
         from_sq = move[:2]
-        # print from_sq
 
-        # if move.promotion:
-        #     return True
-        mv = chess.Move.from_uci(move)
-        return mv.promotion
-        # if from_rank == '7' and to_rank == '8' and self.chessboard.board().piece_at(from_sq) == chess.Piece("P"):
-        #     return True
-        # #
-        # if from_rank == '2' and to_rank == '1' and self.chessboard.board().piece_at(from_sq) == chess.Piece("p"):
-        #     return True
-        # return False
+        if from_rank == '7' and to_rank == '8' and self.chessboard.position[Square(from_sq)] == Piece("P"):
+            return True
+
+        if from_rank == '2' and to_rank == '1' and self.chessboard.position[Square(from_sq)] == Piece("p"):
+            return True
+        return False
 
     def add_promotion_info(self, move):
         # Promotion info already present?
@@ -4719,6 +4710,7 @@ class ChessProgram_app(App):
             # print "move:{0}".format(move)
             if self.is_promotion(move):
                 move = self.add_promotion_info(move)
+            # print "move:{0}".format(move)
 
             if self.engine_mode == ENGINE_PLAY:
                 if not self.engine_computer_move:
@@ -4958,8 +4950,12 @@ class ChessProgram_app(App):
         # print (self.ctg_book)
         # print "Getting book stats!"
         db_index = self.ref_db_index_book
-        _board = chess.Board(fen)
-        pos_hash = str(_board.zobrist_hash())
+        # _board = chess.Board(fen)
+        # fen = self.chessboard.position.fen
+
+        # pos_hash = str(_board.zobrist_hash())
+        pos_hash = str(self.chessboard.position.__hash__())
+
         # print self.chessboard.board()
         results = {}
         records = []
@@ -5050,7 +5046,8 @@ class ChessProgram_app(App):
             # if self.use_ref_db:
             #     db_index = self.ref_db_index_book
             #     print db_index
-            fen = self.chessboard.board().fen()
+            # fen = self.chessboard.board().fen()
+            fen = self.chessboard.position.fen
             if self.ctg_book:
                 results = self.get_ctg_book_stats(fen)
             else:
@@ -5122,23 +5119,38 @@ class ChessProgram_app(App):
         return []
 
 
+    # def get_prev_move(self, figurine = True):
+    #     filler = ''
+    #     # current turn is toggle from previous
+    #     # add in a dot if is now white to move
+    #     if self.chessboard.board().turn == 'w':
+    #         filler = '.'
+    #     if self.chessboard.parent:
+    #         san = self.chessboard.san()
+    #         # print san
+    #         if figurine:
+    #             # print san
+    #             san = self.convert_san_to_figurine(san)
+    #         # return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
+    #
+    #         return u"[size=19][color=000000]{0}.{1} {2}[/color][/size]".format(self.chessboard.parent.board().fullmove_number, filler, san)
+    #
+    #     return ' '
+
     def get_prev_move(self, figurine = True):
         filler = ''
         # current turn is toggle from previous
         # add in a dot if is now white to move
-        if self.chessboard.board().turn == chess.WHITE:
+        if self.chessboard.position.turn == 'w':
             filler = '.'
-        if self.chessboard.parent:
-            san = self.chessboard.san()
-            # print san
-            if figurine:
-                # print san
-                san = self.convert_san_to_figurine(san)
-            # return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
+        san = self.chessboard.san
+        if figurine:
+            san = self.convert_san_to_figurine(san)
+        return u"[size=19][color=000000]{0}.{1} {2}[/color][/size]".format(
+            self.chessboard.half_move_num / 2, filler, san)
 
-            return u"[size=19][color=000000]{0}.{1} {2}[/color][/size]".format(self.chessboard.parent.board().fullmove_number, filler, san)
+        # return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
 
-        return ' '
 
     def update_board_position(self, *args):
         if self.game_analysis:
@@ -5156,7 +5168,7 @@ class ChessProgram_app(App):
     def refresh_engine(self):
         if self.engine_mode != ENGINE_PLAY:
             self.sf_stop()
-        if self.chessboard_root.headers.has_key('FEN') and len(self.chessboard_root.headers['FEN']) > 1:
+        if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
             self.custom_fen = self.chessboard_root.headers['FEN']
         if self.custom_fen:
             self.pyfish_fen = self.custom_fen
@@ -5207,7 +5219,7 @@ class ChessProgram_app(App):
         return label.center_y + label.texture_size[1] * 0.5 - ref_y
 
     def refresh_board(self, update=True, spoken=False, highlight=True):
-        self.grid._update_position(self.chessboard.move, self.chessboard.board().fen())
+        self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
 
         if self.chessboard.move:
             self.prev_move.text = self.get_prev_move()
@@ -5217,13 +5229,16 @@ class ChessProgram_app(App):
             #     self.prev_move.text += ' ' + NAG_TO_READABLE_MAP[self.chessboard.evaluation['pos_eval']]
 
         if update:
-            # all_moves = self.chessboard_root.game_score(figurine=True)
-            exporter = StringExporter(columns=None)
-            self.chessboard_root.export_ref(exporter)
-            all_moves = unicode(exporter)
-
+            all_moves = self.chessboard_root.game_score(figurine=True)
             if all_moves:
                 self.game_score.children[0].text = u"[color=000000]{0}[/color]".format(all_moves)
+            # # all_moves = self.chessboard_root.game_score(figurine=True)
+            # exporter = StringExporter(columns=None)
+            # self.chessboard_root.export_ref(exporter)
+            # all_moves = unicode(exporter)
+            #
+            # if all_moves:
+            #     self.game_score.children[0].text = u"[color=000000]{0}[/color]".format(all_moves)
                 self.game_score.children[0].texture_update()
 
         if self.variation_dropdown:
@@ -5275,7 +5290,9 @@ class ChessProgram_app(App):
                     os.system("say "+e)
         if highlight:
             if hasattr(self.game_score.label,"refs"):
-                current_pos_hash = str(self.chessboard.board().zobrist_hash())
+                current_pos_hash = str(self.chessboard.position.__hash__())
+
+                # current_pos_hash = str(self.chessboard.board().zobrist_hash())
                 if current_pos_hash in self.game_score.label.refs:
                     self.game_score.label.canvas.before.clear()
                     with self.game_score.label.canvas.before:
