@@ -4048,14 +4048,11 @@ class ChessProgram_app(App):
             l = tokens[info_indices[-1]:]
             # print l
             info = self.get_score(l, str_line=False)
-            # print info
             infos.append(info)
 
-        # print infos
         return infos
 
     def get_score(self, line, str_line=True):
-        # print line
         if str_line:
             tokens = line.split()
         else:
@@ -4099,15 +4096,15 @@ class ChessProgram_app(App):
                 except ValueError, e:
                     print "Cannot convert Mate number of moves to a int"
                     print e
-            # print self.chessboard.board().turn
-            if self.chessboard.board().turn == 'b':
+            # print self.chessboard.position.turn
+            if self.chessboard.position.turn == 'b':
                 if score:
                     score *= -1
             if score_type == "mate":
                 score = score_type + " " + str(score)
-        # print score
-        # print depth
+
         return {"nps":nps, "depth":depth, "score":score}
+
 
     def get_can(self, moves):
         prev_fen = sf.get_fen(self.pyfish_fen,  self.chessboard.get_prev_moves())
@@ -4146,11 +4143,13 @@ class ChessProgram_app(App):
                 multi_pv_index = -1
             pv_tokens = tokens[line_index+1:]
 
+            # print("multi_pv_index : {0}".format(multi_pv_index))
 
             if multi_pv_index > -1:
+                # print("line: {0}".format(line))
                 infos = self.get_scores(line)
                 # print "scores: "
-                # print scores
+                # print infos
                 for i, info in enumerate(infos):
                     if self.use_tb and info["score"] == 151:
                         infos[i]["score"] = "Tablebase [b]1-0[/b]"
@@ -4164,14 +4163,22 @@ class ChessProgram_app(App):
                 info_indices = [i for i, x in enumerate(tokens) if x == "info" and i > 0]
                 # print "info_indices: "
                 # print info_indices
-
+                # print("tokens:")
+                # print(tokens)
+                # print("before enum")
+                # print("pv_indices:")
+                # print(pv_indices)
                 for i, p in enumerate(pv_indices):
                     if i > len(info_indices)-1:
-                        move_lists.append(self.get_san(tokens[p+1:], figurine=figurine))
+                        move_lists.append(self.get_san(tokens[p+1:], figurine = figurine))
                         can_move_lists.append(tokens[p+1:])
                     else:
-                        move_lists.append(self.get_san(tokens[p+1:info_indices[i]], figurine=figurine))
+                        move_lists.append(self.get_san(tokens[p+1:info_indices[i]], figurine = figurine))
                         can_move_lists.append(tokens[p+1:info_indices[i]])
+
+                print("move_lists:")
+                print(move_lists)
+
                 # print "tokens: "
                 # print pv_tokens[:info_index]
                 # move_lists.append(self.get_san(pv_tokens[:info_index], figurine=figurine))
@@ -4201,7 +4208,7 @@ class ChessProgram_app(App):
                 # print "move_list:"
                 # print move_list
                 try:
-                    tail = " {0} Knps".format(infos[i]["nps"]/1000)
+                    tail =" {0} Knps".format(infos[i]["nps"]/1000)
                 except KeyError:
                     tail = ""
                 # print "infos:"
@@ -4209,10 +4216,7 @@ class ChessProgram_app(App):
                 # if raw:
                 #     variation = self.generate_move_list(move_list, move_num=False)
                 # else:
-                move_number = self.chessboard.board().fullmove_number*2
-                if self.chessboard.board().turn == 'w':
-                    move_number -= 1
-                variation = self.generate_move_list(move_list, start_move_num=move_number, eval=str(infos[i]["score"])+"/"+str(infos[i]["depth"]))
+                variation = self.generate_move_list(move_list, start_move_num=self.chessboard.half_move_num, eval=str(infos[i]["score"])+"/"+str(infos[i]["depth"]))
 
                 # print "variation:"
                 # print variation
@@ -4231,6 +4235,7 @@ class ChessProgram_app(App):
         # print "outputs:"
         # print outputs
         return outputs
+
 
     @staticmethod
     def format_time_str(time_a):
@@ -4343,6 +4348,8 @@ class ChessProgram_app(App):
                 cleaned_line, infos = self.parse_analysis(line)
 
                 if cleaned_line:
+                    # print "cleaned_line:"
+                    # print cleaned_line
                     self.internal_engine_output = u"\n[color=000000]{0}[/color]".format(self.get_internal_engine_info()[0]) + ' ' + cleaned_line
                     self.internal_engine_raw_output, self.internal_engine_raw_scores = self.parse_analysis(line, figurine=False, raw=True)
 
@@ -4365,10 +4372,7 @@ class ChessProgram_app(App):
                     if best_move:
                         if self.dgt_connected and self.dgtnix:
                             san_move = self.get_san([best_move])[0]
-                            # print san_move
                             self.write_to_lcd(san_move, clear=True)
-                            self.write_to_dgt(str(best_move), move=True, beep=True)
-
                         self.process_move(best_move)
                         self.time_add_increment(color=self.engine_comp_color)
 
