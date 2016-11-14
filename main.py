@@ -4113,7 +4113,7 @@ class ChessProgram_app(App):
         return move_list
 
     def get_san(self, moves, figurine=False):
-        prev_fen = sf.get_fen(self.pyfish_fen,  self.get_prev_moves(self.chessboard))
+        prev_fen = sf.get_fen(self.pyfish_fen,  self.chessboard.get_prev_moves())
 
         move_list = sf.to_san(prev_fen, moves)
         if figurine:
@@ -4176,8 +4176,8 @@ class ChessProgram_app(App):
                         move_lists.append(self.get_san(tokens[p+1:info_indices[i]], figurine = figurine))
                         can_move_lists.append(tokens[p+1:info_indices[i]])
 
-                print("move_lists:")
-                print(move_lists)
+                # print("move_lists:")
+                # print(move_lists)
 
                 # print "tokens: "
                 # print pv_tokens[:info_index]
