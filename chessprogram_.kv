@@ -1,7 +1,7 @@
 #:import ENGINE_ANALYSIS main.ENGINE_ANALYSIS
 #:import ENGINE_TRAINING main.ENGINE_TRAINING
 #:import ENGINE_PLAY main.ENGINE_PLAY
-
+#:import main main
 
 [HSeparator@Label]:
     size_hint_y: None
@@ -21,6 +21,7 @@
 
 <Annotation>:
     ActionBar:
+        size_hint_y: 1
         ActionView:
             use_separator: False
             ActionPrevious:
@@ -34,36 +35,36 @@
                 text: '!?'
                 ActionButton:
                     text: 'Reset'
-                    on_press: root.set_move_eval(NAG_NULL, self)
+                    on_press: root.set_move_eval(main.NAG_NULL, self)
 
                 ActionButton:
                     text: '!?'
-                    on_press: root.set_move_eval(NAG_SPECULATIVE_MOVE, self)
+                    on_press: root.set_move_eval(main.NAG_SPECULATIVE_MOVE, self)
                 ActionButton:
                     text: '!'
-                    on_press: root.set_move_eval(NAG_GOOD_MOVE, self)
+                    on_press: root.set_move_eval(main.NAG_GOOD_MOVE, self)
                 ActionButton:
                     text: '?'
-                    on_press: root.set_move_eval(NAG_MISTAKE, self)
+                    on_press: root.set_move_eval(main.NAG_MISTAKE, self)
                 ActionButton:
                     text: '?!'
-                    on_press: root.set_move_eval(NAG_DUBIOUS_MOVE, self)
+                    on_press: root.set_move_eval(main.NAG_DUBIOUS_MOVE, self)
             ActionGroup:
                 id: eval_action_group
                 mode: 'normal'
                 text: 'Eval'
                 ActionButton:
                     text: 'Reset'
-                    on_press: root.set_pos_eval(NAG_NULL, self)
+                    on_press: root.set_pos_eval(main.NAG_NULL, self)
                 ActionButton:
                     text: '+='
-                    on_press: root.set_pos_eval(NAG_WHITE_SLIGHT_ADVANTAGE, self)
+                    on_press: root.set_pos_eval(main.NAG_WHITE_SLIGHT_ADVANTAGE, self)
                 ActionButton:
                     text: '='
-                    on_press: root.set_pos_eval(NAG_DRAWISH_POSITION, self)
+                    on_press: root.set_pos_eval(main.NAG_DRAWISH_POSITION, self)
                 ActionButton:
                     text: '=+'
-                    on_press: root.set_pos_eval(NAG_BLACK_SLIGHT_ADVANTAGE, self)
+                    on_press: root.set_pos_eval(main.NAG_BLACK_SLIGHT_ADVANTAGE, self)
                 ActionButton:
                     text: 'Comment'
                     on_press: root.open_comment_dialog(self)
@@ -87,6 +88,7 @@
 
 <GameControls>:
     ActionBar:
+        size_hint_y: 1
         ActionView:
             use_separator: True
             ActionPrevious:

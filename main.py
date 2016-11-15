@@ -20,6 +20,8 @@ import kivy
 from kivy.config import ConfigParser
 
 # from kivy.config import Config
+# Config.set('kivy', 'keyboard_mode', 'systemandmulti')
+
 # Config.set('graphics', 'fullscreen', 0)
 # Config.write()
 from kivy.uix.checkbox import CheckBox
@@ -1042,22 +1044,44 @@ class Annotation(BoxLayout):
     #     # self._label.text = self._label.text + '\n' + button.text
 
     def set_move_eval(self, value, bt):
-        eval = 'move' if value else 'remove'
-
-        for nag in list(self.app.chessboard.nags):
-            if 0 < nag < 9 or eval == 'remove':
-                # Remove existing move evals if a move eval was passed
-                self.app.chessboard.nags.remove(nag)
-
-        if eval == 'move':
-            self.app.chessboard.nags.add(value)
-
+        self.app.chessboard.set_eval('move_eval', value)
+        # self._dropdown.dismiss()
+        # print dir(grp.parent)
+        # grp._dropdown.dismiss()
         self.app.refresh_board(update=True)
         try:
             bt.parent.parent.dismiss()
         except AttributeError, e:
             # Once expanded to full screen, you no longer have to dismiss the popup
             print e
+
+
+    def set_pos_eval(self, value, bt):
+        self.app.chessboard.set_eval('pos_eval', value)
+        self.app.refresh_board(update=True)
+        try:
+            bt.parent.parent.dismiss()
+        except AttributeError, e:
+            # Once expanded to full screen, you no longer have to dismiss the popup
+            print e
+
+    # def set_move_eval(self, value, bt):
+    #     eval = 'move' if value else 'remove'
+    #
+    #     for nag in list(self.app.chessboard.nags):
+    #         if 0 < nag < 9 or eval == 'remove':
+    #             # Remove existing move evals if a move eval was passed
+    #             self.app.chessboard.nags.remove(nag)
+    #
+    #     if eval == 'move':
+    #         self.app.chessboard.nags.add(value)
+    #
+    #     self.app.refresh_board(update=True)
+    #     try:
+    #         bt.parent.parent.dismiss()
+    #     except AttributeError, e:
+    #         # Once expanded to full screen, you no longer have to dismiss the popup
+    #         print e
 
     def process_variation(self, value, bt):
         if value == 'delete':
@@ -1081,23 +1105,23 @@ class Annotation(BoxLayout):
             # Once expanded to full screen, you no longer have to dismiss the popup
             print e
 
-    def set_pos_eval(self, value, bt):
-        eval = 'position' if value else 'remove'
-
-        for nag in list(self.app.chessboard.nags):
-            if nag > 9 or eval == 'remove':
-                # Remove existing move evals if a move eval was passed
-                self.app.chessboard.nags.remove(nag)
-
-        if eval == 'position':
-            self.app.chessboard.nags.add(value)
-
-        self.app.refresh_board(update=True)
-        try:
-            bt.parent.parent.dismiss()
-        except AttributeError, e:
-            # Once expanded to full screen, you no longer have to dismiss the popup
-            print e
+    # def set_pos_eval(self, value, bt):
+    #     eval = 'position' if value else 'remove'
+    #
+    #     for nag in list(self.app.chessboard.nags):
+    #         if nag > 9 or eval == 'remove':
+    #             # Remove existing move evals if a move eval was passed
+    #             self.app.chessboard.nags.remove(nag)
+    #
+    #     if eval == 'position':
+    #         self.app.chessboard.nags.add(value)
+    #
+    #     self.app.refresh_board(update=True)
+    #     try:
+    #         bt.parent.parent.dismiss()
+    #     except AttributeError, e:
+    #         # Once expanded to full screen, you no longer have to dismiss the popup
+    #         print e
 
 
     def open_comment_dialog(self, bt):
@@ -1111,7 +1135,7 @@ class Annotation(BoxLayout):
         l = BoxLayout()
         bt.parent.parent.dismiss()
 
-        comment_text = TextInput(text=self.app.chessboard.comment, markup=True, focus=True, multiline=True, use_bubble = True)
+        comment_text = TextInput(text=self.app.chessboard.comment, markup=True, focus=False, multiline=True, use_bubble = True)
         comment_text.bind(on_text_validate=update_comments)
 
         close_button = Button(markup=True, text="Close", size_hint=(0.1,1))
@@ -1379,9 +1403,19 @@ class ChessBoardWidget(Widget):
         # self.dark_img = Image(source=DARK_SQUARE+"wood-chestnut-oak2.jpg")
         self.dark_img = Image(source=DARK_SQUARE+"marble_252.jpg")
 
+        # self.light = (1, 0.808, 0.620)
+        # self.light =  (Image(LIGHT_SQUARE+"fir-lite.jpg"))
+        # self.dark = (0.821, 0.545, 0.278)
+        self.light_img = Image(source=LIGHT_SQUARE + "fir-lite.jpg")
+        self.dark_img = Image(source=DARK_SQUARE + "wood-chestnut-oak2.jpg")
+
+        # self.black = (0, 0, 0)
+        # self.white = (1, 1, 1)
+        self.highlight_color = (0.2, 0.710, 0.898)
+
         self.black = (0, 0, 0)
         self.white = (1, 1, 1)
-        self.highlight_color = get_color_from_hex('#ffffe0')
+        # self.highlight_color = get_color_from_hex('#ffffe0')
         self.setup_board = False
 
         # self.highlight_color = (0.5, 0.5, 0.5)
@@ -2473,29 +2507,17 @@ class ChessProgram_app(App):
 
     def process_fen(self, fen):
         fen = fen.strip()
-        # print fen
         if fen == INITIAL_BOARD_FEN:
             self.chessboard = Game()
         else:
-            try:
-                bitboard = chess.Board()
-                bitboard.set_fen(fen)
-                if bitboard.status() != chess.STATUS_VALID:
-                    # print "invalid fen.."
-                    return
-            except ValueError:
-                # print 'invaild fen'
-                return
-            else:
-                g = Game()
-                g.setup(fen)
+            g = Game()
+            bag = GameHeaderBag(game=g, fen=fen)
+            g.set_headers(bag)
+            self.chessboard = g
+            self.chessboard_root = self.chessboard
 
-                self.chessboard = g
-                self.chessboard_root = self.chessboard
-
-                self.start_pos_changed = True
-                self.custom_fen = fen
-                return True
+            self.start_pos_changed = True
+            self.custom_fen = fen
 
     def dgt_clock_msg_handler(self):
         while True:
@@ -2629,7 +2651,7 @@ class ChessProgram_app(App):
 
         print "DGT device found: {0}".format(device)
 
-        self.dgt_dev_input = TextInput(text=device, focus=True, multiline=False, use_bubble = True)
+        self.dgt_dev_input = TextInput(text=device, focus=False, multiline=False, use_bubble = True)
         self.dgt_dev_input.bind(on_text_validate=on_dgt_dev_input)
 
         setup_dgt_item.add_widget(self.dgt_dev_input)
@@ -2652,7 +2674,7 @@ class ChessProgram_app(App):
         dgt_panel.add_widget(clock_dgt_item)
 
 
-        fen_input = TextInput(text="", focus=True, multiline=False, use_bubble = True)
+        fen_input = TextInput(text="", focus=False, multiline=False, use_bubble = True)
 #        print Clipboard['application/data']
 
         def on_fen_input(instance):
@@ -3046,6 +3068,7 @@ class ChessProgram_app(App):
 
     def build(self):
         self.y = None
+        self.center_x = None
         self.custom_fen = None
         self.pyfish_fen = 'startpos'
         self.variation_dropdown = None
@@ -3207,7 +3230,7 @@ class ChessProgram_app(App):
         self.update_grid_border(0,0,0)
         Window.bind(on_resize=self.update_grid_border)
 
-        self.b = BoxLayout(size_hint=(1, 0.1))
+        self.b = BoxLayout(size_hint=(0.15, 0.05))
         comment_bt = Annotation(self)
         self.b.add_widget(comment_bt)
 
@@ -3352,7 +3375,7 @@ class ChessProgram_app(App):
         ref_db_label = Button(text=SHOW_REF_GAMES, on_press=self.update_database_display)
         db_label = Button(text=SHOW_GAMES, on_press=self.update_database_display)
 
-        self.db_filter_field = TextInput(text="", focus=True, multiline=False, use_bubble = True)
+        self.db_filter_field = TextInput(text="", focus=False, multiline=False, use_bubble = True)
         self.db_filter_field.bind(on_text_validate=self.update_book_panel)
 
         self.db_random_game_btn = Button(text="Load Random Game", on_press=self.load_random_game)
@@ -3978,10 +4001,8 @@ class ChessProgram_app(App):
         self.refresh_board(update=True)
 
     def back(self, obj):
-        # if self.chessboard.previous_node:
-        if self.chessboard.parent:
-
-            self.chessboard = self.chessboard.parent
+        if self.chessboard.previous_node:
+            self.chessboard = self.chessboard.previous_node
             self.refresh_board(update=False)
 
     def _keyboard_closed(self):
