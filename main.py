@@ -1406,8 +1406,8 @@ class ChessBoardWidget(Widget):
         # self.light = (1, 0.808, 0.620)
         # self.light =  (Image(LIGHT_SQUARE+"fir-lite.jpg"))
         # self.dark = (0.821, 0.545, 0.278)
-        self.light_img = Image(source=LIGHT_SQUARE + "fir-lite.jpg")
-        self.dark_img = Image(source=DARK_SQUARE + "wood-chestnut-oak2.jpg")
+        # self.light_img = Image(source=LIGHT_SQUARE + "fir-lite.jpg")
+        # self.dark_img = Image(source=DARK_SQUARE + "wood-chestnut-oak2.jpg")
 
         # self.black = (0, 0, 0)
         # self.white = (1, 1, 1)
