@@ -1677,9 +1677,9 @@ class ChessPiece(Scatter):
 
     hide = BooleanProperty(False)
 
-    def __init__(self, name, image_source, **kwargs):
+    def __init__(self, image_source, **kwargs):
         super(ChessPiece, self).__init__(**kwargs)
-        self.name = name
+
         self.image = Image(source=image_source)
         self.image.allow_stretch = True
         self.image.keep_ratio = True
@@ -2042,7 +2042,7 @@ class ChessProgram_app(App):
         curr_eng_score = curr_eng_score.strip()
         if curr_eng_score.startswith('mate'):
             curr_eng_score = 1000
-            if self.chessboard.board().turn == 'b':
+            if self.chessboard.position.turn == 'b':
                 curr_eng_score *= -1
         curr_eng_score = float(curr_eng_score)
 
@@ -2099,7 +2099,7 @@ class ChessProgram_app(App):
         # self.engine_mode = ENGINE_ANALYSIS
         self.game_analysis = True
         root_position = self.chessboard
-        root_position_move_num = self.chessboard.board().fullmove_number
+        # root_position_move_num = self.chessboard.board().fullmove_number
 
         # self.chessboard = self.chessboard_root
         self.use_internal_engine = True
@@ -2523,7 +2523,6 @@ class ChessProgram_app(App):
 
         def go_to_setup_board(value):
             self.root.current = 'setup_board'
-            self.setup_board._update_position(None, self.chessboard.board().fen())
 
         def on_dgt_dev_input(instance):
 #            print instance.text
@@ -2711,10 +2710,9 @@ class ChessProgram_app(App):
 #        parent.add_widget(back_bt)
 #
 #        return parent
-
     def create_chess_board(self, squares, type="main"):
         if type == "main":
-            grid = GridLayout(cols=8, rows=8, spacing=1, padding=(10,10))
+            grid = GridLayout(cols=8, rows=8, spacing=1, padding=(10, 10))
         else:
             grid = GridLayout(cols=8, rows=12, spacing=1, size_hint=(1, 1))
 
@@ -2724,17 +2722,16 @@ class ChessProgram_app(App):
             bt.name = name
             if i in light_squares:
                 bt.sq_color = "l"
-                bt.background_normal = LIGHT_SQUARE+"fir-lite.jpg"
+                bt.background_normal = LIGHT_SQUARE + "fir-lite.jpg"
                 # marble
                 # bt.background_normal = LIGHT_SQUARE+"marble_166.jpg"
             else:
-#                bt.background_color = DARK_SQUARE
-                bt.background_normal = DARK_SQUARE+"wood-chestnut-oak2.jpg"
+                #                bt.background_color = DARK_SQUARE
+                bt.background_normal = DARK_SQUARE + "wood-chestnut-oak2.jpg"
                 # marble
                 # bt.background_normal = DARK_SQUARE+"marble_252.jpg"
                 bt.sq_color = "d"
             bt.background_down = bt.background_normal
-
 
             if type == "main":
                 bt.bind(on_touch_down=self.touch_down_move)
@@ -2746,16 +2743,17 @@ class ChessProgram_app(App):
             squares.append(bt)
             grid.add_widget(bt)
 
-
-        if type!="main":
-            for index, i in enumerate([".", ".", ".", ".", ".", ".", ".", ".", ".", "R", "N", "B", "Q", "K", "P",  ".", ".", "r", "n", "b", "q", "k", "p", "."]):
+        if type != "main":
+            for index, i in enumerate(
+                    [".", ".", ".", ".", ".", ".", ".", ".", ".", "R", "N", "B", "Q", "K", "P", ".", ".", "r", "n", "b",
+                     "q", "k", "p", "."]):
                 bt = ChessSquare()
                 bt.sq = i
                 bt.name = i
                 # bt.sq_color = "l"
 
-                if i!=".":
-                    piece = ChessPiece(i, MERIDA+'%s.png' % IMAGE_PIECE_MAP[i])
+                if i != ".":
+                    piece = ChessPiece(MERIDA + '%s.png' % IMAGE_PIECE_MAP[i])
                     bt.add_piece(piece)
 
                 bt.bind(on_touch_down=self.touch_down_setup)
@@ -2764,7 +2762,6 @@ class ChessProgram_app(App):
                 grid.add_widget(bt)
 
         return grid
-
     # def try_dgt_legal_moves(self, from_fen, to_fen):
     #     dgt_first_tok = to_fen.split()[0]
     #     for m in Position(from_fen).get_legal_moves():
@@ -3203,7 +3200,7 @@ class ChessProgram_app(App):
         parent = BoxLayout(spacing=10)
         # box = BoxLayout(spacing=10, padding=(10,10))
         self.grid = ChessBoardWidget(self)
-        self.setup_board = None
+        # self.setup_board = None
             # self.create_chess_board(self.squares)
 
         # Dummy params for listener
@@ -3448,15 +3445,8 @@ class ChessProgram_app(App):
         sm.add_widget(settings_screen)
 
         setup_board_screen = Screen(name='setup_board')
-        # setup_widget = ChessBoardWidget(self)
+        setup_widget = self.create_chess_board(self.setup_board_squares, type="setup")
 
-        # setup_widget = self.create_chess_board(self.setup_board_squares, type="setup")
-        setup_widget = BoxLayout(orientation='vertical')
-        # setup_grid.add_widget(ChessBoardWidget(self))
-        self.setup_board = ChessBoardWidget(self, setup=True, on_touch_down=self.touch_down_setup, on_touch_up=self.touch_up_setup)
-        setup_widget.add_widget(self.setup_board)
-        # setup_grid.add_widget(setup_widget)
-            # self.create_chess_board(self.squares)
 
         def go_to_main_screen(value):
             if self.root:
@@ -3477,93 +3467,91 @@ class ChessProgram_app(App):
         def render_setup_board(bt):
             if bt.text == "Clear":
                 self.setup_chessboard.clear_board()
-#                clearBoard()
+                #                clearBoard()
             elif bt.text == "DGT":
                 if self.dgt_fen:
                     fen = self.dgt_fen.split()[0]
-                    bt.update_fen(fen)
-            # else:
-            #     print bt.text
-            #     # self.setup_chessboard = chess.Bitboard()
-            #     fen = self.setup_chessboard.fen()
-            #     bt.update_fen(fen)
-            self.setup_board._update_position(None, self.setup_chessboard.fen())
+                    fen += " {0} KQkq - 0 1".format(self.setup_chessboard.turn)
+                    self.setup_chessboard = Position(fen)
+
+            else:
+                self.setup_chessboard.reset()
+                #            squares = [item for sublist in self.setup_chessboard.getBoard() for item in sublist]
+                #            for i, p in enumerate(squares):
+                #                self.fill_chess_board(self.setup_board_squares[i], p)
+
+            for i, p in enumerate(SQUARES):
+                self.fill_chess_board(self.setup_board_squares[i], self.setup_chessboard[p])
 
         def validate_setup_board(value):
 
-            fen = str(self.setup_chessboard.fen())
+            fen = str(self.setup_chessboard.fen)
             can_castle = False
             castling_fen = ''
 
-            if self.setup_chessboard.piece_at(chess.E1) == chess.Piece.from_symbol("K") and self.setup_chessboard.piece_at(chess.H1) == chess.Piece.from_symbol("R"):
+            if self.setup_chessboard[Square("e1")]==Piece("K") and self.setup_chessboard[Square("h1")]==Piece("R"):
                 can_castle = True
-                castling_fen += 'K'
+                castling_fen+='K'
 
-            if self.setup_chessboard.piece_at(chess.E1) == chess.Piece.from_symbol("K") and self.setup_chessboard.piece_at(chess.A1) == chess.Piece.from_symbol("R"):
+            if self.setup_chessboard[Square("e1")]==Piece("K") and self.setup_chessboard[Square("a1")]==Piece("R"):
                 can_castle = True
-                castling_fen += 'Q'
+                castling_fen+='Q'
 
-            if self.setup_chessboard.piece_at(chess.E8) == chess.Piece.from_symbol("k") and self.setup_chessboard.piece_at(chess.H8) == chess.Piece.from_symbol("r"):
+            if self.setup_chessboard[Square("e8")]==Piece("k") and self.setup_chessboard[Square("h8")]==Piece("r"):
                 can_castle = True
-                castling_fen += 'k'
+                castling_fen+='k'
 
-            if self.setup_chessboard.piece_at(chess.E8) == chess.Piece.from_symbol("k") and self.setup_chessboard.piece_at(chess.A8) == chess.Piece.from_symbol("r"):
+            if self.setup_chessboard[Square("e8")]==Piece("k") and self.setup_chessboard[Square("a8")]==Piece("r"):
                 can_castle = True
-                castling_fen += 'q'
+                castling_fen+='q'
 
             if not can_castle:
                 castling_fen = '-'
 
-            # print "castling_fen: {0}".format(castling_fen)
-            # print "old_fen: {0}".format(fen)
             # TODO: Support fen positions where castling is not possible even if king and rook are on right squares
-            fen = fen.replace("-", castling_fen, 1)
-            # print "new fen: {0}".format(fen)
+            fen = fen.replace("KQkq", castling_fen)
+            self.process_fen(fen)
 
-            self.setup_chessboard = chess.Board(fen)
-            if self.process_fen(fen):
-                self.refresh_board()
-                self.root.current = 'main'
+            self.refresh_board()
+            self.root.current = 'main'
 
-        setup_bar = GridLayout(cols=7, rows=3, size_hint=(1, 0.20))
-        setup_piece_bar = GridLayout(cols=7, rows=2)
-
-        for index, i in enumerate([".", "R", "N", "B", "Q", "K", "P",  ".", "r", "n", "b", "q", "k", "p"]):
-                bt = ChessSquare()
-                bt.sq = i
-                bt.name = i
-
-                if i!=".":
-                    piece = ChessPiece(i, MERIDA+'%s.png' % IMAGE_PIECE_MAP[i])
-                    bt.add_piece(piece)
-
-                bt.bind(on_touch_down=self.touch_down_setup)
-                bt.bind(on_touch_up=self.touch_up_setup)
-
-                setup_bar.add_widget(bt)
+        # setup_bar = GridLayout(cols=7, rows=3, size_hint=(1, 0.20))
+        # setup_piece_bar = GridLayout(cols=7, rows=2)
+        #
+        # for index, i in enumerate([".", "R", "N", "B", "Q", "K", "P",  ".", "r", "n", "b", "q", "k", "p"]):
+        #         bt = ChessSquare()
+        #         bt.sq = i
+        #         bt.name = i
+        #
+        #         if i!=".":
+        #             piece = ChessPiece(i, MERIDA+'%s.png' % IMAGE_PIECE_MAP[i])
+        #             bt.add_piece(piece)
+        #
+        #         bt.bind(on_touch_down=self.touch_down_setup)
+        #         bt.bind(on_touch_up=self.touch_up_setup)
+        #
+        #         setup_bar.add_widget(bt)
 
 
-        setup_bar.add_widget(setup_piece_bar)
+        # setup_bar.add_widget(setup_piece_bar)
 
         wtm = ToggleButton(text="White to move", state="down", on_press=setup_board_change_tomove)
-        setup_bar.add_widget(wtm)
+        setup_widget.add_widget(wtm)
 
         clear = Button(text="Clear", on_press=render_setup_board)
-        setup_bar.add_widget(clear)
+        setup_widget.add_widget(clear)
 
         initial = Button(text="Initial", on_press=render_setup_board)
-        setup_bar.add_widget(initial)
+        setup_widget.add_widget(initial)
 
         dgt = Button(text="DGT", on_press=render_setup_board)
-        setup_bar.add_widget(dgt)
+        setup_widget.add_widget(dgt)
 
         validate = Button(text="OK", on_press=validate_setup_board)
-        setup_bar.add_widget(validate)
-        #
-        cancel = Button(text="Cancel", on_press=go_to_main_screen)
-        setup_bar.add_widget(cancel)
+        setup_widget.add_widget(validate)
 
-        setup_widget.add_widget(setup_bar)
+        cancel = Button(text="Cancel", on_press=go_to_main_screen)
+        setup_widget.add_widget(cancel)
 
         setup_board_screen.add_widget(setup_widget)
         sm.add_widget(setup_board_screen)
@@ -4863,8 +4851,8 @@ class ChessProgram_app(App):
         return db_game_list, game_ids
 
     def update_database_panel(self):
-        # pos_hash = str(self.chessboard.position.__hash__())
-        pos_hash = str(self.chessboard.board().zobrist_hash())
+        pos_hash = str(self.chessboard.position.__hash__())
+        # pos_hash = str(self.chessboard.board().zobrist_hash())
 
         # pos_hash = str(sf.key())
         if self.use_ref_db:
