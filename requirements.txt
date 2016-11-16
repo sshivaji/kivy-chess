@@ -4,3 +4,4 @@ boto
 python-dateutil
 leveldb==0.193
 gmpy2
+bitstring
