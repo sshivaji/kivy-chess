@@ -5147,6 +5147,7 @@ class ChessProgram_app(App):
             self.book_panel.reset_grid()
             import time
             start_time = time.time()
+            # Time to lookup all polyglot book entries
             polyglot_entries = self.book.get_entries_for_position(p)
             end_time = time.time()
             print("Elapsed lookup time was %g seconds" % (end_time - start_time))
