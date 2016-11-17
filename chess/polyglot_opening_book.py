@@ -18,11 +18,16 @@
 
 import libchess
 import struct
+from kivy_util import which
+from kivy_util import run_command
 
 # TODO: Also allow writing to opening books and document the class.
 
 class PolyglotOpeningBook(object):
     def __init__(self, path):
+        self.costalba_parser_cmd = which('parser')
+        self.path = path # Needed for costalba's C++ parser
+
         self._entry_struct = struct.Struct(">QHHI")
 
         self._stream = open(path, "rb")
@@ -53,9 +58,36 @@ class PolyglotOpeningBook(object):
     def seek_entry(self, offset, whence=0):
         self._stream.seek(offset * 16, whence)
 
+    def fast_seek_position(self, position):
+        # Use mcostalba's chess_db code to make seeks faster
+        # Later, this will be integrated into a python module
+        # Do initial seek using costalba's parser
+        fen = position.fen
+
+        output = run_command(self.costalba_parser_cmd + ' find ' + self.path + ' \"' + fen + '\"')
+
+        for line in output:
+            if "Offset:" in line:
+                offset_str = line.split("Offset:")[-1]
+                try:
+                    if offset_str:
+                        offset = int(offset_str)
+                        self.seek_entry(offset)
+                except:
+                    print("Cannot convert offset to an integer")
+
+                # break
+                # print("offset: {0}".format(offset))
+            # print ("output: {0}".format(line))
+
+
+        # pass
+
     def seek_position(self, position):
         # Calculate the position hash.
+        # start_time = time.time()
         key = position.__hash__()
+        # end_time = time.time()
 
         # Do a binary search.
         start = 0
@@ -64,7 +96,10 @@ class PolyglotOpeningBook(object):
             middle = (start + end) / 2
 
             self.seek_entry(middle)
+            start_time = time.time()
             raw_entry = self.next_raw()
+            # end_time = time.time()
+            # print("Elapsed next_raw_entry time was %g seconds" % (end_time - start_time))
 
             if raw_entry[0] < key:
                 start = middle + 1
@@ -72,14 +107,23 @@ class PolyglotOpeningBook(object):
                 end = middle - 1
             else:
                 # Position found. Move back to the first occurence.
+                # This code block takes too long if we have many positions (e.g. start position has 1M game_id entries)
+                start_time = time.time()
+                seek_count = 0
                 self.seek_entry(-1, 1)
                 while raw_entry[0] == key and middle > start:
+                    # print("seek..")
+                    seek_count +=1
                     middle -= 1
                     self.seek_entry(middle)
                     raw_entry = self.next_raw()
 
                     if middle == start and raw_entry[0] == key:
                         self.seek_entry(-1, 1)
+                # end_time = time.time()
+                # print("Elapsed move back to first occurence time was %g seconds" % (end_time - start_time))
+                # print("seek counts: {0}".format(seek_count))
+
                 return
 
         raise KeyError()
@@ -100,7 +144,8 @@ class PolyglotOpeningBook(object):
 
         # Seek the position. Stop iteration if no entry exists.
         try:
-            self.seek_position(position)
+            # self.seek_position(position)
+            self.fast_seek_position(position)
         except KeyError:
             raise StopIteration()
 

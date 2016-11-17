@@ -26,4 +26,10 @@ git clone https://github.com/sshivaji/ctgreader
 cd ctgreader
 sudo make install
 cd ..
+git clone https://github.com/mcostalba/chess_db
+cd chess_db/parse
+make build ARCH=x86-64
+sudo make install
+cd ../..
+
 #../chesspython/bin/python setup.py install
