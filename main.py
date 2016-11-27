@@ -89,6 +89,7 @@ import re
 from uci import UCIEngine
 from Queue import Queue
 from os.path import expanduser
+from operator import itemgetter
 
 try:
     import libchess
@@ -5145,12 +5146,13 @@ class ChessProgram_app(App):
             book_entries = 0
             #            self.book_panel.grid.remove_all_data_rows()
             self.book_panel.reset_grid()
-            import time
-            start_time = time.time()
+            # import time
+            # start_time = time.time()
             # Time to lookup all polyglot book entries
-            polyglot_entries = self.book.get_entries_for_position(p)
-            end_time = time.time()
-            print("Elapsed lookup time was %g seconds" % (end_time - start_time))
+            # polyglot_entries = self.book.get_entries_for_position(p)
+
+            # end_time = time.time()
+            # print("Elapsed lookup time was %g seconds" % (end_time - start_time))
 
             #            if user_book_moves:
             #                for m in user_book_moves:
@@ -5184,75 +5186,119 @@ class ChessProgram_app(App):
             #                 callback=self.add_book_moves)
             #
             #     except Exception, ex:
-            #         pass
+            #         passlist(list(
             #
             #         # 'key', 'learn', 'move', 'raw_move', 'weight'
-            # print("polyglot_book_entries: {0}".format(len(polyglot_entries)))
-            for e in polyglot_entries:
-                # print e.move
-                try:
-                    # start_time = time.time()
-                    pos = Position(fen)
-                    move_info = pos.make_move(Move.from_uci(e.move.uci))
-                    san = move_info.san
+            # print("polyglot_book_entries: {0}".format(len(list(polyglot_entries))))
+
+            # all_entries = list(polyglot_entries)
+            # all_entries = all_entries[::-1]
+
+            # get_quick_position_stats
+
+            quick_position_stats_json = self.book.get_quick_position_stats(p.fen)
+
+            # print("quick_pos_stats: {0}".format(quick_position_stats_json))
+
+            moves = quick_position_stats_json['moves']
+
+            sorted_moves = sorted(moves, key=lambda k: k.get(1))
+
+            for e in sorted_moves:
+                if book_entries >= 10:
+                    break
 
 
-                        # weight = str(e.weight)
-                        # if color == "bold":
-                        #     self.book_panel.grid.add_row(
-                        #         ["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight],
-                        #         callback=self.add_book_moves)
+                for move, weight in e.items():
+
+                    if move == 'e1h1':
+                        move = 'e1g1'
+
+                    if move == 'e1a1':
+                        move = 'e1c1'
+
+                    if move == 'e8h8':
+                        move = 'e8g8'
+
+                    if move == 'e8a8':
+                        move = 'e8c8'
+
+                    # print ("move: {0}".format(move))
+
+                    try:
+                        # start_time = time.time()
+                        pos = Position(fen)
+                        try:
+                            move_info = pos.make_move(Move.from_uci(move))
+
+                        except:
+                            print("Could not convert move to san")
+                            # print("move wi")
+                            # weight = str(e.weight)
+                            print("move weight: {0}".format(weight))
+                        san = move_info.san
+                        self.book_panel.grid.add_row(
+                            ["[ref={0}]{1}[/ref]".format(move, san), "--", "--", "--", "--", "--", str(weight)],
+                            callback=self.add_book_moves)
+                        book_entries += 1
+                        # print("book_entries : {0}".format(book_entries))
+
+
+
+                                # if color == "bold":
+                            #     self.book_panel.grid.add_row(
+                            #         ["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight],
+                            #         callback=self.add_book_moves)
+                            # else:
+                            #     self.book_panel.grid.add_row(
+                            #         ["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(e.move.uci, san, color),
+                            #          weight], callback=self.add_book_moves)
+                            #     # self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
                         # else:
-                        #     self.book_panel.grid.add_row(
-                        #         ["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(e.move.uci, san, color),
-                        #          weight], callback=self.add_book_moves)
-                        #     # self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
-                    # else:
-                        # print("e.weight: {0}".format(e.weight))
-                    l = bitstring.BitArray(uint=e.learn, length=32)
-                    # print("e.learn: '{0:08b}'".format(e.learn))
-                    # print("e.learn: '{0}'".format(e.learn))
+                            # print("e.weight: {0}".format(e.weight))
+                        # l = bitstring.BitArray(uint=e.learn, length=32)
+                        # print("e.learn: '{0:08b}'".format(e.learn))
+                        # print("e.learn: '{0}'".format(e.learn))
 
-                    # print(l.uint)
-                    # print(l)
-                    # print("result: {0}".format(l[:2].uint))
+                        # print("learn value: {0}".format(l.uint))
+                        # print(l)
+                        # print("result: {0}".format(l[:2].uint))
 
-                    result = l[:2].uint
-                    if result == 2:
-                        result = '1/2-1/2'
-                    elif result == 0:
-                        result = '1-0'
-                    elif result == 1:
-                        result = '0-1'
-                    else:
-                        result = '*'
+                        # result = l[:2].uint
+                        # if result == 2:
+                        #     result = '1/2-1/2'
+                        # elif result == 0:
+                        #     result = '1-0'
+                        # elif result == 1:
+                        #     result = '0-1'
+                        # else:
+                        #     result = '*'
+                        #
+                        # print ("result: {0}".format(result))
+                        #
+                        # del l[:2]
+                        # l = l[2:]
+                        # print(l.bin)
+                        # del l[29:31]
+                        # l = l[:30]
+                        # print("after delete")
+                        # print(l)
+                        # game_offset = l.uint
+                        # print("game_offset: {0}".format(game_offset))
+                        # print(l.uint)
+                        # print("e.learn: '{0:08b}'".format(4294967295+l.int))
 
-                    print ("result: {0}".format(result))
+                        # print(l.bin)
+                        # if book_entries <= 5:
 
-                    del l[:2]
-                    # l = l[2:]
-                    # print(l.bin)
-                    # del l[29:31]
-                    # l = l[:30]
-                    # print("after delete")
-                    # print(l)
-                    game_offset = l.uint
-                    print("game_offset: {0}".format(game_offset))
-                    # print(l.uint)
-                    # print("e.learn: '{0:08b}'".format(4294967295+l.int))
+                        # end_time = time.time()
+                        # print("Elapsed book iteration entry time was %g seconds" % (end_time - start_time))
 
-                    # print(l.bin)
-                    self.book_panel.grid.add_row(["[ref={0}]{1}[/ref]".format(e.move.uci, san), "--", "--", "--", "--", "--", str(e.weight)],
-                                                 callback=self.add_book_moves)
-                    book_entries += 1
-                    # end_time = time.time()
-                    # print("Elapsed book iteration entry time was %g seconds" % (end_time - start_time))
+                        # if book_entries >= 5:
+                        #     break
 
-                    if book_entries >= 5:
-                        break
-
-                except Exception, ex:
-                    raise
+                    except Exception, ex:
+                        raise
 
             current_eval = self.user_book[pos_hash]["eval"]
             # print "current_eval:"+str(current_eval)
