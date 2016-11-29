@@ -5238,7 +5238,7 @@ class ChessProgram_app(App):
                             print("move weight: {0}".format(weight))
                         san = move_info.san
                         self.book_panel.grid.add_row(
-                            ["[ref={0}]{1}[/ref]".format(move, san), "--", "--", "--", "--", "--", str(weight)],
+                            [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(san)), "--", "--", "--", "--", "--", str(weight)],
                             callback=self.add_book_moves)
                         book_entries += 1
                         # print("book_entries : {0}".format(book_entries))
