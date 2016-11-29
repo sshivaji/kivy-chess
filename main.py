@@ -35,6 +35,8 @@ from kivy_util import BlueButton
 from kivy_util import which
 from kivy_util import run_command
 
+from kivy.factory import Factory
+
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.floatlayout import FloatLayout
 from kivy.uix.screenmanager import ScreenManager, Screen
@@ -73,6 +75,7 @@ from kivy.uix.gridlayout import GridLayout
 from kivy.animation import Animation
 from kivy.properties import ListProperty
 #from kivy.core.clipboard import Clipboard
+Factory.register('ToggleButton',cls=ToggleButton)
 
 #from ChessBoard import ChessBoard
 import spur
@@ -2447,6 +2450,7 @@ class ChessProgram_app(App):
             slider.current.text = "{0:d}".format(int(float(engine.get_options()[slider.name][0])))
 
         def on_change_button(value):
+            # print("values: {0}".format(dir(value)))
             if value.state == "normal":
                 engine.set_option(value.name, 'false')
             else:
@@ -2467,6 +2471,7 @@ class ChessProgram_app(App):
         elif uci_option[1] == 'spin' or uci_option[1] == 'check' or uci_option[1] == 'string':
             uci_item = SettingItem(panel=engine_panel, title=title)  #create instance of one item in left side panel
             # uci_item.selected_alpha = 0.5
+            uci_item_control = {}
             if uci_option[1] == 'spin':
                 uci_item.desc = "From {0} - {1}".format(uci_option[-2], uci_option[-1])
                 uci_item_control = Slider(min=uci_option[-2], max=uci_option[-1], value=int(uci_option[-3]))
@@ -2476,14 +2481,15 @@ class ChessProgram_app(App):
                 state = "normal"
                 if uci_option[0] == 'true':
                     state = "down"
+                # print("state : {0}".format(state))
                 uci_item_control = ToggleButton(state=state, on_press=on_change_button)
-
 
             elif uci_option[1] == 'string':
                 uci_item_control = TextInput(text=uci_option[0], focus=False, multiline=False)
                 uci_item_control.bind(on_text_validate=on_change_textbox)
 
             uci_item_control.name = uci_item.title
+
             if uci_option[1] != 'string':
                 uci_item_label = Label(text=engine.get_options()[uci_item.title][0])
                 if uci_option[1] == 'spin':
