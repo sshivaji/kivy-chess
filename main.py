@@ -3740,7 +3740,8 @@ class ChessProgram_app(App):
                     # f.close()
         return lines
 
-    def get_game_seek_positions(self, db_index, game_num):
+    @staticmethod
+    def get_game_seek_positions(db_index, game_num):
         first = db_index.Get("game_{0}_data".format(game_num), regular=True).split("|")[DB_HEADER_MAP[INDEX_FILE_POS]]
         # if game_num+1 < self.pgn_index[INDEX_TOTAL_GAME_COUNT]:
         #            second = self.db_index_book.Get("game_{0}_{1}".format(game_num+1,INDEX_FILE_POS))
@@ -3751,6 +3752,34 @@ class ChessProgram_app(App):
         except KeyError:
             second = None
         return first, second
+
+    @staticmethod
+    def get_game_from_file_offset(f, offset):
+        # print("opening filename : {0}".format(f))
+        # print("offset: {0}".format(offset))
+
+        with open(f, 'rb') as fp:
+
+            fp.seek(offset)
+            output = ''
+            event_found = False
+            while True:
+                l = fp.readline()
+                if not event_found:
+                    if "[Event " in l:
+                        event_found = True
+                        print("Event found!")
+                        continue
+                if event_found:
+                    if "[Event " in l:
+                        return output
+                    else:
+                        output += l
+                # if "[Ev
+                # print(fp.readline().strip())
+                # if i>50:
+                #     break
+
 
     def get_game(self, db_index, game_num):
         # db_index = self.ref_db_index_book
@@ -5206,6 +5235,8 @@ class ChessProgram_app(App):
 
             # print("quick_pos_stats: {0}".format(quick_position_stats_json))
 
+            print("fen : {0}".format(fen))
+
             moves = quick_position_stats_json['moves']
 
             sorted_moves = sorted(moves, key=lambda k: k.get(1))
@@ -5214,9 +5245,7 @@ class ChessProgram_app(App):
                 if book_entries >= 10:
                     break
 
-
                 for move, weight in e.items():
-
                     if move == 'e1h1':
                         move = 'e1g1'
 
@@ -5236,17 +5265,18 @@ class ChessProgram_app(App):
                         pos = Position(fen)
                         try:
                             move_info = pos.make_move(Move.from_uci(move))
-
+                            san = move_info.san
+                            self.book_panel.grid.add_row(
+                                [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(san)), "--", "--",
+                                 "--", "--", "--", str(weight)],
+                                callback=self.add_book_moves)
+                            book_entries += 1
                         except:
                             print("Could not convert move to san")
                             # print("move wi")
                             # weight = str(e.weight)
                             print("move weight: {0}".format(weight))
-                        san = move_info.san
-                        self.book_panel.grid.add_row(
-                            [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(san)), "--", "--", "--", "--", "--", str(weight)],
-                            callback=self.add_book_moves)
-                        book_entries += 1
+
                         # print("book_entries : {0}".format(book_entries))
 
 
@@ -5262,37 +5292,7 @@ class ChessProgram_app(App):
                             #     # self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
                         # else:
                             # print("e.weight: {0}".format(e.weight))
-                        # l = bitstring.BitArray(uint=e.learn, length=32)
-                        # print("e.learn: '{0:08b}'".format(e.learn))
-                        # print("e.learn: '{0}'".format(e.learn))
 
-                        # print("learn value: {0}".format(l.uint))
-                        # print(l)
-                        # print("result: {0}".format(l[:2].uint))
-
-                        # result = l[:2].uint
-                        # if result == 2:
-                        #     result = '1/2-1/2'
-                        # elif result == 0:
-                        #     result = '1-0'
-                        # elif result == 1:
-                        #     result = '0-1'
-                        # else:
-                        #     result = '*'
-                        #
-                        # print ("result: {0}".format(result))
-                        #
-                        # del l[:2]
-                        # l = l[2:]
-                        # print(l.bin)
-                        # del l[29:31]
-                        # l = l[:30]
-                        # print("after delete")
-                        # print(l)
-                        # game_offset = l.uint
-                        # print("game_offset: {0}".format(game_offset))
-                        # print(l.uint)
-                        # print("e.learn: '{0:08b}'".format(4294967295+l.int))
 
                         # print(l.bin)
                         # if book_entries <= 5:
@@ -5305,6 +5305,40 @@ class ChessProgram_app(App):
 
                     except Exception, ex:
                         raise
+
+            polyglot_entries = self.book.get_entries_for_position(p)
+
+            for i, e in enumerate(polyglot_entries):
+                # if i>=1:
+                #     break
+                l = bitstring.BitArray(uint=e.learn, length=32)
+                print("e.move : {0}".format(e.move))
+
+                result = l[:2].uint
+                if result == 2:
+                    result = '1/2-1/2'
+                elif result == 0:
+                    result = '1-0'
+                elif result == 1:
+                    result = '0-1'
+                else:
+                    result = '*'
+
+                print ("result: {0}".format(result))
+                # l = l[::-1]
+                del l[:2]
+                # same effect as l[1] = 0 and l[2] = 0
+                # l[30] = 0
+                # l[31] = 0
+
+                game_offset = l.uint
+                print("game_offset: {0}".format(game_offset))
+                game_offset -= 500
+                if game_offset < 0:
+                    game_offset = 0
+                # print(self.get_game_from_file_offset('/home/shiv/chess/chess_db/pgn/romero.pgn', game_offset))
+                # print(l.uint)
+                # print("e.learn: '{0:08b}'".format(l.uint))
 
             current_eval = self.user_book[pos_hash]["eval"]
             # print "current_eval:"+str(current_eval)
