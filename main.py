@@ -88,7 +88,6 @@ import cloud_eng
 import itertools
 import locale
 import re
-import chess_db
 
 from uci import UCIEngine
 from Queue import Queue

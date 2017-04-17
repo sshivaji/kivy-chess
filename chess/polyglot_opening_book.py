@@ -25,8 +25,8 @@ import libchess
 import struct
 import ast
 
-import chess_db
-from chess_db.parser.chess_db import Parser
+import utils
+from utils.chess_db import Parser
 
 from kivy_util import which
 from kivy_util import run_command

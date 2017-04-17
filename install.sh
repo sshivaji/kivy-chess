@@ -31,5 +31,7 @@ cd chess_db/parser
 make build ARCH=x86-64
 sudo make install
 cd ../..
+cp chess_db/parser/parser utils
+cp chess_db/parser/chess_db.py utils
 
 #../chesspython/bin/python setup.py install
