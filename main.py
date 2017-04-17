@@ -84,11 +84,12 @@ from sets import Set
 import itertools as it
 from operator import attrgetter
 from time import sleep
-# from chess import polyglot_opening_book
 import cloud_eng
 import itertools
 import locale
 import re
+import chess_db
+
 from uci import UCIEngine
 from Queue import Queue
 from os.path import expanduser
@@ -113,7 +114,6 @@ from libchess import Piece
 from libchess import Square
 from chess.game_header_bag import GameHeaderBag
 from chess import polyglot_opening_book
-
 
 CLOUD_ENGINE_EXEC = './stockfish'
 THINKING_TIME = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]"
@@ -5181,164 +5181,67 @@ class ChessProgram_app(App):
             book_entries = 0
             #            self.book_panel.grid.remove_all_data_rows()
             self.book_panel.reset_grid()
-            # import time
-            # start_time = time.time()
-            # Time to lookup all polyglot book entries
-            # polyglot_entries = self.book.get_entries_for_position(p)
-
-            # end_time = time.time()
-            # print("Elapsed lookup time was %g seconds" % (end_time - start_time))
-
-            #            if user_book_moves:
-            #                for m in user_book_moves:
-            #                    print m
-            # for p in polyglot_entries:
-            #     # print p.raw_move
-            #     p.in_user_book = False
-            #     #                print str(p.move)
-            #     #                print user_book_moves
-            #     if user_book_moves and str(p.move) in user_book_moves:
-            #         p.in_user_book = True
-            #         user_book_moves_set.remove(str(p.move))
-
-            # polyglot_entries = sorted(polyglot_entries, key=lambda p: p.in_user_book, reverse=True)
-
-            # print user_book_moves_set
-            # for m in user_book_moves_set:
-            #     try:
-            #         pos = Position(fen)
-            #         move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
-            #         san = move_info.san
-            #
-            #         # print "color:{0}".format(color)
-            #
-            #         if color == "bold":
-            #             self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(m, san), ''],
-            #                                          callback=self.add_book_moves)
-            #         else:
-            #             self.book_panel.grid.add_row(
-            #                 ["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(m, san, color), ''],
-            #                 callback=self.add_book_moves)
-            #
-            #     except Exception, ex:
-            #         passlist(list(
-            #
-            #         # 'key', 'learn', 'move', 'raw_move', 'weight'
-            # print("polyglot_book_entries: {0}".format(len(list(polyglot_entries))))
-
-            # all_entries = list(polyglot_entries)
-            # all_entries = all_entries[::-1]
-
-            # get_quick_position_stats
-
-            quick_position_stats_json = self.book.get_quick_position_stats(p.fen)
-
-            # print("quick_pos_stats: {0}".format(quick_position_stats_json))
 
             print("fen : {0}".format(fen))
+            polyglot_entries = self.book.get_quick_position_stats(p)['moves']
+            # print(polyglot_entries)
 
-            moves = quick_position_stats_json['moves']
+            sorted_moves = sorted(polyglot_entries, key=lambda k: k['games'], reverse=True)
 
-            sorted_moves = sorted(moves, key=lambda k: k.get(1))
-
+            #
+            #
             for e in sorted_moves:
                 if book_entries >= 10:
                     break
+                # print(e)
+                move = e['move']
+                weight = e['weight']
+                games = e['games']
+                draws = e['draws']
+                wins = e['wins']
+                losses = e['losses']
 
-                for move, weight in e.items():
-                    if move == 'e1h1':
-                        move = 'e1g1'
 
-                    if move == 'e1a1':
-                        move = 'e1c1'
+                if move == 'e1h1':
+                    move = 'e1g1'
 
-                    if move == 'e8h8':
-                        move = 'e8g8'
+                if move == 'e1a1':
+                    move = 'e1c1'
 
-                    if move == 'e8a8':
-                        move = 'e8c8'
+                if move == 'e8h8':
+                    move = 'e8g8'
 
-                    # print ("move: {0}".format(move))
+                if move == 'e8a8':
+                    move = 'e8c8'
 
+                try:
+                    pos = Position(fen)
                     try:
-                        # start_time = time.time()
-                        pos = Position(fen)
-                        try:
-                            move_info = pos.make_move(Move.from_uci(move))
-                            san = move_info.san
-                            self.book_panel.grid.add_row(
-                                [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(san)), "--", "--",
-                                 "--", "--", "--", str(weight)],
-                                callback=self.add_book_moves)
-                            book_entries += 1
-                        except:
-                            print("Could not convert move to san")
-                            # print("move wi")
-                            # weight = str(e.weight)
-                            print("move weight: {0}".format(weight))
-
-                        # print("book_entries : {0}".format(book_entries))
-
-
-
-                                # if color == "bold":
-                            #     self.book_panel.grid.add_row(
-                            #         ["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight],
-                            #         callback=self.add_book_moves)
-                            # else:
-                            #     self.book_panel.grid.add_row(
-                            #         ["[ref={0}][b][color={2}]{1}[/color][/b][/ref]".format(e.move.uci, san, color),
-                            #          weight], callback=self.add_book_moves)
-                            #     # self.book_panel.grid.add_row(["[ref={0}][b]{1}[/b][/ref]".format(e.move.uci, san), weight], callback=self.add_book_moves)
-                        # else:
-                            # print("e.weight: {0}".format(e.weight))
-
-
-                        # print(l.bin)
-                        # if book_entries <= 5:
-
-                        # end_time = time.time()
-                        # print("Elapsed book iteration entry time was %g seconds" % (end_time - start_time))
-
-                        # if book_entries >= 5:
-                        #     break
-
-                    except Exception, ex:
+                        move_info = pos.make_move(Move.from_uci(str(move)))
+                        san = move_info.san
+                        self.book_panel.grid.add_row(
+                            [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(san)), str(games), "{:0.1f}".format((wins+draws)*100.0/(wins+draws+losses)),
+                             str(wins), str(draws), str(losses), str(weight)],
+                            callback=self.add_book_moves)
+                        book_entries += 1
+                    except:
+                        print("Could not convert move to san")
+                        print("move: {0}".format(move))
+                        # print("move wi")
+                        # weight = str(e.weight)
+                        print("move weight: {0}".format(weight))
                         raise
 
-            polyglot_entries = self.book.get_entries_for_position(p)
 
-            for i, e in enumerate(polyglot_entries):
-                # if i>=1:
-                #     break
-                l = bitstring.BitArray(uint=e.learn, length=32)
-                print("e.move : {0}".format(e.move))
+                except Exception as ex:
+                    raise
 
-                result = l[:2].uint
-                if result == 2:
-                    result = '1/2-1/2'
-                elif result == 0:
-                    result = '1-0'
-                elif result == 1:
-                    result = '0-1'
-                else:
-                    result = '*'
+            # print(sorted_moves)
 
-                print ("result: {0}".format(result))
-                # l = l[::-1]
-                del l[:2]
-                # same effect as l[1] = 0 and l[2] = 0
-                # l[30] = 0
-                # l[31] = 0
-
-                game_offset = l.uint
-                print("game_offset: {0}".format(game_offset))
-                game_offset -= 500
-                if game_offset < 0:
-                    game_offset = 0
-                # print(self.get_game_from_file_offset('/home/shiv/chess/chess_db/pgn/romero.pgn', game_offset))
-                # print(l.uint)
-                # print("e.learn: '{0:08b}'".format(l.uint))
+            # for i, e in enumerate(polyglot_entries['moves']):
+            #     if i>=5:
+            #         break
+            #     print("entry: {0}".format(e))
 
             current_eval = self.user_book[pos_hash]["eval"]
             # print "current_eval:"+str(current_eval)
