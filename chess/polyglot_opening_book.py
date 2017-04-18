@@ -34,11 +34,13 @@ from kivy_util import run_command
 # TODO: Also allow writing to opening books and document the class.
 
 class PolyglotOpeningBook(object):
-    def __init__(self, path):
+    def __init__(self, path, pgn=None):
         # self.costalba_parser_cmd = which('parser')
         # self.path = path # Needed for costalba's C++ parser
         self.book_parser = Parser(engine='./chess_db/parser/parser')
         self.book_parser.db = path
+        if pgn:
+            self.book_parser.pgn = pgn
 
     def __len__(self):
         return self._entry_count
@@ -54,83 +56,16 @@ class PolyglotOpeningBook(object):
         return self
 
     def __reversed__(self):
-        for i in xrange(len(self) - 1, -1, -1):
+        for i in range(len(self) - 1, -1, -1):
             self.seek_entry(i)
             yield self.next()
 
     def seek_entry(self, offset, whence=0):
         self._stream.seek(offset * 16, whence)
 
-
     def get_quick_position_stats(self, fen):
         # Use mcostalba's chess_db code to make seeks faster
-        # Later, evalthis will be integrated into a python module
         return self.book_parser.find(fen)
-        # return output
-        #
-        # output = run_command(self.costalba_parser_cmd + ' find ' + self.path + ' \"' + fen + '\"')
-        #
-        # output_json_str = ""
-        # for line in output:
-        #     output_json_str += line
-        #
-        # try:
-        #     output_json = ast.literal_eval(output_json_str)
-        #     return output_json
-        # except:
-        #     print "Could not convert chess parser output to JSON"
-        #     raise
-
-
-
-    def fast_seek_position(self, position):
-        # Use mcostalba's chess_db code to make seeks faster
-        # Later, evalthis will be integrated into a python module
-        # Do initial seek using costalba's parser
-        fen = position.fen
-
-        output = run_command(self.costalba_parser_cmd + ' find ' + self.path + ' \"' + fen + '\"')
-
-        output_json_str = ""
-        for line in output:
-            output_json_str+=line
-
-        output_json = ast.literal_eval(output_json_str)
-
-        offset_str = output_json["ofset"]
-
-        # print("offset: {0}".format(offset))
-        try:
-            offset = int(offset_str)
-            # print("offset : {0}".format(offset))
-            self.seek_entry(offset/16)
-            # return output_json
-
-        except:
-            print("Cannot convert offset to an integer")
-            raise
-
-        # print("end of Fast seek")
-        # print("json_output_str: {0}".format(output_json_str))
-        # print("json_output_str: {0}".format(output_json_str))
-        # print(ast.literal_eval(output_json_str))
-            # if "Offset:" in line:
-            #     offset_str = line.split("Offset:")[-1]
-            #     try:
-            #         if evalofseekfset_str:
-            #             offset = int(offset_str)
-            #             self.seek_entry(offset)
-            #     except:
-            #         print("Cannot convert offset to an integer")
-
-
-
-                # break
-                # print("offset: {0}".format(offset))
-            # print ("output: {0}".format(line))
-
-
-        # pass
 
     def seek_position(self, position):
         # Calculate the position hash.
@@ -194,8 +129,8 @@ class PolyglotOpeningBook(object):
 
         # Seek the position. Stop iteration if no entry exists.
         try:
-            # self.seek_position(position)
-            self.fast_seek_position(position)
+            self.seek_position(position)
+            # self.fast_seek_position(position)
         except KeyError:
             raise StopIteration()
 

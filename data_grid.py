@@ -73,7 +73,6 @@ class DataGrid(GridLayout):
             cell_str = '[color=000000][b][ref=' + cell[0] + ']' + cell[0] + '[/ref][/b][/color]'
             tmp = TopTableHeader(text=cell_str, markup=True, id=top_header_id, size_hint_x=None, size_hint_y=None,
                                  height=20)
-
         else:
             cell_str = "[b]" + str(cell[0]) + "[/b]"
             tmp = TableHeader(text=cell_str, markup=True, id="Header", size_hint_x=None, size_hint_y=None, height=30)
@@ -165,7 +164,6 @@ class DataGrid(GridLayout):
     def remove_all_data_rows(self, **kwargs):
         # print "Removing all data rows"
         self.clear_widgets(children=None)
-
 
     def remove_selected_row(self, **kwargs):
         selected = 0

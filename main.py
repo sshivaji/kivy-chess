@@ -1,7 +1,4 @@
 import threading
-
-import bitstring
-bitstring.bytealigned=True
 from kivy.graphics.instructions import InstructionGroup
 
 import leveldict
@@ -3021,23 +3018,30 @@ class ChessProgram_app(App):
 
     def generate_rows(self, rec, record):
 
-        tokens = record.split("|")
+        # header_record: [
+        #     {'ECO': 'A34', 'Site': 'Duitsland tt', 'Round': '1', 'Black': 'Grunberg, R. (bl)', 'Result': '1/2-1/2',
+        #      'Date': '1984.??.??', 'White': 'Waldschlaeger, J. (wh)', 'BlackElo': '2270', 'Event': 'Duitsland tt'}]
 
-        white = self.get_token(tokens, 0)
-        whiteelo = self.get_token(tokens, 1)
-        black = self.get_token(tokens, 2)
-        blackelo = self.get_token(tokens, 3)
-        result = self.get_token(tokens, 4)
-        date = self.get_token(tokens, 5)
-        event = self.get_token(tokens, 6)
-        eco = self.get_token(tokens, 8)
+        # print("header_record: {}".format(record))
+        # tokens = record.split("|")
+        record = record[0]
+        # print("rec_id: {}".format(rec.id))
+        rec.id = str(rec.id)
+
+        white = record.get('White', None)
+        whiteelo = str(record.get('WhiteElo', None))
+        black = record.get('Black', None)
+        blackelo = str(record.get('BlackElo', None))
+        result = record.get('Result', None)
+        date = record.get('Date', None)
+        event = record.get('Event', None)
+        eco = record.get('ECO', None)
         return {'text': rec,
                 'size_hint_y': None,
                 'size_hint_x': 0.5,
                 'height': 30,
                 'cls_dicts': [{'cls': CustomListItemButton,
                                'kwargs': {'id': rec.id, 'text': '[color=000000]' + rec.id + '[/color]'}},
-
                               {'cls': CustomListItemButton,
                                'kwargs': {'id': rec.id, 'text': '[color=000000]' + white + '[/color]'}},
                               {'cls': CustomListItemButton,
@@ -3192,8 +3196,7 @@ class ChessProgram_app(App):
         self.last_touch_down_setup = None
         self.last_touch_up_setup = None
         self.loaded_game_num = None
-        self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin')
-        # self.book = chess.polyglot.open_reader("book.bin")
+        self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn')
 
         self.dgt_connected = False
         self.dgtnix = None
@@ -3214,7 +3217,8 @@ class ChessProgram_app(App):
             # from chess.leveldict import LevelDict
             self.user_book = LevelJsonDict('book/custom.db')
             # self.ref_db_index_book = leveldb.LevelDB('book/polyglot_index.db')
-            self.ref_db_index_book = leveldict.PartitionedLevelDB('book/polyglot_index.db')
+            # self.ref_db_index_book = leveldict.PartitionedLevelDB('book/polyglot_index.db')
+            self.ref_db_index_book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn')
 
             self.db_index_book = None
 #            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
@@ -3223,7 +3227,7 @@ class ChessProgram_app(App):
             self.user_book = None
             self.db_index_book = None
 #            self.pgn_index = None
-            print "cannot import leveldb userbook"
+            print ("cannot import leveldb userbook")
 
         # Clock.schedule_interval(self.dgt_probe, 1)
         Clock.schedule_interval(self.update_clocks, 1)
@@ -3778,8 +3782,6 @@ class ChessProgram_app(App):
                 # print(fp.readline().strip())
                 # if i>50:
                 #     break
-
-
     def get_game(self, db_index, game_num):
         # db_index = self.ref_db_index_book
         if self.use_ref_db:
@@ -4816,15 +4818,19 @@ class ChessProgram_app(App):
         return score
 
     def database_action(self):
-        print "action"
+        print ("action")
         pass
 
     def get_game_header(self, g, header, first_line=False):
-
         try:
             ref_db = self.use_ref_db
             if ref_db:
-                record = self.ref_db_index_book.Get("game_{0}_data".format(g), regular=True)
+                # print("g: {}".format(g))
+                games = self.ref_db_index_book.book_parser.get_games([g])
+                record = self.ref_db_index_book.book_parser.get_game_headers(games)
+                # print("headers: {}".format(record))
+
+                # record = self.ref_db_index_book.Get("game_{0}_data".format(g), regular=True)
             else:
                 record = self.db_index_book.Get("game_{0}_data".format(g), regular=True)
             # print "Reocrd: {0}".format(record)
@@ -4854,11 +4860,16 @@ class ChessProgram_app(App):
 
     def get_game_headers(self, db_index, pos_hash, create_headers = False):
         try:
-            game_ids = db_index.Get(pos_hash)
-            # print "frequency: {0}".format(db_index.Get(pos_hash+"_freq"))
-            # print "score: {0}".format(db_index.Get(pos_hash+"_score"))
-            # print "draws: {0}".format(db_index.Get(pos_hash+"_draws"))
-            # print "moves: {0}".format(db_index.Get(pos_hash+"_white_score"))
+            fen = self.chessboard.position.fen
+
+            polyglot_entries = self.book.get_quick_position_stats(fen)['moves']
+            game_ids = []
+
+            for e in polyglot_entries:
+                game_ids = e['pgn offsets']
+                break
+
+            # game_ids = db_index.Get(pos_hash)
 
         except KeyError, e:
             print "key not found!"
@@ -4882,6 +4893,7 @@ class ChessProgram_app(App):
         for i in game_ids:
             db_game = DBGame(i)
             if self.db_sort_criteria or len(filter_text) > 0 or create_headers:
+
                 record = self.get_game_header(i, "ALL")
                 tokens = record.split("|")
                 db_game.white = tokens[0]
@@ -5143,7 +5155,7 @@ class ChessProgram_app(App):
                     try:
                         col = user_book_moves["color"]
                     except KeyError:
-                        print user_book_moves
+                        print (user_book_moves)
                         col = ["white"]
                     color = "bold"
                     if "white" in col and "black" not in col:
@@ -5174,21 +5186,13 @@ class ChessProgram_app(App):
                     self.user_book[pos_hash] = {"moves": [], "annotation": "", "color": [],
                                                 "eval": 5, "games": [], "misc": ""}
 
-            p = Position(fen)
-            # print p
-            # self.book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
             book_entries = 0
-            #            self.book_panel.grid.remove_all_data_rows()
             self.book_panel.reset_grid()
 
             print("fen : {0}".format(fen))
-            polyglot_entries = self.book.get_quick_position_stats(p)['moves']
-            # print(polyglot_entries)
-
+            polyglot_entries = self.book.get_quick_position_stats(fen)['moves']
             sorted_moves = sorted(polyglot_entries, key=lambda k: k['games'], reverse=True)
 
-            #
-            #
             for e in sorted_moves:
                 if book_entries >= 10:
                     break
@@ -5200,18 +5204,7 @@ class ChessProgram_app(App):
                 wins = e['wins']
                 losses = e['losses']
 
-
-                if move == 'e1h1':
-                    move = 'e1g1'
-
-                if move == 'e1a1':
-                    move = 'e1c1'
-
-                if move == 'e8h8':
-                    move = 'e8g8'
-
-                if move == 'e8a8':
-                    move = 'e8c8'
+                move = self.set_castling(move)
 
                 try:
                     pos = Position(fen)
@@ -5219,7 +5212,7 @@ class ChessProgram_app(App):
                         move_info = pos.make_move(Move.from_uci(str(move)))
                         san = move_info.san
                         self.book_panel.grid.add_row(
-                            [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(san)), str(games), "{:0.1f}".format((wins+draws)*100.0/(wins+draws+losses)),
+                            [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(san)), str(games), "{:0.1f}".format((wins+0.5*draws)*100.0/(wins+draws+losses)),
                              str(wins), str(draws), str(losses), str(weight)],
                             callback=self.add_book_moves)
                         book_entries += 1
@@ -5235,18 +5228,9 @@ class ChessProgram_app(App):
                 except Exception as ex:
                     raise
 
-            # print(sorted_moves)
-
-            # for i, e in enumerate(polyglot_entries['moves']):
-            #     if i>=5:
-            #         break
-            #     print("entry: {0}".format(e))
-
             current_eval = self.user_book[pos_hash]["eval"]
             # print "current_eval:"+str(current_eval)
             weight = self.convert_int_eval_to_inf(current_eval)
-            # print weight
-
             self.book_panel.grid.add_row(["--", "--", "[color=3333ff][ref=add_to_user_book]Add to White Rep[/ref][/color]",
                                           ("[color=3333ff][ref=%s]Delete[/ref][/color]" % DELETE_FROM_USER_BOOK), "--", "--", "--"],
                                          callback=self.add_book_moves_white)
@@ -5256,14 +5240,18 @@ class ChessProgram_app(App):
             self.book_panel.grid.add_row(["Eval", "[ref={0}]{0}[/ref]".format(weight)],
                                          callback=self.add_book_moves)
 
-
-
+    def set_castling(self, move):
+        if move == 'e1h1':
+            move = 'e1g1'
+        if move == 'e1a1':
+            move = 'e1c1'
+        if move == 'e8h8':
+            move = 'e8g8'
+        if move == 'e8a8':
+            move = 'e8c8'
+        return move
 
     def fill_chess_board(self, sq, p):
-#        print "p:%s"%p
-#        print "sq:%s"%sq
-#        if p == ".":
-#            sq.remove_piece()
         if p:
             # print p.symbol
             piece = ChessPiece(MERIDA+'%s.png' % IMAGE_PIECE_MAP[p.symbol])
