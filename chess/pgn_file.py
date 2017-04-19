@@ -243,11 +243,12 @@ class PgnFile(object):
         current_game = None
         in_tags = False
 
-        for i, line in enumerate(text):
+        # print("text::{}".format(text))
+        for i, line in enumerate(text[0].split("\n")):
             # print line
             # Decode and strip the line.
             line = line.decode('latin-1').strip()
-            # print line
+            # print("line: {}".format(line))
 
             if i == 0 and not line.startswith('[') and line.endswith(']'):
                 line = "[" + line
@@ -255,6 +256,7 @@ class PgnFile(object):
             # Skip empty lines and comments.
             if not line or line.startswith("%"):
                 continue
+            # print("")
 
             # Check for tag lines.
             tag_match = tag_regex.match(line)

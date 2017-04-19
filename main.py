@@ -2970,8 +2970,12 @@ class ChessProgram_app(App):
         # print '    args when selection changes gets you the adapter', args
         if len(args[0].selection) == 1:
             game_index = args[0].selection[0].id
-            # current_pos_hash = self.chessboard.position.__hash__()
-            current_pos_hash = self.chessboard.board().zobrist_hash()
+            current_pos_hash = self.chessboard.position.__hash__()
+            # current_pos_hash = self.chessboard.board().zobrist_hash()
+
+            # print("game_index: {}".format(game_index))
+            # if self.ref_db_index_book:
+            #     self.ref_db_index_book.book_parser.
 
             # reset sort criteria if a game is being loaded
             # db_sort_criteria = self.db_sort_criteria
@@ -3782,17 +3786,23 @@ class ChessProgram_app(App):
                 # print(fp.readline().strip())
                 # if i>50:
                 #     break
-    def get_game(self, db_index, game_num):
+    def get_game(self, db_index, game_num, leveldb = False):
         # db_index = self.ref_db_index_book
         if self.use_ref_db:
             db_index = self.ref_db_index_book
-        first, second = self.get_game_seek_positions(db_index, game_num)
 
-        file_name = db_index.Get("pgn_filename", regular=True)
-        if not os.path.isfile(file_name):
-            file_name = file_name.replace("home", "Users")
+        if leveldb:
+            first, second = self.get_game_seek_positions(db_index, game_num)
+            file_name = db_index.Get("pgn_filename", regular=True)
+            if not os.path.isfile(file_name):
+                file_name = file_name.replace("home", "Users")
 
-        return self.get_file_seek_segment(file_name, first, second)
+            return self.get_file_seek_segment(file_name, first, second)
+
+        else:
+            games = db_index.book_parser.get_games([game_num])
+            # print("games:{}".format(games))
+            return(games)
 
     # def get_game(self, db_index, game_num):
     #     if self.use_ref_db:
@@ -3838,11 +3848,12 @@ class ChessProgram_app(App):
     #     return games
 
     def get_game_from_index(self, db_index, game_num):
-        game_text = "\n".join(self.get_game(db_index, game_num))
+        # game_text = "\n".join(self.get_game(db_index, game_num))
+        # print("game_text: {}".format(game_text))
         # g = chess.pgn.read_game(game_text)
         # print g
-        pgn = StringIO(textwrap.dedent(game_text))
-        g = read_game(pgn)
+        # pgn = StringIO(textwrap.dedent(game_text))
+        g = chess.PgnFile.open_text(self.get_game(db_index, game_num))
         return g
 
     # def load_game_from_index(self, game_num):
@@ -3872,11 +3883,12 @@ class ChessProgram_app(App):
 
     def load_game_from_index(self, game_num):
         db_index = self.db_index_book
-        games = self.get_game(db_index, game_num)
+        games = self.get_game_from_index(db_index, game_num)
         # print games[0].'White'
         self.chessboard = games[0]
         # print self.chessboard.headers.headers
         self.chessboard_root = self.chessboard
+        # print(self.chessboard_root)
         if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
             self.custom_fen = self.chessboard_root.headers.headers['FEN']
         else:
