@@ -3800,13 +3800,12 @@ class ChessProgram_app(App):
             file_name = db_index.Get("pgn_filename", regular=True)
             if not os.path.isfile(file_name):
                 file_name = file_name.replace("home", "Users")
-
             return self.get_file_seek_segment(file_name, first, second)
 
         else:
             games = db_index.book_parser.get_games([game_num])
             # print("games:{}".format(games))
-            return(games)
+            return games
 
     # def get_game(self, db_index, game_num):
     #     if self.use_ref_db:
@@ -3858,7 +3857,6 @@ class ChessProgram_app(App):
         # print g
         # pgn = StringIO(textwrap.dedent(game_text))
         g = chess.PgnFile.open_text(self.get_game(db_index, game_num))
-        # print("game_text: {}".format(self.get_game(db_index, game_num)))
         return g
 
     # def load_game_from_index(self, game_num):
