@@ -2970,8 +2970,12 @@ class ChessProgram_app(App):
         # print '    args when selection changes gets you the adapter', args
         if len(args[0].selection) == 1:
             game_index = args[0].selection[0].id
-            # current_pos_hash = self.chessboard.position.__hash__()
-            current_pos_hash = self.chessboard.board().zobrist_hash()
+            current_pos_hash = self.chessboard.position.__hash__()
+            # current_pos_hash = self.chessboard.board().zobrist_hash()
+
+            # print("game_index: {}".format(game_index))
+            # if self.ref_db_index_book:
+            #     self.ref_db_index_book.book_parser.
 
             # reset sort criteria if a game is being loaded
             # db_sort_criteria = self.db_sort_criteria
@@ -3028,14 +3032,7 @@ class ChessProgram_app(App):
         # print("rec_id: {}".format(rec.id))
         rec.id = str(rec.id)
 
-        white = record.get('White', None)
-        whiteelo = str(record.get('WhiteElo', None))
-        black = record.get('Black', None)
-        blackelo = str(record.get('BlackElo', None))
-        result = record.get('Result', None)
-        date = record.get('Date', None)
-        event = record.get('Event', None)
-        eco = record.get('ECO', None)
+        black, blackelo, date, eco, event, result, white, whiteelo = self.extract_record(record)
         return {'text': rec,
                 'size_hint_y': None,
                 'size_hint_x': 0.5,
@@ -3060,6 +3057,17 @@ class ChessProgram_app(App):
                                'kwargs': {'id': rec.id, 'text': '[color=000000]' + eco + '[/color]'}},
                 ]
         }
+
+    def extract_record(self, record):
+        white = record.get('White', None)
+        whiteelo = str(record.get('WhiteElo', None))
+        black = record.get('Black', None)
+        blackelo = str(record.get('BlackElo', None))
+        result = record.get('Result', None)
+        date = record.get('Date', None)
+        event = record.get('Event', None)
+        eco = record.get('ECO', None)
+        return black, blackelo, date, eco, event, result, white, whiteelo
 
     def generate_empty_rows(self, rec):
         return {'text': rec,
@@ -3188,6 +3196,7 @@ class ChessProgram_app(App):
         if os.path.isfile('book/book.ctg') and self.ctg_reader_cmd:
             self.ctg_book = 'book/book.ctg'
 
+        self.book = None
         self.book_display = True
         self.database_display = False
         self.user_book_display = True
@@ -3196,7 +3205,6 @@ class ChessProgram_app(App):
         self.last_touch_down_setup = None
         self.last_touch_up_setup = None
         self.loaded_game_num = None
-        self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn')
 
         self.dgt_connected = False
         self.dgtnix = None
@@ -3460,7 +3468,6 @@ class ChessProgram_app(App):
 
         grandparent.add_widget(tp)
 
-        self.refresh_board()
 
         platform = kivy.utils.platform()
         if self.is_desktop():
@@ -3591,6 +3598,7 @@ class ChessProgram_app(App):
 
         setup_board_screen.add_widget(setup_widget)
         sm.add_widget(setup_board_screen)
+        self.refresh_board()
 
         return sm
 
@@ -3782,17 +3790,23 @@ class ChessProgram_app(App):
                 # print(fp.readline().strip())
                 # if i>50:
                 #     break
-    def get_game(self, db_index, game_num):
+    def get_game(self, db_index, game_num, leveldb = False):
         # db_index = self.ref_db_index_book
         if self.use_ref_db:
             db_index = self.ref_db_index_book
-        first, second = self.get_game_seek_positions(db_index, game_num)
 
-        file_name = db_index.Get("pgn_filename", regular=True)
-        if not os.path.isfile(file_name):
-            file_name = file_name.replace("home", "Users")
+        if leveldb:
+            first, second = self.get_game_seek_positions(db_index, game_num)
+            file_name = db_index.Get("pgn_filename", regular=True)
+            if not os.path.isfile(file_name):
+                file_name = file_name.replace("home", "Users")
 
-        return self.get_file_seek_segment(file_name, first, second)
+            return self.get_file_seek_segment(file_name, first, second)
+
+        else:
+            games = db_index.book_parser.get_games([game_num])
+            # print("games:{}".format(games))
+            return(games)
 
     # def get_game(self, db_index, game_num):
     #     if self.use_ref_db:
@@ -3838,11 +3852,13 @@ class ChessProgram_app(App):
     #     return games
 
     def get_game_from_index(self, db_index, game_num):
-        game_text = "\n".join(self.get_game(db_index, game_num))
+        # game_text = "\n".join(self.get_game(db_index, game_num))
+        # print("game_text: {}".format(game_text))
         # g = chess.pgn.read_game(game_text)
         # print g
-        pgn = StringIO(textwrap.dedent(game_text))
-        g = read_game(pgn)
+        # pgn = StringIO(textwrap.dedent(game_text))
+        g = chess.PgnFile.open_text(self.get_game(db_index, game_num))
+        # print("game_text: {}".format(self.get_game(db_index, game_num)))
         return g
 
     # def load_game_from_index(self, game_num):
@@ -3872,11 +3888,12 @@ class ChessProgram_app(App):
 
     def load_game_from_index(self, game_num):
         db_index = self.db_index_book
-        games = self.get_game(db_index, game_num)
+        games = self.get_game_from_index(db_index, game_num)
         # print games[0].'White'
         self.chessboard = games[0]
         # print self.chessboard.headers.headers
         self.chessboard_root = self.chessboard
+        # print(self.chessboard_root)
         if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
             self.custom_fen = self.chessboard_root.headers.headers['FEN']
         else:
@@ -4895,16 +4912,20 @@ class ChessProgram_app(App):
             if self.db_sort_criteria or len(filter_text) > 0 or create_headers:
 
                 record = self.get_game_header(i, "ALL")
-                tokens = record.split("|")
-                db_game.white = tokens[0]
-                db_game.whiteelo = tokens[1]
-                db_game.black = tokens[2]
-                db_game.blackelo = tokens[3]
-                db_game.result = tokens[4]
-                db_game.date = tokens[5]
-                db_game.event = tokens[6]
-                db_game.site = tokens[7]
-                db_game.eco = tokens[8]
+                print("record: {}".format(record))
+                # tokens = record.split("|")
+                # db_game.white = tokens[0]
+                # db_game.whiteelo = tokens[1]
+                # db_game.black = tokens[2]
+                # db_game.blackelo = tokens[3]
+                # db_game.result = tokens[4]
+                # db_game.date = tokens[5]
+                # db_game.event = tokens[6]
+                # db_game.site = tokens[7]
+                # db_game.eco = tokens[8]
+
+                db_game.black, db_game.blackelo, db_game.date, db_game.eco, db_game.event, db_game.result, db_game.white, db_game.whiteelo = self.extract_record(record)
+
             if len(filter_text) > 0:
                 match = True
                 # print filter_text
@@ -5190,6 +5211,8 @@ class ChessProgram_app(App):
             self.book_panel.reset_grid()
 
             print("fen : {0}".format(fen))
+            if not self.book:
+                self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn')
             polyglot_entries = self.book.get_quick_position_stats(fen)['moves']
             sorted_moves = sorted(polyglot_entries, key=lambda k: k['games'], reverse=True)
 
@@ -5398,6 +5421,7 @@ class ChessProgram_app(App):
             #     self.prev_move.text += ' ' + NAG_TO_READABLE_MAP[self.chessboard.evaluation['move_eval']]
             # if self.chessboard.evaluation.has_key('pos_eval'):
             #     self.prev_move.text += ' ' + NAG_TO_READABLE_MAP[self.chessboard.evaluation['pos_eval']]
+        # print(self.chessboard_root.game_score(figurine=True))
 
         if update:
             all_moves = self.chessboard_root.game_score(figurine=True)
@@ -5479,7 +5503,7 @@ class ChessProgram_app(App):
                         self.game_score._scroll_y_mouse= 1-y1*1.1/self.game_score.label.height
                         self.game_score.scroll_y= 1-y1*1.1/self.game_score.label.height
 
-    def invoke_book_thread(self):
+    def invoke_book_thread(self, *args):
         book_thread = threading.Timer(0, self.update_book_panel, [])
         book_thread.start()
 
