@@ -37,7 +37,7 @@ class PolyglotOpeningBook(object):
     def __init__(self, path, pgn=None):
         # self.costalba_parser_cmd = which('parser')
         # self.path = path # Needed for costalba's C++ parser
-        self.book_parser = Parser(engine='../chessui/chess_db/parser/parser')
+        self.book_parser = Parser(engine='./chess_db/parser/parser')
         self.book_parser.db = path
         if pgn:
             self.book_parser.pgn = pgn
