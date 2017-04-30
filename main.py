@@ -3020,7 +3020,7 @@ class ChessProgram_app(App):
         except IndexError:
             return '*'
 
-    def generate_rows(self, rec, record):
+    def generate_rows(self, rec, record_list):
 
         # header_record: [
         #     {'ECO': 'A34', 'Site': 'Duitsland tt', 'Round': '1', 'Black': 'Grunberg, R. (bl)', 'Result': '1/2-1/2',
@@ -3028,11 +3028,11 @@ class ChessProgram_app(App):
 
         # print("header_record: {}".format(record))
         # tokens = record.split("|")
-        record = record[0]
+        # record = record_list[0]
         # print("rec_id: {}".format(rec.id))
         rec.id = str(rec.id)
 
-        black, blackelo, date, eco, event, result, white, whiteelo = self.extract_record(record)
+        black, blackelo, date, eco, event, result, white, whiteelo = self.extract_record(record_list)
         return {'text': rec,
                 'size_hint_y': None,
                 'size_hint_x': 0.5,
@@ -3058,8 +3058,10 @@ class ChessProgram_app(App):
                 ]
         }
 
-    def extract_record(self, record):
+    def extract_record(self, record_list):
+        record = record_list[0]
         white = record.get('White', None)
+        # print("white: {}".format(white))
         whiteelo = str(record.get('WhiteElo', None))
         black = record.get('Black', None)
         blackelo = str(record.get('BlackElo', None))
@@ -4873,7 +4875,7 @@ class ChessProgram_app(App):
         except KeyError:
             return "Unknown"
 
-    def get_game_headers(self, db_index, pos_hash, create_headers = False):
+    def get_game_headers(self, db_index, pos_hash, create_headers=False):
         try:
             fen = self.chessboard.position.fen
 
@@ -4910,7 +4912,7 @@ class ChessProgram_app(App):
             if self.db_sort_criteria or len(filter_text) > 0 or create_headers:
 
                 record = self.get_game_header(i, "ALL")
-                print("record: {}".format(record))
+                # print("record: {}".format(record))
                 # tokens = record.split("|")
                 # db_game.white = tokens[0]
                 # db_game.whiteelo = tokens[1]
@@ -4928,7 +4930,7 @@ class ChessProgram_app(App):
                 match = True
                 # print filter_text
                 for f in filter_text:
-                    if f in db_game.white or f in db_game.black or f in db_game.event or f in db_game.site:
+                    if f in db_game.white or f in db_game.black or f in db_game.event or f in db_game.event:
                         pass
                     else:
                         match = False
