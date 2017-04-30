@@ -3120,29 +3120,10 @@ class ChessProgram_app(App):
         self.cloud_hostname=None
         self.cloud_username="ubuntu"
         self.cloud_private_key_file=expanduser("~/.ssh/stockfish.pem")
-#        PGN Index test
-#        index = PgnIndex("kasparov-deep-blue-1997.pgn")
-##
-#        #print len(index)
-#        first = index.get_pos(5)
-##        second = index.get_pos(6)
-#        #print second
-#        f = open("kasparov-deep-blue-1997.pgn")
-#        f.seek(first)
-#        line = 1
-#        lines = []
-#        while line:
-#            line = f.readline()
-##            pos = f.tell()
-#            #print pos
-##            if pos<=second:
-#            lines.append(line)
-##            else:
-##                break
-#
-        # games = PgnFile.open("test/french_watson.pgn")
-##        first_game = games[5]
-#
+
+        Clock.schedule_interval(self.tasks_every_second, 1)
+
+
         self.chessboard = Game()
         self.chessboard_root = self.chessboard
         self.ponder_move = None
@@ -5502,6 +5483,10 @@ class ChessProgram_app(App):
     def invoke_book_thread(self, *args):
         # book_thread = threading.Timer(0, self.update_book_panel, [])
         # book_thread.start()
+        pass
+        # self.update_book_panel()
+
+    def tasks_every_second(self, *args):
         self.update_book_panel()
 
 if __name__ == '__main__':
