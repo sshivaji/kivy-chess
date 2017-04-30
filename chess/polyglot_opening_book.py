@@ -63,9 +63,9 @@ class PolyglotOpeningBook(object):
     # def seek_entry(self, offset, whence=0):
     #     self._stream.seek(offset * 16, whence)
 
-    def get_quick_position_stats(self, fen):
+    def get_quick_position_stats(self, fen, limit=10, skip=0):
         # Use mcostalba's chess_db code to make seeks faster
-        return self.book_parser.find(fen)
+        return self.book_parser.find(fen, limit=limit, skip=skip)
 
     # def seek_position(self, position):
     #     # Calculate the position hash.

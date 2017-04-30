@@ -3031,8 +3031,8 @@ class ChessProgram_app(App):
         # record = record_list[0]
         # print("rec_id: {}".format(rec.id))
         rec.id = str(rec.id)
-
         black, blackelo, date, eco, event, result, white, whiteelo = self.extract_record(record_list)
+
         return {'text': rec,
                 'size_hint_y': None,
                 'size_hint_x': 0.5,
@@ -3062,9 +3062,9 @@ class ChessProgram_app(App):
         record = record_list[0]
         white = record.get('White', None)
         # print("white: {}".format(white))
-        whiteelo = str(record.get('WhiteElo', None))
+        whiteelo = str(record.get('WhiteElo', 0))
         black = record.get('Black', None)
-        blackelo = str(record.get('BlackElo', None))
+        blackelo = str(record.get('BlackElo', 0))
         result = record.get('Result', None)
         date = record.get('Date', None)
         event = record.get('Event', None)
@@ -3470,8 +3470,6 @@ class ChessProgram_app(App):
 
         grandparent.add_widget(tp)
 
-
-        platform = kivy.utils.platform()
         if self.is_desktop():
             self._keyboard = Window.request_keyboard(
                 self._keyboard_closed, self)
@@ -4879,7 +4877,7 @@ class ChessProgram_app(App):
         try:
             fen = self.chessboard.position.fen
 
-            polyglot_entries = self.book.get_quick_position_stats(fen)['moves']
+            polyglot_entries = self.book.get_quick_position_stats(fen, limit=3000)['moves']
             game_ids = []
 
             for e in polyglot_entries:
@@ -5210,7 +5208,7 @@ class ChessProgram_app(App):
             book_entries = 0
             self.book_panel.reset_grid()
 
-            print("fen : {0}".format(fen))
+            # print("fen : {0}".format(fen))
             if not self.book:
                 self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn')
             polyglot_entries = self.book.get_quick_position_stats(fen)['moves']
