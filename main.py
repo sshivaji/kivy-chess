@@ -991,7 +991,6 @@ class EngineControls(BoxLayout):
 
         print "Started Cloud engine"
 
-
     def stop_cloud_engine(self, bt):
         try:
             bt.parent.parent.dismiss()
@@ -1003,8 +1002,6 @@ class EngineControls(BoxLayout):
                 stop=True, dryrun=False)
         print "Engine id: {0} Stopped".format(self.app.cloud_engine_id)
         self.app.cloud_engine_id = None
-
-
 
     def analyze_game(self, bt):
         try:
@@ -1032,9 +1029,8 @@ class EngineControls(BoxLayout):
         p.open()
 
 
-
 class Annotation(BoxLayout):
-    def __init__(self, app, **kwargs):
+    def __init__(self, app, *args, **kwargs):
         super(Annotation, self).__init__(**kwargs)
         self.app = app
 
@@ -1395,8 +1391,8 @@ class ChessBoardWidget(Widget):
             # for sq in to_square_list:
             #     self._highlight_square(sq)
 
-    def __init__(self, app, **kwargs):
-        super(ChessBoardWidget, self).__init__(**kwargs)
+    def __init__(self, app, *args, **kwargs):
+        super(ChessBoardWidget, self).__init__(*args, **kwargs)
         self.size_hint = (0.95,0.95)
         self.app = app
         self.light = (1, 0.808, 0.620)
@@ -5206,7 +5202,10 @@ class ChessProgram_app(App):
                                                 "eval": 5, "games": [], "misc": ""}
 
             book_entries = 0
-            self.book_panel.reset_grid()
+            try:
+                self.book_panel.reset_grid()
+            except Exception as e:
+                print(e.message)
 
             # print("fen : {0}".format(fen))
             if not self.book:
@@ -5237,17 +5236,16 @@ class ChessProgram_app(App):
                              str(wins), str(draws), str(losses), str(weight)],
                             callback=self.add_book_moves)
                         book_entries += 1
-                    except:
+                    except Exception as e:
                         print("Could not convert move to san")
                         print("move: {0}".format(move))
                         # print("move wi")
                         # weight = str(e.weight)
                         print("move weight: {0}".format(weight))
-                        raise
-
-
+                        # raise
+                        print(e.message)
                 except Exception as ex:
-                    raise
+                    print(ex.message)
 
             current_eval = self.user_book[pos_hash]["eval"]
             # print "current_eval:"+str(current_eval)
@@ -5502,9 +5500,9 @@ class ChessProgram_app(App):
                         self.game_score.scroll_y= 1-y1*1.1/self.game_score.label.height
 
     def invoke_book_thread(self, *args):
-        book_thread = threading.Timer(0, self.update_book_panel, [])
-        book_thread.start()
-
+        # book_thread = threading.Timer(0, self.update_book_panel, [])
+        # book_thread.start()
+        self.update_book_panel()
 
 if __name__ == '__main__':
     ChessProgram_app().run()
