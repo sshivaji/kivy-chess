@@ -2955,12 +2955,13 @@ class ChessProgram_app(App):
 
     def update_book_display(self, mv, ref_move=None):
         mv = self.get_grid_click_input(mv, ref_move)
+        # print("move: {}".format(mv))
         if mv == BOOK_ON:
             if self.book_display:
                 self.book_panel.reset_grid()
             self.book_display = not self.book_display
             # self.update_book_panel()
-            self.invoke_book_thread()
+        # self.invoke_book_thread()
 
     def db_selection_changed(self, *args):
         # print '    args when selection changes gets you the adapter', args
@@ -3177,6 +3178,9 @@ class ChessProgram_app(App):
 
         self.book = None
         self.book_display = True
+        self.last_book_fen = None
+        self.book_lock = RLock()
+
         self.database_display = False
         self.user_book_display = True
         self.last_touch_down_move = None
@@ -3888,13 +3892,13 @@ class ChessProgram_app(App):
         # if mv ==
         if str(mv) == DELETE_FROM_USER_BOOK:
             self.update_user_book_positions(delete=True, color=color)
-            # self.update_book_panel()
-            self.invoke_book_thread()
+            self.update_book_panel()
+            # self.invoke_book_thread()
 
         elif str(mv) == ADD_TO_USER_BOOK:
             self.update_user_book_positions(color=color)
-            # self.update_book_panel()
-            self.invoke_book_thread()
+            self.update_book_panel()
+            # self.invoke_book_thread()
 
         elif self.is_position_inf_eval(mv):
             # print "is_pos_eval"
@@ -4550,7 +4554,7 @@ class ChessProgram_app(App):
         return True
 
     def save_games(self, obj):
-        print "saving games"
+        print ("saving games")
         current_pos_hash = self.chessboard.board().zobrist_hash()
 
         if len(self.db_adapter.data) < 1000:
@@ -5129,116 +5133,118 @@ class ChessProgram_app(App):
             #                               ("[ref=%s]Remove[/ref]" % DELETE_FROM_USER_BOOK)], callback=self.add_book_moves_black)
 
     def update_book_panel(self, ev=None):
-        # print "ev:"+str(ev)
-        fen = self.chessboard.position.fen
+        with self.book_lock:
+            # print "ev:"+str(ev)
+            fen = self.chessboard.position.fen
 
-        if self.book_display:
-            user_book_moves_set = set()
-            pos_hash = str(self.chessboard.position.__hash__())
+            if self.book_display:
+                user_book_moves_set = set()
+                pos_hash = str(self.chessboard.position.__hash__())
 
-            # print pos_hash
-            user_book_moves = None
-            if self.user_book is not None:
-                # self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
-                #            print "found user_book\n"
-                move_text = ""
+                # print pos_hash
+                user_book_moves = None
+                if self.user_book is not None:
+                    # self.user_book_panel.children[0].text = "[color=000000][i][ref=" + BOOK_OFF + "]" + BOOK_OFF + "[/ref][/i]\n"
+                    #            print "found user_book\n"
+                    move_text = ""
 
-                if pos_hash in self.user_book:
-                    #                    print "found position"
-                    #                print self.user_book[self.chessboard.position.fen]
-                    user_book_moves = self.user_book[pos_hash]
-                    # print user_book_moves
-                    try:
-                        col = user_book_moves["color"]
-                    except KeyError:
-                        print (user_book_moves)
-                        col = ["white"]
-                    color = "bold"
-                    if "white" in col and "black" not in col:
-                        color = "3333ff"
-                    elif "white" in col and "black" in col:
-                        color = "ff0000"
-                    # elif "white" not in col and "black" in col:
-                    #     color = "bold"
+                    if pos_hash in self.user_book:
+                        #                    print "found position"
+                        #                print self.user_book[self.chessboard.position.fen]
+                        user_book_moves = self.user_book[pos_hash]
+                        # print user_book_moves
+                        try:
+                            col = user_book_moves["color"]
+                        except KeyError:
+                            print (user_book_moves)
+                            col = ["white"]
+                        color = "bold"
+                        if "white" in col and "black" not in col:
+                            color = "3333ff"
+                        elif "white" in col and "black" in col:
+                            color = "ff0000"
+                        # elif "white" not in col and "black" in col:
+                        #     color = "bold"
 
-                    user_book_moves = user_book_moves["moves"]
-                    # print user_book_moves
-                    if user_book_moves:
-                        for m in user_book_moves:
-                            # print m
-                            pos = Position(fen)
-                            move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
-                            san = move_info.san
-                            move_text += "[ref={0}]{1}[/ref]\n".format(m, san)
-                            user_book_moves_set.add(m)
+                        user_book_moves = user_book_moves["moves"]
+                        # print user_book_moves
+                        if user_book_moves:
+                            for m in user_book_moves:
+                                # print m
+                                pos = Position(fen)
+                                move_info = pos.make_move(Move.from_uci(m.encode("utf-8")))
+                                san = move_info.san
+                                move_text += "[ref={0}]{1}[/ref]\n".format(m, san)
+                                user_book_moves_set.add(m)
 
-                    if ev is not None:
-                        j = self.user_book[pos_hash]
-                        j["eval"] = self.convert_inf_eval_to_int(ev)
-                        self.user_book[pos_hash] = j
-                else:
-                    # Not found
-                    #     print "pos not found"
-                    self.user_book[pos_hash] = {"moves": [], "annotation": "", "color": [],
-                                                "eval": 5, "games": [], "misc": ""}
+                        if ev is not None:
+                            j = self.user_book[pos_hash]
+                            j["eval"] = self.convert_inf_eval_to_int(ev)
+                            self.user_book[pos_hash] = j
+                    else:
+                        # Not found
+                        #     print "pos not found"
+                        self.user_book[pos_hash] = {"moves": [], "annotation": "", "color": [],
+                                                    "eval": 5, "games": [], "misc": ""}
 
-            book_entries = 0
-            try:
-                self.book_panel.reset_grid()
-            except Exception as e:
-                print(e.message)
-
-            # print("fen : {0}".format(fen))
-            if not self.book:
-                self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn')
-            polyglot_entries = self.book.get_quick_position_stats(fen)['moves']
-            sorted_moves = sorted(polyglot_entries, key=lambda k: k['games'], reverse=True)
-
-            for e in sorted_moves:
-                if book_entries >= 10:
-                    break
-                # print(e)
-                move = e['move']
-                weight = e['weight']
-                games = e['games']
-                draws = e['draws']
-                wins = e['wins']
-                losses = e['losses']
-
-                move = self.set_castling(move)
-
+                book_entries = 0
                 try:
-                    pos = Position(fen)
-                    try:
-                        move_info = pos.make_move(Move.from_uci(str(move)))
-                        san = move_info.san
-                        self.book_panel.grid.add_row(
-                            [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(san)), str(games), "{:0.1f}".format((wins+0.5*draws)*100.0/(wins+draws+losses)),
-                             str(wins), str(draws), str(losses), str(weight)],
-                            callback=self.add_book_moves)
-                        book_entries += 1
-                    except Exception as e:
-                        print("Could not convert move to san")
-                        print("move: {0}".format(move))
-                        # print("move wi")
-                        # weight = str(e.weight)
-                        print("move weight: {0}".format(weight))
-                        # raise
-                        print(e.message)
-                except Exception as ex:
-                    print(ex.message)
+                    self.book_panel.reset_grid()
+                except Exception as e:
+                    print(e.message)
 
-            current_eval = self.user_book[pos_hash]["eval"]
-            # print "current_eval:"+str(current_eval)
-            weight = self.convert_int_eval_to_inf(current_eval)
-            self.book_panel.grid.add_row(["--", "--", "[color=3333ff][ref=add_to_user_book]Add to White Rep[/ref][/color]",
-                                          ("[color=3333ff][ref=%s]Delete[/ref][/color]" % DELETE_FROM_USER_BOOK), "--", "--", "--"],
-                                         callback=self.add_book_moves_white)
-            self.book_panel.grid.add_row(["--", "--", "[ref=add_to_user_book]Add to Black Rep[/ref]",
-                                          ("[ref=%s]Delete[/ref]" % DELETE_FROM_USER_BOOK), "--", "--", "--"],
-                                         callback=self.add_book_moves_black)
-            self.book_panel.grid.add_row(["Eval", "[ref={0}]{0}[/ref]".format(weight)],
-                                         callback=self.add_book_moves)
+                # print("fen : {0}".format(fen))
+                if not self.book:
+                    self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn')
+                polyglot_entries = self.book.get_quick_position_stats(fen)['moves']
+                sorted_moves = sorted(polyglot_entries, key=lambda k: k['games'], reverse=True)
+
+                for e in sorted_moves:
+                    if book_entries >= 10:
+                        break
+                    # print(e)
+                    move = e['move']
+                    weight = e['weight']
+                    games = e['games']
+                    draws = e['draws']
+                    wins = e['wins']
+                    losses = e['losses']
+
+                    move = self.set_castling(move)
+
+                    try:
+                        pos = Position(fen)
+                        try:
+                            move_info = pos.make_move(Move.from_uci(str(move)))
+                            san = move_info.san
+                            self.book_panel.grid.add_row(
+                                [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(san)), str(games), "{:0.1f}".format((wins+0.5*draws)*100.0/(wins+draws+losses)),
+                                 str(wins), str(draws), str(losses), str(weight)],
+                                callback=self.add_book_moves)
+                            book_entries += 1
+                        except Exception as e:
+                            print("Could not convert move to san")
+                            print("move: {0}".format(move))
+                            # print("move wi")
+                            # weight = str(e.weight)
+                            print("move weight: {0}".format(weight))
+                            # raise
+                            print(e.message)
+                    except Exception as ex:
+                        print(ex.message)
+
+                current_eval = self.user_book[pos_hash]["eval"]
+                # print "current_eval:"+str(current_eval)
+                weight = self.convert_int_eval_to_inf(current_eval)
+                self.book_panel.grid.add_row(["--", "--", "[color=3333ff][ref=add_to_user_book]Add to White Rep[/ref][/color]",
+                                              ("[color=3333ff][ref=%s]Delete[/ref][/color]" % DELETE_FROM_USER_BOOK), "--", "--", "--"],
+                                             callback=self.add_book_moves_white)
+                self.book_panel.grid.add_row(["--", "--", "[ref=add_to_user_book]Add to Black Rep[/ref]",
+                                              ("[ref=%s]Delete[/ref]" % DELETE_FROM_USER_BOOK), "--", "--", "--"],
+                                             callback=self.add_book_moves_black)
+                self.book_panel.grid.add_row(["Eval", "[ref={0}]{0}[/ref]".format(weight)],
+                                             callback=self.add_book_moves)
+                self.last_book_fen = fen
 
     def set_castling(self, move):
         if move == 'e1h1':
@@ -5450,7 +5456,7 @@ class ChessProgram_app(App):
         self.refresh_engine()
         # engine_thread = threading.Timer(0, engine.go, [time.uci()])
             # engine_thread.start()
-        self.invoke_book_thread()
+        # self.invoke_book_thread()
         # self.update_book_panel()
         if self.dgt_show_next_move and len(self.chessboard.variations)>0:
             self.write_to_dgt(str(self.chessboard.variations[0].move), move=True, beep=False)
@@ -5483,11 +5489,18 @@ class ChessProgram_app(App):
     def invoke_book_thread(self, *args):
         # book_thread = threading.Timer(0, self.update_book_panel, [])
         # book_thread.start()
-        pass
-        # self.update_book_panel()
+        # pass
+        # with self.
+        # print("Updating Book Panel..")
+        self.update_book_panel()
 
     def tasks_every_second(self, *args):
-        self.update_book_panel()
+        # pass
+        fen = self.chessboard.position.fen
+        # print("in tasks every second")
+        if self.last_book_fen != fen:
+            # print("updating book grid")
+            self.update_book_panel()
 
 if __name__ == '__main__':
     ChessProgram_app().run()
