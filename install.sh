@@ -3,7 +3,7 @@ chesspython/bin/pip install setuptools --no-use-wheel --upgrade
 chesspython/bin/pip install six
 chesspython/bin/pip install cython==0.20.2
 chesspython/bin/pip install hg+http://bitbucket.org/pygame/pygame
-chesspython/bin/pip install kivy==1.9.2
+chesspython/bin/pip install kivy==1.9.1
 chesspython/bin/pip install git+https://github.com/kivy/buildozer.git@master
 chesspython/bin/pip install git+https://github.com/kivy/plyer.git@master
 chesspython/bin/pip install -U pygments docutils
@@ -33,5 +33,3 @@ sudo make install
 cd ../..
 cp chess_db/parser/parser utils
 cp chess_db/parser/chess_db.py utils
-
-#../chesspython/bin/python setup.py install
