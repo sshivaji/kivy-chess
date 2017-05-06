@@ -1940,20 +1940,40 @@ class ChessProgram_app(App):
     def gen_leveldb_path(self, fname):
         return fname + '.db'
 
+    def gen_polyglot_path(self, fname):
+        return os.path.splitext(fname)[0] + '.bin'
+
     def process_database(self, obj, f, mevent):
-        leveldb_path = self.open_create_index(f)
-        if leveldb_path:
-            self.db_popup.dismiss()
-            # self.db_index_book = leveldb.LevelDB(leveldb_path)
-            self.db_index_book = leveldict.PartitionedLevelDB(leveldb_path)
+        self.open_db(f, ref=False)
+
 
     def process_ref_database(self, obj, f, mevent):
-        leveldb_path = self.open_create_index(f)
+        self.open_db(f, ref=True)
 
-        if leveldb_path:
+    def open_db(self, f, ref=True):
+        pgn_path = self.get_pgn_path(f)
+        # leveldb_path = self.open_create_index(f)
+        if pgn_path:
             self.db_popup.dismiss()
-            self.ref_db_index_book = leveldict.PartitionedLevelDB(leveldb_path)
-            # self.ref_db_index_book = leveldb.LevelDB(leveldb_path)
+
+            print("pgn_path: {}".format(pgn_path))
+            print("db_path: {}".format(self.gen_polyglot_path(pgn_path)))
+
+            if ref:
+                self.ref_db_index_book = polyglot_opening_book.PolyglotOpeningBook(self.gen_polyglot_path(pgn_path),
+                                                                               pgn=pgn_path)
+                self.ref_db_index_book.book_parser.open(pgn_path, full=True)
+
+            else:
+                self.db_index_book = polyglot_opening_book.PolyglotOpeningBook(self.gen_polyglot_path(pgn_path),
+                                                                                   pgn=pgn_path)
+                self.db_index_book.book_parser.open(pgn_path, full=True)
+
+    def get_pgn_path(self, f):
+        folder_tokens = f[0].split('/')
+        if '.pgn' in folder_tokens[-1]:
+            pgn_path = f[0]
+            return pgn_path
 
     def start_uci_engine_thread(self):
         self.uci_engine_thread = Thread(target=self.update_external_engine_output, args=(None,))
@@ -2635,7 +2655,7 @@ class ChessProgram_app(App):
         self.db_open_item.bind(on_release=self.open_database)
 
         self.ref_db_open_item = SettingItem(panel=board_panel, title="Open Reference Database") #create instance of one item in left side panel
-        self.ref_db_open_item.bind(on_release=self.open_database)
+        self.ref_db_open_item.bind(on_release=self.open_ref_database)
         self.last_highlight=None
 
         database_panel.add_widget(self.db_open_item)
@@ -3057,15 +3077,15 @@ class ChessProgram_app(App):
 
     def extract_record(self, record_list):
         record = record_list[0]
-        white = record.get('White', None)
+        white = record.get('White', '')
         # print("white: {}".format(white))
         whiteelo = str(record.get('WhiteElo', 0))
-        black = record.get('Black', None)
+        black = record.get('Black', '')
         blackelo = str(record.get('BlackElo', 0))
-        result = record.get('Result', None)
-        date = record.get('Date', None)
-        event = record.get('Event', None)
-        eco = record.get('ECO', None)
+        result = record.get('Result', '')
+        date = record.get('Date', '')
+        event = record.get('Event', '')
+        eco = record.get('ECO', '')
         return black, blackelo, date, eco, event, result, white, whiteelo
 
     def generate_empty_rows(self, rec):
@@ -4828,7 +4848,9 @@ class ChessProgram_app(App):
 
                 # record = self.ref_db_index_book.Get("game_{0}_data".format(g), regular=True)
             else:
-                record = self.db_index_book.Get("game_{0}_data".format(g), regular=True)
+                # record = self.db_index_book.Get("game_{0}_data".format(g), regular=True)
+                games = self.db_index_book.book_parser.get_games([g])
+                record = self.db_index_book.book_parser.get_game_headers(games)
             # print "Reocrd: {0}".format(record)
             if header == "ALL":
                 return record
@@ -4858,11 +4880,12 @@ class ChessProgram_app(App):
         try:
             fen = self.chessboard.position.fen
 
-            polyglot_entries = self.book.get_quick_position_stats(fen, limit=3000)['moves']
+            polyglot_entries = db_index.get_quick_position_stats(fen, limit=3000)['moves']
             game_ids = []
 
             for e in polyglot_entries:
                 game_ids = e['pgn offsets']
+                # print("game_ids : {}".format(game_ids))
                 break
 
             # game_ids = db_index.Get(pos_hash)
@@ -4936,8 +4959,8 @@ class ChessProgram_app(App):
             db_index = self.ref_db_index_book
         else:
             db_index = self.db_index_book
-        # print("db_index_book: {0}".format(self.db_index_book))
-        if db_index is not None and self.database_display:
+        # print("db_index_book: db: {0}, pgn: {1}".format(db_index.book_parser.db, db_index.book_parser.pgn))
+        if db_index and self.database_display:
             db_game_list, game_ids = self.get_game_headers(db_index, pos_hash)
 
             self.db_stat_label.text = "{0} games".format(len(game_ids))
