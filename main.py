@@ -991,14 +991,15 @@ class EngineControls(BoxLayout):
 
         print "Started Cloud engine"
 
-    def stop_cloud_engine(self, bt):
+    def stop_cloud_engine(self, bt, aws=False):
         try:
             bt.parent.parent.dismiss()
         except AttributeError, e:
             # Once expanded to full screen, you no longer have to dismiss the popup
             print e
         print "Stopped Cloud engine"
-        cloud_eng.process_request_api(self.app.cloud_engine_id, image_prefix="HighCPU", debug=True,
+        if aws:
+            cloud_eng.process_request_api(self.app.cloud_engine_id, image_prefix="HighCPU", debug=True,
                 stop=True, dryrun=False)
         print "Engine id: {0} Stopped".format(self.app.cloud_engine_id)
         self.app.cloud_engine_id = None
@@ -1988,10 +1989,11 @@ class ChessProgram_app(App):
 
             self.other_engine_panel.clear_widgets()
             self.add_load_uci_engine_setting(self.other_engine_panel)
-        uci_engine = UCIEngine(f, cloud=cloud, cloud_hostname=cloud_hostname, cloud_username=cloud_username, cloud_private_key_file=cloud_private_key_file)
+        uci_engine = UCIEngine(f, cloud=cloud, cloud_hostname=cloud_hostname, cloud_username=cloud_username,
+                               cloud_private_key_file=cloud_private_key_file, port=self.cloud_engine_port)
         uci_engine.start()
         if cloud:
-            uci_engine.configure({'Threads': 32, 'Hash': 2048})
+            uci_engine.configure({'Threads': 40, 'Hash': 12000})
             # 'Min Split Depth': 12, 'Max Threads per Split Point':8, 'Idle Threads Sleep': 'false'
             # print uci_engine.engine_info
         else:
@@ -2010,6 +2012,7 @@ class ChessProgram_app(App):
         self.start_uci_engine_thread()
         uci_engine.startGame()
         print "started UCI engine"
+        sleep(3)
         return uci_engine
 
     def load_uci_engine(self, obj, f, mevent):
@@ -2102,10 +2105,15 @@ class ChessProgram_app(App):
         return curr_eng_score
 
     def start_cloud_engine(self):
-        self.cloud_engine_id = uuid.uuid1()
+        # self.cloud_engine_id = uuid.uuid1()
+        # self.cloud_engine_id = 'magnolia'
         print "Engine id: {0}".format(self.cloud_engine_id)
                 #     # Check for cloud engine
-        if self.cloud_engine_id:
+        if self.cloud_hostname:
+            # Connect to a dedicated hostname
+            self.start_engine(self.cloud_hostname)
+
+        else:
             # {'status': 'success', 'dns_name': u'ec2-54-86-236-252.compute-1.amazonaws.com', 'state': u'running', 'id': '629f846b-df34-11e3-82c6-d49a20f3bb9c'}
             start_result_hash = cloud_eng.process_request_api(self.cloud_engine_id, image_prefix="HighCPU", instance_type="c3.8xlarge", debug=True,
                     start=True, dryrun=False)
@@ -2116,32 +2124,38 @@ class ChessProgram_app(App):
                 result_hash = cloud_eng.process_request_api(self.cloud_engine_id, image_prefix="HighCPU", debug=True,
                     get_status=True, dryrun=False)
                 print "result_hash: {0}".format(result_hash)
-                if result_hash['status'] == 'success' and result_hash['state']=='running':
-                    print "connecting to cloud engine.."
-                    if not self.uci_engine:
-                        self.cloud_hostname = result_hash['dns_name']
-                        print "hostname: {0}".format(self.cloud_hostname)
-                        print "private_key_file: {0}".format(self.cloud_private_key_file)
-                        print "cloud_username: {0}".format(self.cloud_username)
-                        sleep(5)
-                        while True:
-                            num_ssh_retries = 0
-                            try:
-                                self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True, cloud_hostname=self.cloud_hostname, cloud_private_key_file=self.cloud_private_key_file, cloud_username=self.cloud_username)
-                                break
-                            except spur.ssh.ConnectionError:
-                                sleep(3)
-                                num_ssh_retries +=1
-                                print "Retrying ssh.."
-                            if num_ssh_retries > 10:
-                                print "Cannot connect to SSH"
-                                break
-
-                        print "Connected!"
+                if result_hash['status'] == 'success' and result_hash['state'] == 'running':
+                    if self.start_engine(result_hash['dns_name']) or num_sleeps > 20:
                         break
-                if num_sleeps > 20:
-                    break
                 print "Will retry after 5 seconds"
+
+    def start_engine(self, hostname, port=22):
+        print "connecting to cloud engine.."
+        if not self.uci_engine:
+            self.cloud_hostname = hostname
+            print "hostname: {0}".format(self.cloud_hostname)
+            print "private_key_file: {0}".format(self.cloud_private_key_file)
+            print "cloud_username: {0}".format(self.cloud_username)
+            # sleep(5)
+            while True:
+                num_ssh_retries = 0
+                try:
+                    self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True, cloud_hostname=self.cloud_hostname,
+                                          cloud_private_key_file=self.cloud_private_key_file,
+                                          cloud_username=self.cloud_username)
+                    break
+                except spur.ssh.ConnectionError:
+                    sleep(3)
+                    num_ssh_retries += 1
+                    print "Retrying ssh.."
+                if num_ssh_retries > 10:
+                    print "Cannot connect to SSH"
+                    break
+
+
+            print "Connected!"
+            return True
+            # break
 
     def analyze_opening(self, params):
         if params["use_ext_eng"] == "down":
@@ -3138,9 +3152,10 @@ class ChessProgram_app(App):
 
         self.cloud_engine_id=None
         self.cloud_engine_running=False
-        self.cloud_hostname=None
-        self.cloud_username="ubuntu"
-        self.cloud_private_key_file=expanduser("~/.ssh/stockfish.pem")
+        self.cloud_hostname='magnolia.turingeye.com'
+        self.cloud_username="sshivaji"
+        self.cloud_private_key_file=expanduser("~/.ssh/id_rsa_15inchmacbook")
+        self.cloud_engine_port=3825
 
         Clock.schedule_interval(self.tasks_every_second, 1)
 
@@ -5506,8 +5521,10 @@ class ChessProgram_app(App):
                                   size=(abs(x2-x1),
                                         abs(y2-y1)))
                         # 1.1 instead of 1 below for text to be more in the middle
-                        self.game_score._scroll_y_mouse= 1-y1*1.1/self.game_score.label.height
-                        self.game_score.scroll_y= 1-y1*1.1/self.game_score.label.height
+                        # self.game_score._scroll_y_mouse = self.get_y(self.game_score.label, y2)
+                        # self.game_score.scroll_y = self.get_y(self.game_score.label, y2)
+                        self.game_score._scroll_y_mouse = 1-y1*1.1/self.game_score.label.height
+                        self.game_score.scroll_y = 1-y1*1.1/self.game_score.label.height
 
     def invoke_book_thread(self, *args):
         # book_thread = threading.Timer(0, self.update_book_panel, [])

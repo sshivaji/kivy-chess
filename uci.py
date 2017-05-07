@@ -23,7 +23,7 @@ class UCIOption:
 
 
 class UCIEngine:
-    def __init__(self, exe, cloud=False, cloud_hostname=None, cloud_username=None, cloud_private_key_file=None):
+    def __init__(self, exe, cloud=False, cloud_hostname=None, cloud_username=None, cloud_private_key_file=None, port=22):
         """Constructor for an AI player.
 
         'name' is the name of the player (string).
@@ -68,7 +68,8 @@ class UCIEngine:
                     hostname=cloud_hostname,
                     username=cloud_username,
                     private_key_file=cloud_private_key_file,
-                    missing_host_key=paramiko.AutoAddPolicy()
+                    missing_host_key=paramiko.AutoAddPolicy(),
+                    port=port
                 )
                 self.eng_process = shell.spawn([exe], stdout=subprocess.PIPE, store_pid=True, allow_error=True)
 
@@ -124,7 +125,10 @@ class UCIEngine:
                 break
             line = buffer[:index]
             buffer = buffer[index + 1:]
-            self.parseLine(line)
+            if line:
+                # print("line: {}".format(line))
+                self.parseLine(line)
+
         self.__inCallback = False
 
         if self.__options is not None and self.readyToConfigure:
@@ -307,8 +311,11 @@ class UCIEngine:
                 type = args[type_idx+1]
                 # print "type: {0}".format(args[type_idx+1])
                 default_idx = args.index("default")
-                default = args[default_idx+1]
-                # print "default: {0}".format(args[default_idx+1])
+                try:
+                    default = args[default_idx+1]
+                except IndexError:
+                    default = ''
+                # print "default: {0}".format(default)
 
                 if type == 'spin':
                     min_idx = args.index("min")
