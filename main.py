@@ -4016,7 +4016,7 @@ class ChessProgram_app(App):
                 self.engine_mode = value
                 if value == ENGINE_PLAY:
                     self.engine_computer_move = True
-                    self.engine_comp_color = self.chessboard.board().turn
+                    self.engine_comp_color = self.chessboard.position.turn
                     self.reset_clocks()
                 # elif value == ENGINE_ANALYSIS:
                 #     # Check for cloud engine
