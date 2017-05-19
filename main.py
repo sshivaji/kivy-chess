@@ -5512,7 +5512,7 @@ class ChessProgram_app(App):
                 if current_pos_hash in self.game_score.label.refs:
                     self.game_score.label.canvas.before.clear()
                     with self.game_score.label.canvas.before:
-                        self.highlight_color = get_color_from_hex('#eef7fa')
+                        self.highlight_color = get_color_from_hex('#d6dee1')
                         Color(*self.highlight_color)
                         box = self.game_score.label.refs[current_pos_hash][0]
                         x1, y1, x2, y2 = box
@@ -5523,8 +5523,11 @@ class ChessProgram_app(App):
                         # 1.1 instead of 1 below for text to be more in the middle
                         # self.game_score._scroll_y_mouse = self.get_y(self.game_score.label, y2)
                         # self.game_score.scroll_y = self.get_y(self.game_score.label, y2)
-                        self.game_score._scroll_y_mouse = 1-y1*1.1/self.game_score.label.height
-                        self.game_score.scroll_y = 1-y1*1.1/self.game_score.label.height
+                        # self.game_score._scroll_y_mouse = 1-y1*1/self.game_score.label.height
+                        self.game_score.scroll_y = 1-y1*1.05/self.game_score.label.height
+                        # self.game_score.scroll_y += .1
+                        self.game_score._update_effect_y_bounds()
+                        self.game_score._update_effect_x_bounds()
 
     def invoke_book_thread(self, *args):
         # book_thread = threading.Timer(0, self.update_book_panel, [])
