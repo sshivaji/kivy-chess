@@ -391,20 +391,6 @@ class GameNode(object):
 
             for el in n:
                 score = self.process_move(el, figurine, format, q, score)
-
-                # for i, v in enumerate(el.__variations):
-                #
-                #     if i == 0:
-                #         # Output mainline before variations
-                #         if v.__variations:
-                #             q.append(v.__variations)
-                #             score = self.process_move(v, figurine, format, q, score)
-                #         else:
-                #             q.append([v])
-                #     else:
-                #         q.append([v])
-
-
                 q.append(el.__variations)
 
                 # print "move: {0}, variations: {1}, length: {2}".format(el.__san, el.__variations, len(el.__variations))
@@ -420,10 +406,14 @@ class GameNode(object):
             score += "[ref={0}][size={1}]".format(el.__position.__hash__(), font_size)
             if el.is_main_line():
                 score += "[b]"
+        move = el.half_move_num
+
         if not el.is_main_variation():
             # score += " ("*tree_depth
             score += "\n{0} {1} ".format(" " * len(q) * 2, " (", )
-        move = el.half_move_num
+            if move % 2 != 0:
+                score += "{0}... ".format((move) / 2, )
+
         if move % 2 == 0:
             score += "{0}. ".format((move + 1) / 2, )
         # else:
