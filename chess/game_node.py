@@ -380,7 +380,6 @@ class GameNode(object):
         """
         del self.__variations[self.index(variation)]
 
-
     def walk_tree_iterative(self, variation, move, format="normal", score="", figurine=False):
         score = u''
         q = [variation]
@@ -391,88 +390,96 @@ class GameNode(object):
             n = q.pop()
 
             for el in n:
+                score = self.process_move(el, figurine, format, q, score)
 
-                    # tree_depth +=1
+                for i, v in enumerate(el.__variations):
 
-                if format == "ref":
-                    font_size = 16-len(q)
-                    if font_size < 10:
-                        font_size = 10
-                    score += "[ref={0}][size={1}]".format(el.__position.__hash__(), font_size)
-                    if el.is_main_line():
-                        score +="[b]"
-
-                if not el.is_main_variation():
-                    # score += " ("*tree_depth
-                    score += "\n{0} {1} ".format(" "*len(q)*2, " (",)
-
-                move = el.half_move_num
-                if move % 2 == 0:
-                    score += "{0}. ".format((move + 1)/2,)
-                if el.__san:
-                    san = el.__san.encode('utf-8')
-                    if figurine:
-                        for k, v in PIECE_FONT_MAP.iteritems():
-                            san = san.replace(k, v)
-
-                    score += u"{0} ".format(san,)
-                else:
-                    score += "{0} ".format(el.move)
-
-                try:
-                    # print "evaluation: "
-                    # print el.evaluation
-                    # print "nags:: "
-                    # print el.nags
-                    if el.evaluation.has_key("move_eval") or el.evaluation.has_key("pos_eval"):
-                        el.__nags = []
-
-                    if el.evaluation.has_key("move_eval"):
-                        el.__nags.append(el.evaluation["move_eval"])
-                        # score += "{0} ".format(el.evaluation["move_eval"])
-                    if el.evaluation.has_key("pos_eval"):
-                        el.__nags.append(el.evaluation["pos_eval"])
-
-                        # score += "{0} ".format(el.evaluation["pos_eval"])
-                    if el.nags:
-                        for nag in el.nags:
-                            if format == "file":
-                                if nag:
-                                    score += "${0} ".format(nag)
-                            else:
-                                if nag in NAG_TO_READABLE_MAP:
-                                    score += "{0} ".format(NAG_TO_READABLE_MAP[nag])
-                except UnicodeDecodeError, e:
-                    print e
-
-                try:
-                    if el.comment:
-                        if format == "file":
-                            score += " {{{0}}} ".format(el.comment)
+                    if i == 0:
+                        # Output mainline before variations
+                        if v.__variations:
+                            q.append(v.__variations)
+                            score = self.process_move(v, figurine, format, q, score)
                         else:
-                            score += "[color=3333ff]{0}[/color]".format(el.comment)
-                except UnicodeEncodeError, e:
-                    print e
-
-                if not el.is_main_line() and len(el.__variations) == 0:
-                    # print "move: {0} is a leaf".format(el.__san)
-                    score += " )\n "
-                    # len -=1
-
-                if format == "ref":
-                    score += " "
-                    if el.is_main_line():
-                        score +="[/b]"
-                    score += "[/size][/ref] "
-
-                if len(el)>0:
-                    for v in el.__variations:
+                            q.append([v])
+                    else:
                         q.append([v])
+
+
                     # q.append(el.__variations)
 
                 # print "move: {0}, variations: {1}, length: {2}".format(el.__san, el.__variations, len(el.__variations))
 
-        # print score
+        # print ("score: {}".format(score))
+        return score
+
+    def process_move(self, el, figurine, format, q, score):
+        if format == "ref":
+            font_size = 16 - len(q)
+            if font_size < 10:
+                font_size = 10
+            score += "[ref={0}][size={1}]".format(el.__position.__hash__(), font_size)
+            if el.is_main_line():
+                score += "[b]"
+        if not el.is_main_variation():
+            # score += " ("*tree_depth
+            score += "\n{0} {1} ".format(" " * len(q) * 2, " (", )
+        move = el.half_move_num
+        if move % 2 == 0:
+            score += "{0}. ".format((move + 1) / 2, )
+        # else:
+        #     if el.is_start_of_variation():
+        #         score += "... "
+        if el.__san:
+            san = el.__san.encode('utf-8')
+            if figurine:
+                for k, v in PIECE_FONT_MAP.iteritems():
+                    san = san.replace(k, v)
+
+            score += u"{0} ".format(san, )
+        else:
+            score += "{0} ".format(el.move)
+        try:
+            # print "evaluation: "
+            # print el.evaluation
+            # print "nags:: "
+            # print el.nags
+            if el.evaluation.has_key("move_eval") or el.evaluation.has_key("pos_eval"):
+                el.__nags = []
+
+            if el.evaluation.has_key("move_eval"):
+                el.__nags.append(el.evaluation["move_eval"])
+                # score += "{0} ".format(el.evaluation["move_eval"])
+            if el.evaluation.has_key("pos_eval"):
+                el.__nags.append(el.evaluation["pos_eval"])
+
+                # score += "{0} ".format(el.evaluation["pos_eval"])
+            if el.nags:
+                for nag in el.nags:
+                    if format == "file":
+                        if nag:
+                            score += "${0} ".format(nag)
+                    else:
+                        if nag in NAG_TO_READABLE_MAP:
+                            score += "{0} ".format(NAG_TO_READABLE_MAP[nag])
+        except UnicodeDecodeError, e:
+            print e
+        try:
+            if el.comment:
+                if format == "file":
+                    score += " {{{0}}} ".format(el.comment)
+                else:
+                    score += "[color=3333ff]{0}[/color]".format(el.comment)
+        except UnicodeEncodeError, e:
+            print e
+        if not el.is_main_line() and len(el.__variations) == 0:
+            # print "move: {0} is a leaf".format(el.__san)
+            score += " )\n "
+            # len -=1
+        if format == "ref":
+            score += " "
+            if el.is_main_line():
+                score += "[/b]"
+            score += "[/size][/ref] "
         return score
 
     def fill_header_entry(self, attr):
@@ -480,8 +487,8 @@ class GameNode(object):
             return self.headers.headers[attr]
 
     def write_header(self, header_score, attr, definition='hide_type', newline=True, force_new_line=False):
-        if definition=='file':
-            newline=True
+        if definition == 'file':
+            newline = True
             force_new_line = False
         if self.fill_header_entry(attr):
             if definition=='view':
@@ -532,7 +539,6 @@ class GameNode(object):
             self.header_score = header_score
 
         return self.header_score
-
 
     def game_score(self, format="ref", figurine=False):
         header = "view"
