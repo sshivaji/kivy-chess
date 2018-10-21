@@ -3,6 +3,7 @@ from kivy.graphics.instructions import InstructionGroup
 
 import leveldict
 
+
 try:
     from StringIO import StringIO
 except ImportError:
@@ -947,6 +948,7 @@ class GameAnalysisPopup(Popup):
         self.app.game_analysis_thread = KThread(target=self.app.analyze_game, args=(p,))
         self.app.game_analysis_thread.start()
         Clock.schedule_interval(self.app.update_board_position, 1)
+
 
 class OpeningAnalysisPopup(Popup):
     def __init__(self, app, **kwargs):
@@ -2157,7 +2159,11 @@ class ChessProgram_app(App):
             return True
             # break
 
-    def analyze_opening(self, params):
+    def strip_fen(self, fen):
+        return " ".join(fen.split(' ')[:3])
+
+    def analyze_opening(self, params, max_pos_occurrence=50):
+
         if params["use_ext_eng"] == "down":
             use_external_engine = True
         else:
@@ -2166,6 +2172,7 @@ class ChessProgram_app(App):
         # self.engine_mode = ENGINE_ANALYSIS
         self.game_analysis = True
         root_position = self.chessboard
+        # print("root position fen: {}".format(root_position.position.fen))
         # root_position_move_num = self.chessboard.board().fullmove_number
 
         # self.chessboard = self.chessboard_root
@@ -2185,8 +2192,24 @@ class ChessProgram_app(App):
         # Deep analysis modal:
         # Confirm - time per move/thresholds, mode, and look for white/black improvements
         # Bonus - create opening repertoire mode!
-        stats = self.get_book_stats(root_position.board().fen(), format=False)['records']
-        initial_frequency = sum([m['freq'] for m in stats])
+        root_fen = root_position.position.fen
+        stats = self.book.get_quick_position_stats(root_fen)['moves']
+        # print("book_stats: {}". format(stats))
+        # sorted_moves = sorted(polyglot_entries, key=lambda k: k['games'], reverse=True)
+
+        # for e in sorted_moves:
+        #     if book_entries >= 10:
+        #         break
+        #     # print(e)
+        #     move = e['move']
+        #     weight = e['weight']
+        #     games = e['games']
+        #     draws = e['draws']
+        #     wins = e['wins']
+        #     losses = e['losses']
+
+        # stats = self.get_book_stats(root_position.position.fen, format=False)['records']
+        initial_frequency = sum([m['games'] for m in stats])
 
         # print "initial_freq: {0}".format(initial_frequency)
         # sorted(book_moves, key=lambda book_move: int(book_move['freq']), reverse=True)
@@ -2194,19 +2217,47 @@ class ChessProgram_app(App):
         position_stats = {}
         while True:
             # self.refresh_engine()
-            stats = self.get_book_stats(self.chessboard.board().fen(), format=False)['records']
-            book_moves = sorted(stats, key=lambda book_move: int(book_move['freq']), reverse=True)
+            fen = self.strip_fen(self.chessboard.position.fen)
+            try:
+                stats = self.book.get_quick_position_stats(fen)['moves']
+            except:
+                break
+
+            if fen in position_stats:
+                position_stats[fen]['freq'] += 1
+                if position_stats[fen]['freq'] > max_pos_occurrence:
+                    break
+
+            # else:
+            #     position_stats[fen] = {'freq': 1, 'fen': fen, 'hash': key}
+
+
+            book_moves = sorted(stats, key=lambda k: k['games'], reverse=True)
+
+            # print("len book_moves: {}".format(len(book_moves)))
+
+             # = sorted(stats, key=lambda book_move: int(book_move['freq']), reverse=True)
             # freqs = [m['freq'] for m in stats]
             # print book_moves
 
             for i, m in enumerate(book_moves):
+                print ("book_move: {}".format(m))
+
+                # pos = Position(self.chessboard.position.fen)
+
+                # new_pos = pos.make_move(Move.from_uci(str(m['move'])))
+                # print("new_pos: {}".format(dir(new_pos)))
+                m['fen'] = self.strip_fen(self.chessboard.position.fen)
+                m['move'] = self.set_castling(m['move'])
+
                 # print m
                 # print (book_moves[i-1]['freq']-m['freq'])/(book_moves[i-1]['freq']*1.0)
                 # print "move : {0}".format(m['move'])
                 # print "init_freq : {0}".format(initial_frequency/100*1.0)
                 # print "m_freq: {0}".format(m['freq'])
-                freq = int(m['freq'])
-                if params['white_rep'] and self.chessboard.board().turn == 'b' or params['black_rep'] and self.chessboard.board().turn == 'w':
+                freq = int(m['games'])
+
+                if params['white_rep'] and self.chessboard.position.turn == 'b' or params['black_rep'] and self.chessboard.position.turn == 'w':
                     threshold = 1.0
                     second_threshold = 0.65
                 else:
@@ -2214,18 +2265,27 @@ class ChessProgram_app(App):
                     second_threshold = 0.50
 
                 if i == 0 and freq > int(initial_frequency/100*1.0):
-                    # print "move: {0} appended".format(m['move'])
-                    moves_to_probe.append(m)
+                    if m not in moves_to_probe:
+                        moves_to_probe.append(m)
 
-                elif freq > int(initial_frequency/100*threshold) and (int(book_moves[i-1]['freq'])-freq)/(int(book_moves[i-1]['freq'])*1.0) < second_threshold:
-                    # print "move: {0} appended".format(m['move'])
-                    moves_to_probe.append(m)
+                        print "move: {0} appended".format(m['move'])
+
+
+                elif freq > int(initial_frequency/100*threshold) and (int(book_moves[i-1]['games'])-freq)/(int(book_moves[i-1]['games'])*1.0) < second_threshold:
+                    if m not in moves_to_probe:
+                        moves_to_probe.append(m)
+                        print "move: {0} appended".format(m['move'])
+
+
                 else:
                 #     # Break if there is a move that does not qualify
+                    print("breaking")
                     break
 
             # print "moves to probe: {0}".format(moves_to_probe)
             if moves_to_probe:
+                # print "end moves to probe: {0}".format(moves_to_probe)
+
                 # Objective Algorithm:
                 # Practical Algorithm:
 
@@ -2240,30 +2300,62 @@ class ChessProgram_app(App):
                 # for m in moves_to_probe:
                 m = moves_to_probe.pop()
                 if m:
-                    # print m
+                    str_move = str(m['move'])
+                    print ("move m: {}".format(str_move))
+
                     # print self.chessboard.board().fullmove_number
                     # if m['fen'] in position_fen_cache and self.chessboard.board().fullmove_number
-                    h = self.get_polyglot_stats(m['fen'])['hash']
-                    self.go_to_move(None, str(h), update_board=False)
+
+                    # pos = Position(fen)
+
+                    # new_pos = pos.make_move(Move.from_uci(str_move))
+                    # print("new_pos: {}".format(new_pos))
+                    stats = self.book.get_quick_position_stats(m['fen'])
+
+                    fen = m['fen']
+                    # print("fen:{}".format(fen))
+                    key = str(stats['key'])
+
+                    # print("stats: {}".format(stats))
+                    # h = self.get_polyglot_stats(m['fen'])
+                    self.go_to_move(None, key, update_board=False)
                     # print "move: {0}, fen: {1}".format(m['move'], m['fen'])
                     # position_fen_cache.add(m['fen'])
-                    if m['fen'] in position_stats:
-                        position_stats[m['fen']]['freq']+=1
+                    # print("m: {}".format(m))
+                    if fen in position_stats:
+                        position_stats[fen]['freq'] += 1
                     else:
-                        position_stats[m['fen']] = {'freq' : 1, 'fen': m['fen'], 'hash': str(h)}
-                    self.add_try_variation(m['move'])
+                        position_stats[fen] = {'freq': 1, 'fen': fen, 'hash': key}
+
+                    print("fen: {}".format(fen))
+
+                    print("fen_freq: {}".format(position_stats[fen]['freq']))
+                    # Avoid multiple repetitions in repertoire
+                    if position_stats[fen]['freq'] < max_pos_occurrence:
+                        self.add_try_variation(str(m['move']))
                     # sleep(0.01)
 
             else:
+                # print ("No moves to probe")
                 use_ref_db = self.use_ref_db
                 self.use_ref_db = True
-
+                # print ("Before sorted pos_stats")
                 sorted_position_stats = sorted(position_stats.values(), key=lambda book_move: int(book_move['freq']), reverse=True)
+                # print("sorted_position_stats: {}".format(sorted_position_stats))
                 for i, m in enumerate(sorted_position_stats):
+
                     if i<5:
                         # print m
-                        if self.go_to_move(None, m['hash']):
-                            db_game_list, game_ids = self.get_game_headers(self.ref_db_index_book, m['hash'], create_headers = True)
+                        print(" if i<5 ")
+                        hash = m['hash']
+                        print("hash: {}".format(hash))
+
+
+                        if self.go_to_move(None, hash):
+                            db_game_list, game_ids = self.get_game_headers(self.ref_db_index_book, hash, create_headers = True)
+                            # print("db_game_list: {}",format(db_game_list))
+                            # print("game_ids: {}", format(game_ids))
+
                             white_players = {}
                             black_players = {}
                             for g in db_game_list:
@@ -2303,9 +2395,12 @@ class ChessProgram_app(App):
                             # db_game.white = tokens[0]
                             # db_game.whiteelo = tokens[1]
                             # db_game.black = tokens[2]
+                        else:
+                            print("Cannot go to move with hash: {}".format(hash))
 
-                self.refresh_board(update=True)
                 self.use_ref_db = use_ref_db
+
+                print("\n\nDONE\n\n")
 
                 break
 
@@ -2314,7 +2409,14 @@ class ChessProgram_app(App):
 
             # Analyze the position
         # self.add_eng_moves(None, ENGINE_ANALYSIS)
+        # sleep(1)
+        print("\n\nDONE\n\n")
+
         self.game_analysis=False
+        Clock.unschedule(self.update_board_position)
+        # sleep(1)
+
+        # self.refresh_board(update=True)
 
 
     def analyze_game(self, params):
@@ -3622,7 +3724,7 @@ class ChessProgram_app(App):
         self.root.current='settings'
 
     def go_to_move(self, label, pos_hash, update_board=True):
-        # print pos_hash
+        # print ("Got pos_hash: {}".format(pos_hash))
         # print "finding move"
         # print "Current pos hash : {0}".format(Game.positions)
         if Game.positions.has_key(pos_hash):
@@ -5378,6 +5480,8 @@ class ChessProgram_app(App):
             all_moves = self.chessboard_root.game_score(figurine=True)
             if all_moves:
                 self.game_score.children[0].text = u"[color=000000]{0}[/color]".format(all_moves)
+                self.game_score.children[0].texture_update()
+
         else:
             return False
 
@@ -5535,15 +5639,21 @@ class ChessProgram_app(App):
         # pass
         # with self.
         # print("Updating Book Panel..")
+
         self.update_book_panel()
 
     def tasks_every_second(self, *args):
         # pass
-        fen = self.chessboard.position.fen
-        # print("in tasks every second")
-        if self.last_book_fen != fen:
-            # print("updating book grid")
-            self.update_book_panel()
+        try:
+            if not self.game_analysis:
+                fen = self.chessboard.position.fen
+                # print("in tasks every second")
+                if self.last_book_fen != fen:
+                    # print("updating book grid")
+                    self.update_book_panel()
+        except:
+            print("Cannot update book panel")
+
 
 if __name__ == '__main__':
     ChessProgram_app().run()
