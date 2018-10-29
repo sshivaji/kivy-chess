@@ -3,3 +3,4 @@ brew install mercurial
 brew install leveldb
 brew install boost
 brew install boost-python
+brew install libmpc

@@ -75,6 +75,7 @@ from kivy.properties import ListProperty
 #from kivy.core.clipboard import Clipboard
 Factory.register('ToggleButton',cls=ToggleButton)
 
+import peewee
 #from ChessBoard import ChessBoard
 import spur
 import json
@@ -115,6 +116,8 @@ from chess import polyglot_opening_book
 CLOUD_ENGINE_EXEC = './stockfish'
 THINKING_TIME = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]"
 THINKING = "[color=000000][b][size=16]Thinking..[/size][/b][/color]"
+SQLITE_GAME_LIMIT = 990
+
 
 # try:
 #     import libchess
@@ -2193,8 +2196,10 @@ class ChessProgram_app(App):
         # Confirm - time per move/thresholds, mode, and look for white/black improvements
         # Bonus - create opening repertoire mode!
         root_fen = root_position.position.fen
-        stats = self.book.get_quick_position_stats(root_fen)['moves']
-        # print("book_stats: {}". format(stats))
+        # stats = self.book.get_quick_position_stats(root_fen, limit=3000)['moves']
+        stats = self.get_book_moves(root_fen)
+
+        print("book_stats: {}". format(stats))
         # sorted_moves = sorted(polyglot_entries, key=lambda k: k['games'], reverse=True)
 
         # for e in sorted_moves:
@@ -2219,9 +2224,11 @@ class ChessProgram_app(App):
             # self.refresh_engine()
             fen = self.strip_fen(self.chessboard.position.fen)
             try:
-                stats = self.book.get_quick_position_stats(fen)['moves']
+                # stats = self.book.get_quick_position_stats(fen, limit=3000)['moves']
+                stats = self.get_book_moves(self.chessboard.position.fen)
+
             except:
-                break
+                raise
 
             if fen in position_stats:
                 position_stats[fen]['freq'] += 1
@@ -2231,14 +2238,13 @@ class ChessProgram_app(App):
             # else:
             #     position_stats[fen] = {'freq': 1, 'fen': fen, 'hash': key}
 
-
-            book_moves = sorted(stats, key=lambda k: k['games'], reverse=True)
+            book_moves = sorted(stats, key=lambda k: k['games'], reverse=True)[:6]
 
             # print("len book_moves: {}".format(len(book_moves)))
 
              # = sorted(stats, key=lambda book_move: int(book_move['freq']), reverse=True)
             # freqs = [m['freq'] for m in stats]
-            # print book_moves
+            print ("book_moves : {}".format(book_moves))
 
             for i, m in enumerate(book_moves):
                 print ("book_move: {}".format(m))
@@ -2270,19 +2276,17 @@ class ChessProgram_app(App):
 
                         print "move: {0} appended".format(m['move'])
 
-
                 elif freq > int(initial_frequency/100*threshold) and (int(book_moves[i-1]['games'])-freq)/(int(book_moves[i-1]['games'])*1.0) < second_threshold:
                     if m not in moves_to_probe:
                         moves_to_probe.append(m)
                         print "move: {0} appended".format(m['move'])
-
 
                 else:
                 #     # Break if there is a move that does not qualify
                     print("breaking")
                     break
 
-            # print "moves to probe: {0}".format(moves_to_probe)
+            print "moves to probe: {0}".format(moves_to_probe)
             if moves_to_probe:
                 # print "end moves to probe: {0}".format(moves_to_probe)
 
@@ -2300,20 +2304,32 @@ class ChessProgram_app(App):
                 # for m in moves_to_probe:
                 m = moves_to_probe.pop()
                 if m:
-                    str_move = str(m['move'])
-                    print ("move m: {}".format(str_move))
+                    print("move_to_probe: {}".format(m))
+
+                    # str_move = str(m['move'])
+                    # print ("move m: {}".format(str_move))
 
                     # print self.chessboard.board().fullmove_number
                     # if m['fen'] in position_fen_cache and self.chessboard.board().fullmove_number
 
-                    # pos = Position(fen)
 
                     # new_pos = pos.make_move(Move.from_uci(str_move))
                     # print("new_pos: {}".format(new_pos))
-                    stats = self.book.get_quick_position_stats(m['fen'])
+                    # fen = m['fen']
 
+                    # fen = str(m['fen'])
                     fen = m['fen']
+
+                    stats = self.book.get_quick_position_stats(fen, limit=10)
+                    # print(stats)
+                    # stats = self.get_book_moves(root_fen)
+
                     # print("fen:{}".format(fen))
+
+                    # pos = Position(fen)
+                    # pos.make_move()
+
+                    print("stats: {}".format(stats))
                     key = str(stats['key'])
 
                     # print("stats: {}".format(stats))
@@ -2325,14 +2341,16 @@ class ChessProgram_app(App):
                     if fen in position_stats:
                         position_stats[fen]['freq'] += 1
                     else:
-                        position_stats[fen] = {'freq': 1, 'fen': fen, 'hash': key}
+                        position_stats[fen] = {'freq': 1, 'hash': key}
 
                     print("fen: {}".format(fen))
 
                     print("fen_freq: {}".format(position_stats[fen]['freq']))
+                    print("position_stats: {}".format(position_stats))
                     # Avoid multiple repetitions in repertoire
                     if position_stats[fen]['freq'] < max_pos_occurrence:
                         self.add_try_variation(str(m['move']))
+                        print("ADDING move: {}".format(m['move']))
                     # sleep(0.01)
 
             else:
@@ -2349,7 +2367,6 @@ class ChessProgram_app(App):
                         print(" if i<5 ")
                         hash = m['hash']
                         print("hash: {}".format(hash))
-
 
                         if self.go_to_move(None, hash):
                             db_game_list, game_ids = self.get_game_headers(self.ref_db_index_book, hash, create_headers = True)
@@ -3308,10 +3325,12 @@ class ChessProgram_app(App):
         # Make this an option later
         self.use_tb = False
        # sf.set_option('SyzygyPath', '/Users/shiv/chess/tb/syzygy')
-        self.ctg_reader_cmd = which('ctg_reader')
+        self.ctg_reader_cmd = './ctgreader/ctg_reader'
         self.ctg_book = None
         if os.path.isfile('book/book.ctg') and self.ctg_reader_cmd:
             self.ctg_book = 'book/book.ctg'
+
+        print("ctg_book: {}".format(self.ctg_book))
 
         self.book = None
         self.book_display = True
@@ -3346,7 +3365,7 @@ class ChessProgram_app(App):
             self.user_book = LevelJsonDict('book/custom.db')
             # self.ref_db_index_book = leveldb.LevelDB('book/polyglot_index.db')
             # self.ref_db_index_book = leveldict.PartitionedLevelDB('book/polyglot_index.db')
-            self.ref_db_index_book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn')
+            self.ref_db_index_book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn', sqlite='book.sqlite')
 
             self.db_index_book = None
 #            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
@@ -3728,6 +3747,7 @@ class ChessProgram_app(App):
         # print "finding move"
         # print "Current pos hash : {0}".format(Game.positions)
         if Game.positions.has_key(pos_hash):
+            # print("key present")
             self.chessboard = Game.positions[pos_hash]
             if update_board:
                 self.refresh_board(update=False, highlight=False)
@@ -4993,6 +5013,69 @@ class ChessProgram_app(App):
         except KeyError:
             return "Unknown"
 
+    def query_data(self, db, game_ids=None, order_by_list=None, page_number=None, items_per_page=None,
+                   search_terms=None):
+
+        class Game(peewee.Model):
+            white = peewee.CharField()
+            white_elo = peewee.IntegerField()
+            black = peewee.CharField()
+            black_elo = peewee.IntegerField()
+            result = peewee.CharField()
+            date = peewee.DateField()
+            event = peewee.CharField()
+            site = peewee.CharField()
+            eco = peewee.CharField()
+
+            class Meta:
+                database = peewee.SqliteDatabase(db)
+
+        query = Game.select()
+        # query = query.where(Game.black ** ('%%%s%%' % ('Carlsen')) | Game.white ** ('%%%s%%' % ('Carlsen')))
+        # print dir(Game)
+        # print Game.
+        # query = query.where(getattr(Game,'white') ** ('%%%s%%' % ('Carlsen')))
+
+        if search_terms:
+            for t in search_terms:
+                if t == '1-0' or t == '1/2-1/2' or t == '0-1':
+                    query = query.where(Game.result == t)
+                elif t.isdigit():
+                    # print "digit"
+                    # print t
+                    num = int(t)
+                    if num < 2050:
+                        # Its a year
+                        query = query.where(Game.date ** ('%%%s%%' % (t)))
+                else:
+                    query = query.where(Game.black ** ('%%%s%%' % (t)) | Game.white ** ('%%%s%%' % (t)))
+
+        if len(game_ids) <= SQLITE_GAME_LIMIT:
+            query = query.where(getattr(Game, 'id') << game_ids)
+
+        if order_by_list:
+            # Construct peewee order by clause
+            order_by_cond = []
+            for sort_key in order_by_list:
+                if sort_key.direction > 0:
+                    order_by_cond.append(getattr(Game, sort_key.name).asc())
+                else:
+                    order_by_cond.append(getattr(Game, sort_key.name).desc())
+
+            query = query.order_by(*order_by_cond)
+            # getattr(Game,'black_elo').asc(), getattr(Game,'eco').asc()
+        if page_number and items_per_page:
+            query = query.paginate(page_number, items_per_page)
+
+        # print query
+        # query = query.limit(limit)
+
+        results = [p for p in query]
+        # for r in results:
+        #     print "{0} {1} - {2} {3} {4} {5} {6}".format(r.white, r.white_elo, r.black, r.black_elo, r.result, r.date, r.eco)
+        # print r.black
+        return results
+
     def get_game_headers(self, db_index, pos_hash, create_headers=False):
         try:
             fen = self.chessboard.position.fen
@@ -5026,6 +5109,15 @@ class ChessProgram_app(App):
                     break
             if not operator_match:
                 filter_text = [db_text]
+
+        print("len_game_ids: {}".format(len(game_ids)))
+        # if len(game_ids) > SQLITE_GAME_LIMIT:
+        #     # There are more than 1K games in this position, this means we can do string search first if string search is indicated
+        #     print("LETS DO SQLITE search first")
+        #
+        #     self.query_data('book.sqlite', game_ids=game_ids, order_by_list=None, page_number=None, items_per_page=None,
+        #                    search_terms=None)
+
         for i in game_ids:
             db_game = DBGame(i)
             if self.db_sort_criteria or len(filter_text) > 0 or create_headers:
@@ -5049,7 +5141,7 @@ class ChessProgram_app(App):
                 match = True
                 # print filter_text
                 for f in filter_text:
-                    if f in db_game.white or f in db_game.black or f in db_game.event or f in db_game.event:
+                    if f in db_game.white.decode('utf-8') or f in db_game.black.decode('utf-8') or f in db_game.event.decode('utf-8') or f in db_game.event.decode('utf-8'):
                         pass
                     else:
                         match = False
@@ -5118,39 +5210,57 @@ class ChessProgram_app(App):
     def get_ctg_book_stats(self, fen, format=True):
         # print(fen)
         records = []
-        tmp_board = chess.Board(fen)
+        # pos = Position(fen)
+        # key = pos.__hash__()
+        # tmp_board = chess.Board(fen)
+
+        # print("ctg_reader_command: {} {} {}".format(self.ctg_reader_cmd, self.ctg_book, fen))
+
         output = run_command(self.ctg_reader_cmd + ' '+self.ctg_book+ ' \"'+fen+'\"')
         for line in output:
             j = json.loads(line)
             # print(j)
-            # {u'perf_score': 358656, u'losses': 12, u'draws': 96, u'nag': 0, u'weight': 10082, u'perf_games': 121, u'wins': 13, u'move': u'a2a4', u'avg_score': 358912, u'note': 37, u'rec': 128, u'avg_games': 121}
-            # tmp_board.push(chess.Move.from_uci(j['move']))
-            # print(tmp_board.pop().san())
-            # print (tmp_board.san(j['move']))
-            san = tmp_board.san(chess.Move.from_uci(j['move']))
+            for m in j['moves']:
+                # print(m)
+                pos = Position(fen)
 
-            pct = (j['wins'] * 1.0 + 0.5 * j['draws']) / (j['perf_games']+0.000000001) * 100.0
-            # print(type(j['weight']))
-            # Note: 161: !, 131: !!, 37: !?, 34: ?,
-            # san = j['move']
-            note = j['note']
+                move_info = pos.make_move(Move.from_uci(str(m['move'])))
+                san = move_info.san
+                # print(j)
+                # {u'perf_score': 358656, u'losses': 12, u'draws': 96, u'nag': 0, u'weight': 10082, u'perf_games': 121, u'wins': 13, u'move': u'a2a4', u'avg_score': 358912, u'note': 37, u'rec': 128, u'avg_games': 121}
+                # tmp_board.push(chess.Move.from_uci(j['move']))
+                # print(tmp_board.pop().san())
+                # print (tmp_board.san(j['move']))
+                # san = tmp_board.san(chess.Move.from_uci(j['move']))
 
-            if note == 161:
-                san+='!'
-            elif note == 131:
-                san+='!!'
-            elif note == 37:
-                san+='!?'
-            elif note == 34:
-                san+='?'
+                wins = int(m['wins'])
+                draws = int(m['draws'])
+                losses = int(m['losses'])
+                total = wins + draws + losses
 
-            records.append({'move': j['move'], 'san': san, 'weight': j['weight'],
-                        'pct': "{0:.2f}".format(pct), 'freq': j['perf_games'],
-                        'wins': locale.format("%d", j['wins'], grouping=True),
-                        'draws': locale.format("%d", j['draws'], grouping=True),
-                        'losses': locale.format("%d", j['losses'], grouping=True)})
+                pct = (wins * 1.0 + 0.5 * draws) / (total+0.000000001) * 100.0
+                # print(type(j['weight']))
+                # Note: 161: !, 131: !!, 37: !?, 34: ?,
+                # san = j['move']
+                note = m['note']
 
-        records = sorted(records, key=lambda p: p['freq'], reverse = True)
+                if note == 161:
+                    san += '!'
+                elif note == 131:
+                    san += '!!'
+                elif note == 37:
+                    san += '!?'
+                elif note == 34:
+                    san += '?'
+
+                records.append({'move': m['move'], 'san': san, 'weight': m['weight'],
+                            'pct': "{0:.2f}".format(pct), 'games': total,'freq': total,
+
+                            'wins': wins,
+                            'draws': draws,
+                            'losses': losses})
+
+        records = sorted(records, key=lambda p: p['games'], reverse = True)
         # records = filter(record)
 
         return {"records": records}
@@ -5335,9 +5445,9 @@ class ChessProgram_app(App):
 
                 # print("fen : {0}".format(fen))
                 if not self.book:
-                    self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn')
-                polyglot_entries = self.book.get_quick_position_stats(fen)['moves']
-                sorted_moves = sorted(polyglot_entries, key=lambda k: k['games'], reverse=True)
+                    self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn', sqlite='book.sqlite')
+
+                sorted_moves = self.get_book_moves(fen)
 
                 for e in sorted_moves:
                     if book_entries >= 10:
@@ -5385,6 +5495,17 @@ class ChessProgram_app(App):
                 self.book_panel.grid.add_row(["Eval", "[ref={0}]{0}[/ref]".format(weight)],
                                              callback=self.add_book_moves)
                 self.last_book_fen = fen
+
+    def get_book_moves(self, fen):
+        if self.ctg_book:
+            results = self.get_ctg_book_stats(fen)
+            # sorted_moves = results['records']
+            sorted_moves = sorted(results['records'], key=lambda k: k['games'], reverse=True)
+
+        else:
+            polyglot_entries = self.book.get_quick_position_stats(fen)['moves']
+            sorted_moves = sorted(polyglot_entries, key=lambda k: k['games'], reverse=True)
+        return sorted_moves
 
     def set_castling(self, move):
         if move == 'e1h1':
@@ -5652,6 +5773,7 @@ class ChessProgram_app(App):
                     # print("updating book grid")
                     self.update_book_panel()
         except:
+            raise
             print("Cannot update book panel")
 
 
