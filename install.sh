@@ -1,4 +1,4 @@
-virtualenv -p python2 --system-site-packages chesspython
+virtualenv -p python2.7 --system-site-packages chesspython
 chesspython/bin/pip install setuptools --no-use-wheel --upgrade
 chesspython/bin/pip install six
 chesspython/bin/pip install cython==0.20.2

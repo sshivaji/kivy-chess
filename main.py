@@ -3367,7 +3367,7 @@ class ChessProgram_app(App):
             self.user_book = LevelJsonDict('book/custom.db')
             # self.ref_db_index_book = leveldb.LevelDB('book/polyglot_index.db')
             # self.ref_db_index_book = leveldict.PartitionedLevelDB('book/polyglot_index.db')
-            self.ref_db_index_book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn', sqlite='book.sqlite')
+            self.ref_db_index_book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn')
 
             self.db_index_book = None
 #            self.pgn_index = LevelJsonDict('book/test_pgn_index.db')
@@ -5446,7 +5446,7 @@ class ChessProgram_app(App):
 
                 # print("fen : {0}".format(fen))
                 if not self.book:
-                    self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn', sqlite='book.sqlite')
+                    self.book = polyglot_opening_book.PolyglotOpeningBook('book.bin', pgn='book.pgn')
 
                 sorted_moves = self.get_book_moves(fen)
 
