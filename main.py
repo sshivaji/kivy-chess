@@ -828,6 +828,7 @@ class ButtonEvent:
     def __init__(self, pin_num):
         self.pin_num = pin_num
 
+
 class DGT_Clock_Message(object):
     def __init__(self, message, move=False, dots=False, beep=True, max_num_tries=5):
         self.message = message
@@ -835,6 +836,7 @@ class DGT_Clock_Message(object):
         self.dots = dots
         self.beep = beep
         self.max_num_tries = max_num_tries
+
 
 class KThread(Thread):
     """A subclass of threading.Thread, with a kill()
@@ -2199,7 +2201,7 @@ class ChessProgram_app(App):
         # stats = self.book.get_quick_position_stats(root_fen, limit=3000)['moves']
         stats = self.get_book_moves(root_fen)
 
-        print("book_stats: {}". format(stats))
+        # print("book_stats: {}". format(stats))
         # sorted_moves = sorted(polyglot_entries, key=lambda k: k['games'], reverse=True)
 
         # for e in sorted_moves:
@@ -2253,7 +2255,7 @@ class ChessProgram_app(App):
 
                 # new_pos = pos.make_move(Move.from_uci(str(m['move'])))
                 # print("new_pos: {}".format(dir(new_pos)))
-                m['fen'] = self.strip_fen(self.chessboard.position.fen)
+                m['fen'] = self.chessboard.position.fen
                 m['move'] = self.set_castling(m['move'])
 
                 # print m
@@ -2320,7 +2322,7 @@ class ChessProgram_app(App):
                     # fen = str(m['fen'])
                     fen = m['fen']
 
-                    stats = self.book.get_quick_position_stats(fen, limit=10)
+                    stats = self.book.get_quick_position_stats(fen, limit=3000)
                     # print(stats)
                     # stats = self.get_book_moves(root_fen)
 
@@ -5255,7 +5257,6 @@ class ChessProgram_app(App):
 
                 records.append({'move': m['move'], 'san': san, 'weight': m['weight'],
                             'pct': "{0:.2f}".format(pct), 'games': total,'freq': total,
-
                             'wins': wins,
                             'draws': draws,
                             'losses': losses})
@@ -5459,6 +5460,7 @@ class ChessProgram_app(App):
                     draws = e['draws']
                     wins = e['wins']
                     losses = e['losses']
+                    # san = e['san']
 
                     move = self.set_castling(move)
 
@@ -5468,7 +5470,7 @@ class ChessProgram_app(App):
                             move_info = pos.make_move(Move.from_uci(str(move)))
                             san = move_info.san
                             self.book_panel.grid.add_row(
-                                [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(san)), str(games), "{:0.1f}".format((wins+0.5*draws)*100.0/(wins+draws+losses)),
+                                [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(e['san'])), str(games), "{:0.1f}".format((wins+0.5*draws)*100.0/(wins+draws+losses)),
                                  str(wins), str(draws), str(losses), str(weight)],
                                 callback=self.add_book_moves)
                             book_entries += 1
