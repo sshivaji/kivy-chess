@@ -2246,10 +2246,10 @@ class ChessProgram_app(App):
 
              # = sorted(stats, key=lambda book_move: int(book_move['freq']), reverse=True)
             # freqs = [m['freq'] for m in stats]
-            print ("book_moves : {}".format(book_moves))
+            # print ("book_moves : {}".format(book_moves))
 
             for i, m in enumerate(book_moves):
-                print ("book_move: {}".format(m))
+                # print ("book_move: {}".format(m))
 
                 # pos = Position(self.chessboard.position.fen)
 
@@ -2276,19 +2276,19 @@ class ChessProgram_app(App):
                     if m not in moves_to_probe:
                         moves_to_probe.append(m)
 
-                        print "move: {0} appended".format(m['move'])
+                        # print "move: {0} appended".format(m['move'])
 
                 elif freq > int(initial_frequency/100*threshold) and (int(book_moves[i-1]['games'])-freq)/(int(book_moves[i-1]['games'])*1.0) < second_threshold:
                     if m not in moves_to_probe:
                         moves_to_probe.append(m)
-                        print "move: {0} appended".format(m['move'])
+                        # print "move: {0} appended".format(m['move'])
 
                 else:
                 #     # Break if there is a move that does not qualify
-                    print("breaking")
+                #     print("breaking")
                     break
 
-            print "moves to probe: {0}".format(moves_to_probe)
+            # print "moves to probe: {0}".format(moves_to_probe)
             if moves_to_probe:
                 # print "end moves to probe: {0}".format(moves_to_probe)
 
@@ -2306,7 +2306,7 @@ class ChessProgram_app(App):
                 # for m in moves_to_probe:
                 m = moves_to_probe.pop()
                 if m:
-                    print("move_to_probe: {}".format(m))
+                    # print("move_to_probe: {}".format(m))
 
                     # str_move = str(m['move'])
                     # print ("move m: {}".format(str_move))
@@ -2331,7 +2331,7 @@ class ChessProgram_app(App):
                     # pos = Position(fen)
                     # pos.make_move()
 
-                    print("stats: {}".format(stats))
+                    # print("stats: {}".format(stats))
                     key = str(stats['key'])
 
                     # print("stats: {}".format(stats))
@@ -2345,14 +2345,14 @@ class ChessProgram_app(App):
                     else:
                         position_stats[fen] = {'freq': 1, 'hash': key}
 
-                    print("fen: {}".format(fen))
+                    # print("fen: {}".format(fen))
 
-                    print("fen_freq: {}".format(position_stats[fen]['freq']))
-                    print("position_stats: {}".format(position_stats))
+                    # print("fen_freq: {}".format(position_stats[fen]['freq']))
+                    # print("position_stats: {}".format(position_stats))
                     # Avoid multiple repetitions in repertoire
                     if position_stats[fen]['freq'] < max_pos_occurrence:
                         self.add_try_variation(str(m['move']))
-                        print("ADDING move: {}".format(m['move']))
+                        # print("ADDING move: {}".format(m['move']))
                     # sleep(0.01)
 
             else:
@@ -2366,9 +2366,9 @@ class ChessProgram_app(App):
 
                     if i<5:
                         # print m
-                        print(" if i<5 ")
+                        # print(" if i<5 ")
                         hash = m['hash']
-                        print("hash: {}".format(hash))
+                        # print("hash: {}".format(hash))
 
                         if self.go_to_move(None, hash):
                             db_game_list, game_ids = self.get_game_headers(self.ref_db_index_book, hash, create_headers = True)
