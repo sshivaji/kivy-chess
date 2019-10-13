@@ -2,6 +2,7 @@ from boto.ec2 import connection
 import random
 import datetime
 from optparse import OptionParser
+import dateutil.parser
 from dateutil.parser import parse
 import dateutil.tz as tz
 import json

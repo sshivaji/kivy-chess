@@ -1,9 +1,9 @@
-spur==0.3.10
+spur==0.3.21
 pyserial
 boto
 python-dateutil
-leveldb==0.193
+leveldb
 bitstring
 gmpy2
-peewee
+peewee==2.6.3
 -e git+https://github.com/sshivaji/python-chess@pgn#egg=python-chess
