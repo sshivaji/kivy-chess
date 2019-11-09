@@ -8,7 +8,7 @@ import spur
 import paramiko
 
 try:
-    from Queue import Queue, Empty
+    from queue import Queue, Empty
 except ImportError:
     from queue import Queue, Empty  # python 3.x
 
@@ -59,10 +59,10 @@ class UCIEngine:
                 self.eng_process = shell.spawn(exe, stdout=subprocess.PIPE, store_pid=True)
 
             else:
-                print "Trying cloud connect.."
-                print "cloud_hostname : {0}".format(cloud_hostname)
-                print "cloud_username : {0}".format(cloud_username)
-                print "cloud_private_key_file : {0}".format(cloud_private_key_file)
+                print("Trying cloud connect..")
+                print("cloud_hostname : {0}".format(cloud_hostname))
+                print("cloud_username : {0}".format(cloud_username))
+                print("cloud_private_key_file : {0}".format(cloud_private_key_file))
 
                 shell = spur.SshShell(
                     hostname=cloud_hostname,
@@ -81,7 +81,7 @@ class UCIEngine:
             t.start()
 
         except OSError:
-            print "OS error in starting engine"
+            print("OS error in starting engine")
 
     def enqueue_output(self, p, queue):
         out = p
@@ -106,7 +106,7 @@ class UCIEngine:
 
         'move' is the move the AI has decided to make (string).
         """
-        print 'UCI move: ' + move
+        print('UCI move: ' + move)
 
     def registerIncomingData(self):
         """
@@ -183,7 +183,7 @@ class UCIEngine:
             self.__options = options
             return
 
-        for k,v in options.iteritems():
+        for k,v in options.items():
             # if not hasattr(option, 'name'):
             #     print 'Ignoring unnamed UCI option'
             #     continue
@@ -259,7 +259,7 @@ class UCIEngine:
                 self.logText(line + '\n', style)
                 return
 
-            print 'WARNING: Unknown command: ' + repr(words[0])
+            print('WARNING: Unknown command: ' + repr(words[0]))
             words = words[1:]
 
     def parseCommand(self, command, args):
@@ -272,25 +272,25 @@ class UCIEngine:
                     self.engine_info[args[0]] = " ".join(args[1:])
 
             except ValueError:
-                print 'WARNING: Arguments on id: ' + str(args)
+                print('WARNING: Arguments on id: ' + str(args))
                 pass
             return 'info'
 
         elif command == 'uciok':
             if len(args) != 0:
-                print 'WARNING: Arguments on uciok: ' + str(args)
+                print('WARNING: Arguments on uciok: ' + str(args))
             self.readyToConfigure = True
             return 'info'
 
         elif command == 'readyok' or command.endswith('eadyok'):
             if len(args) != 0:
-                print 'WARNING: Arguments on readyok: ' + str(args)
+                print('WARNING: Arguments on readyok: ' + str(args))
             self.ready = True
             return 'info'
 
         elif command == 'bestmove':
             if len(args) == 0:
-                print 'WARNING: No move with bestmove'
+                print('WARNING: No move with bestmove')
                 return 'error'
             else:
                 move = args[0]
@@ -335,7 +335,7 @@ class UCIEngine:
                  # 'Search Log Filename': ('SearchLog.txt', 'string', 'SearchLog.txt')
 
             except ValueError:
-                print 'WARNING: Arguments on option: ' + str(args)
+                print('WARNING: Arguments on option: ' + str(args))
             return 'info'
 
         return None
@@ -362,7 +362,7 @@ if __name__=="__main__":
     while True:
         line = uci_engine.getOutput()
         if line:
-            print line
+            print(line)
 
 ##    uci_engine.reportMove('e2e4')
 #    print uci_engine.registerIncomingData()

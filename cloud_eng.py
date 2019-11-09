@@ -115,7 +115,7 @@ def process_request_api(ident, key="stockfish", instance_type="m1.medium", image
         #     # Execute only forcestop for now, hysterisis later
         #     update_sqs_queue(options.queue, options.ctrl_queue, queue_size)
     else:
-        print "Dryrun, not doing anything"
+        print ("Dryrun, not doing anything")
 
 
 def process_request():

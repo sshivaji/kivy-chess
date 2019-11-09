@@ -1,7 +1,7 @@
-virtualenv -p python2.7 --system-site-packages chesspython
+virtualenv -p python3 --system-site-packages chesspython
 chesspython/bin/pip install setuptools --no-use-wheel --upgrade
 chesspython/bin/pip install six
-chesspython/bin/pip install cython==0.20.2
+chesspython/bin/pip install cython==0.29.14
 chesspython/bin/pip install hg+http://bitbucket.org/pygame/pygame
 chesspython/bin/pip install kivy==1.9.1
 chesspython/bin/pip install git+https://github.com/kivy/buildozer.git@master
@@ -26,7 +26,7 @@ git clone https://github.com/sshivaji/ctgreader
 cd ctgreader
 sudo make install
 cd ..
-git clone https://github.com/sshivaji/chess_db --branch prod
+git clone https://github.com/sshivaji/chess_db
 cd chess_db/parser
 make build ARCH=x86-64
 sudo make install

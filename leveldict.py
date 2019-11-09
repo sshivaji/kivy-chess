@@ -1,9 +1,9 @@
-from UserDict import DictMixin
+#from UserDict import DictMixin
 import leveldb
 import json
 import logging
 
-class LevelDict(object, DictMixin):
+class LevelDict(object):
     """Dict Wrapper around the Google LevelDB Database"""
     def __init__(self, path):
         """Constructor for LevelDict"""
