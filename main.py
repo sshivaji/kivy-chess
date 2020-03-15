@@ -5453,7 +5453,7 @@ class ChessProgram_app(App):
                 for e in sorted_moves:
                     if book_entries >= 10:
                         break
-                    # print(e)
+                    print(e)
                     move = e['move']
                     weight = e['weight']
                     games = e['games']
@@ -5468,14 +5468,17 @@ class ChessProgram_app(App):
                         pos = Position(fen)
                         try:
                             move_info = pos.make_move(Move.from_uci(str(move)))
+                            # print("move_info: {}".format(move_info))
                             san = move_info.san
+                            # print("san : {}".format(san))
                             self.book_panel.grid.add_row(
-                                [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(e['san'])), str(games), "{:0.1f}".format((wins+0.5*draws)*100.0/(wins+draws+losses)),
+                                [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(san)), str(games), "{:0.1f}".format((wins+0.5*draws)*100.0/(wins+draws+losses)),
                                  str(wins), str(draws), str(losses), str(weight)],
                                 callback=self.add_book_moves)
                             book_entries += 1
                         except Exception as e:
                             print("Could not convert move to san")
+                            print("e[san]: {}".format(san))
                             print("move: {0}".format(move))
                             # print("move wi")
                             # weight = str(e.weight)
