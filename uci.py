@@ -8,7 +8,7 @@ import spur
 import paramiko
 
 try:
-    from queue import Queue, Empty
+    import Queue
 except ImportError:
     from queue import Queue, Empty  # python 3.x
 

@@ -5,7 +5,7 @@ import leveldict
 
 
 try:
-    from io import StringIO
+    from StringIO import StringIO
 except ImportError:
     from io import StringIO
 import textwrap
@@ -15,7 +15,7 @@ import traceback
 import sys
 import random
 from functools import partial
-import pickle
+import cPickle
 import kivy
 from kivy.config import ConfigParser
 
@@ -79,7 +79,7 @@ import peewee
 #from ChessBoard import ChessBoard
 import spur
 import json
-#from sets import Set
+from sets import Set
 import itertools as it
 from operator import attrgetter
 from time import sleep
@@ -89,7 +89,7 @@ import locale
 import re
 
 from uci import UCIEngine
-from queue import Queue
+from Queue import Queue
 from os.path import expanduser
 from operator import itemgetter
 
@@ -177,11 +177,11 @@ ENGINE_PLAY_STOP = "play_stop"
 ENGINE_TRAIN_HINT = "train_hint"
 ENGINE_PLAY_HINT = "play_hint"
 
-YOURTURN_MENU = "[color=000000][size=24][i]{2}[/i]    [b]{3}[/b][/size]\n" \
-                "Your turn\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n" \
+YOURTURN_MENU = u"[color=000000][size=24][i]{2}[/i]    [b]{3}[/b][/size]\n" \
+                u"Your turn\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref]\n\n" \
                 "[ref="+ENGINE_PLAY_HINT+"]Hint: {0}\nScore: {1} [/ref][/color]"
 
-TRAIN_MENU = "[color=000000][ref="+ENGINE_TRAIN_HINT+"][b]{0}[/ref]    [/b]{1} [b]\n\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref][/b][/color]"
+TRAIN_MENU = u"[color=000000][ref="+ENGINE_TRAIN_HINT+"][b]{0}[/ref]    [/b]{1} [b]\n\n\n[ref="+ENGINE_PLAY_STOP+"]Stop[/ref][/b][/color]"
 
 ENGINE_ANALYSIS = "engine_analysis"
 
@@ -203,7 +203,7 @@ BOOK_HEADER = '[b][color=000000][ref=Book]{0}[/ref][/color][/b]'
 
 DATABASE_HEADER = '[b][color=000000][ref=Database]{0}[/ref][/color][/b]'
 
-DB_SORT_ASC = chr(8710)
+DB_SORT_ASC = unichr(8710)
 DB_SORT_DESC = 'V'
 
 
@@ -266,12 +266,12 @@ DB_HEADER_MAP = {"White": 0, "WhiteElo": 1, "Black": 2,
 
 # Chess assistant free ttf map
 PIECE_FONT_MAP = {
-    "K": '\u00a2',
-    "Q": '\u00a3',
-    "B": '\u00a5',
-    "N": '\u00a4',
-    "R": '\u00a6',
-    "P": '\u00a7'
+    "K": u'\u00a2',
+    "Q": u'\u00a3',
+    "B": u'\u00a5',
+    "N": u'\u00a4',
+    "R": u'\u00a6',
+    "P": u'\u00a7'
 }
 
 NAG_TO_READABLE_MAP = {
@@ -340,7 +340,7 @@ MOVETEXT_REGEX = re.compile(r"""
     |([\?!]{1,2})
     """, re.DOTALL | re.VERBOSE)
 
-READABLE_TO_NAG_MAP = {v:k for k, v in NAG_TO_READABLE_MAP.items()}
+READABLE_TO_NAG_MAP = {v:k for k, v in NAG_TO_READABLE_MAP.iteritems()}
 
 Window.clearcolor = (1, 1, 1, 1)
 locale.setlocale(locale.LC_ALL, 'en_US')
@@ -504,7 +504,7 @@ def read_game(handle, error_handler=_raise):
                 # Found a start variation token.
                 if variation_stack[-1].parent:
                     variation_stack.append(variation_stack[-1].parent)
-                    board = pickle.loads(pickle.dumps(board_stack[-1]))
+                    board = cPickle.loads(cPickle.dumps(board_stack[-1]))
                     #board = marshal.loads(marshal.dumps(board_stack[-1]))
                     #board = copy.deepcopy(board_stack[-1])
                     board.pop()
@@ -720,7 +720,7 @@ class StringExporter(object):
     def __init__(self, columns=80):
         self.lines = []
         self.columns = columns
-        self.current_line = ""
+        self.current_line = u""
         self.depth = 0
 
     def flush_current_line(self):
@@ -801,13 +801,13 @@ class StringExporter(object):
 
     def put_move(self, board, move, main_line=True):
         # print "main_line : {0}".format(main_line)
-        _board = pickle.loads(pickle.dumps(board, -1))
+        _board = cPickle.loads(cPickle.dumps(board, -1))
         #_board = marshal.loads(marshal.dumps(board, -1))
 
         #_board = copy.deepcopy(board)
         _board.push(move)
         san = board.san(move)
-        move_string = "[ref={0}][size={1}] {2} [/size][/ref]".format(_board.zobrist_hash(), self.depth_font(), ChessProgram_app.convert_san_to_figurine(san))
+        move_string = u"[ref={0}][size={1}] {2} [/size][/ref]".format(_board.zobrist_hash(), self.depth_font(), ChessProgram_app.convert_san_to_figurine(san))
             # print move_string
         self.write_token(move_string)
         # print "[ref={0}][size={1}] {2} [/size][/ref]".format(_board.zobrist_hash(), 18, board.san(move))
@@ -882,9 +882,9 @@ class GameControls(BoxLayout):
         self.app.new('')
         try:
             bt.parent.parent.dismiss()
-        except AttributeError as e:
+        except AttributeError, e:
             # Once expanded to full screen, you no longer have to dismiss the popup
-            print(e)
+            print e
 
     @staticmethod
     def add_text_widget(l, txt, label):
@@ -895,7 +895,7 @@ class GameControls(BoxLayout):
 
     def save_game_dialog(self, bt, replace=False):
         def update(bt):
-            for k in list(self.app.chessboard_root.headers.keys()):
+            for k in self.app.chessboard_root.headers.keys():
                 self.app.chessboard_root.headers[k] = mod_game_headers[k].text
             self.app.save('', replace=replace)
             popup.dismiss()
@@ -905,7 +905,7 @@ class GameControls(BoxLayout):
         bt.parent.parent.dismiss()
 
         mod_game_headers = {}
-        for k,v in self.app.chessboard_root.headers.items():
+        for k,v in self.app.chessboard_root.headers.iteritems():
             mod_game_headers[k] = TextInput(text=v)
             self.add_text_widget(l, mod_game_headers[k], k)
 
@@ -930,18 +930,18 @@ class GameControls(BoxLayout):
         self.app.save_games('')
         try:
             bt.parent.parent.dismiss()
-        except AttributeError as e:
+        except AttributeError, e:
             # Once expanded to full screen, you no longer have to dismiss the popup
-            print(e)
+            print e
 
 
     def go_to_settings(self, bt):
         self.app.go_to_settings('')
         try:
             bt.parent.parent.dismiss()
-        except AttributeError as e:
+        except AttributeError, e:
             # Once expanded to full screen, you no longer have to dismiss the popup
-            print(e)
+            print e
 
 class GameAnalysisPopup(Popup):
     def __init__(self, app, **kwargs):
@@ -978,12 +978,12 @@ class EngineControls(BoxLayout):
     def start_cloud_engine(self, bt):
         try:
             bt.parent.parent.dismiss()
-        except AttributeError as e:
+        except AttributeError, e:
             # Once expanded to full screen, you no longer have to dismiss the popup
-            print(e)
+            print e
 
         if self.app.cloud_engine_id:
-            print("Cloud Engine already started")
+            print "Cloud Engine already started"
             # Dont start cloud engine if an ID exists
         else:
             self.app.cloud_engine_thread = KThread(target=self.app.start_cloud_engine)
@@ -996,27 +996,27 @@ class EngineControls(BoxLayout):
             # if not self.uci_engine:
             #     self.start_uci_engine(CLOUD_ENGINE_EXEC, cloud=True, cloud_hostname='', cloud_private_key_file=self.cloud_private_key_file, cloud_username=self.cloud_username)
 
-        print("Started Cloud engine")
+        print "Started Cloud engine"
 
     def stop_cloud_engine(self, bt, aws=False):
         try:
             bt.parent.parent.dismiss()
-        except AttributeError as e:
+        except AttributeError, e:
             # Once expanded to full screen, you no longer have to dismiss the popup
-            print(e)
-        print("Stopped Cloud engine")
+            print e
+        print "Stopped Cloud engine"
         if aws:
             cloud_eng.process_request_api(self.app.cloud_engine_id, image_prefix="HighCPU", debug=True,
                 stop=True, dryrun=False)
-        print("Engine id: {0} Stopped".format(self.app.cloud_engine_id))
+        print "Engine id: {0} Stopped".format(self.app.cloud_engine_id)
         self.app.cloud_engine_id = None
 
     def analyze_game(self, bt):
         try:
             bt.parent.parent.dismiss()
-        except AttributeError as e:
+        except AttributeError, e:
             # Once expanded to full screen, you no longer have to dismiss the popup
-            print(e)
+            print e
         # Kivy lesson learned for game analysis
         # Main thread should not do any blocking or long tasks
         # The recommended pattern is that the main thread calls another thread
@@ -1029,9 +1029,9 @@ class EngineControls(BoxLayout):
     def analyze_opening(self, bt):
         try:
             bt.parent.parent.dismiss()
-        except AttributeError as e:
+        except AttributeError, e:
             # Once expanded to full screen, you no longer have to dismiss the popup
-            print(e)
+            print e
 
         p = OpeningAnalysisPopup(self.app)
         p.open()
@@ -1058,9 +1058,9 @@ class Annotation(BoxLayout):
         self.app.refresh_board(update=True)
         try:
             bt.parent.parent.dismiss()
-        except AttributeError as e:
+        except AttributeError, e:
             # Once expanded to full screen, you no longer have to dismiss the popup
-            print(e)
+            print e
 
 
     def set_pos_eval(self, value, bt):
@@ -1068,9 +1068,9 @@ class Annotation(BoxLayout):
         self.app.refresh_board(update=True)
         try:
             bt.parent.parent.dismiss()
-        except AttributeError as e:
+        except AttributeError, e:
             # Once expanded to full screen, you no longer have to dismiss the popup
-            print(e)
+            print e
 
     # def set_move_eval(self, value, bt):
     #     eval = 'move' if value else 'remove'
@@ -1108,9 +1108,9 @@ class Annotation(BoxLayout):
         self.app.refresh_board(update=True)
         try:
             bt.parent.parent.dismiss()
-        except AttributeError as e:
+        except AttributeError, e:
             # Once expanded to full screen, you no longer have to dismiss the popup
-            print(e)
+            print e
 
     # def set_pos_eval(self, value, bt):
     #     eval = 'position' if value else 'remove'
@@ -1925,13 +1925,13 @@ class ChessProgram_app(App):
                                 position_index[position_hash]['draws'] += 1
                     i+=1
                 db = leveldict.LevelDict(leveldb_path)
-                for k,v in list(game_index.items()):
+                for k,v in game_index.items():
                     db["game_{0}_data".format(k)] = v
                 db["total_game_count"] = str(i)
                 db["pgn_filename"] = pgn_path
                 db["numPasses"] = "0"
 
-                for k,v in list(position_index.items()):
+                for k,v in position_index.items():
                     # print (v['game_ids'])
                     db[k+"_p_0"] = ",".join(v['game_ids'])
                     db["{0}_moves_p_0".format(k)] = ",".join(v['moves'])
@@ -1964,8 +1964,8 @@ class ChessProgram_app(App):
         if pgn_path:
             self.db_popup.dismiss()
 
-            print(("pgn_path: {}".format(pgn_path)))
-            print(("db_path: {}".format(self.gen_polyglot_path(pgn_path))))
+            print("pgn_path: {}".format(pgn_path))
+            print("db_path: {}".format(self.gen_polyglot_path(pgn_path)))
 
             if ref:
                 self.ref_db_index_book = polyglot_opening_book.PolyglotOpeningBook(self.gen_polyglot_path(pgn_path),
@@ -2018,7 +2018,7 @@ class ChessProgram_app(App):
             self.uci_engine_thread.kill()
         self.start_uci_engine_thread()
         uci_engine.startGame()
-        print("started UCI engine")
+        print "started UCI engine"
         sleep(3)
         return uci_engine
 
@@ -2028,7 +2028,7 @@ class ChessProgram_app(App):
 
         self.gen_uci_menu_item("Name", uci_engine.engine_info['name'], self.other_engine_panel, internal = False)
 
-        for k,v in uci_engine.get_options().items():
+        for k,v in uci_engine.get_options().iteritems():
             self.gen_uci_menu_item(k, v, self.other_engine_panel, internal = False)
         self.db_popup.dismiss()
 
@@ -2114,7 +2114,7 @@ class ChessProgram_app(App):
     def start_cloud_engine(self):
         # self.cloud_engine_id = uuid.uuid1()
         # self.cloud_engine_id = 'magnolia'
-        print("Engine id: {0}".format(self.cloud_engine_id))
+        print "Engine id: {0}".format(self.cloud_engine_id)
                 #     # Check for cloud engine
         if self.cloud_hostname:
             # Connect to a dedicated hostname
@@ -2130,19 +2130,19 @@ class ChessProgram_app(App):
                 num_sleeps +=1
                 result_hash = cloud_eng.process_request_api(self.cloud_engine_id, image_prefix="HighCPU", debug=True,
                     get_status=True, dryrun=False)
-                print("result_hash: {0}".format(result_hash))
+                print "result_hash: {0}".format(result_hash)
                 if result_hash['status'] == 'success' and result_hash['state'] == 'running':
                     if self.start_engine(result_hash['dns_name']) or num_sleeps > 20:
                         break
-                print("Will retry after 5 seconds")
+                print "Will retry after 5 seconds"
 
     def start_engine(self, hostname, port=22):
-        print("connecting to cloud engine..")
+        print "connecting to cloud engine.."
         if not self.uci_engine:
             self.cloud_hostname = hostname
-            print("hostname: {0}".format(self.cloud_hostname))
-            print("private_key_file: {0}".format(self.cloud_private_key_file))
-            print("cloud_username: {0}".format(self.cloud_username))
+            print "hostname: {0}".format(self.cloud_hostname)
+            print "private_key_file: {0}".format(self.cloud_private_key_file)
+            print "cloud_username: {0}".format(self.cloud_username)
             # sleep(5)
             while True:
                 num_ssh_retries = 0
@@ -2154,13 +2154,13 @@ class ChessProgram_app(App):
                 except spur.ssh.ConnectionError:
                     sleep(3)
                     num_ssh_retries += 1
-                    print("Retrying ssh..")
+                    print "Retrying ssh.."
                 if num_ssh_retries > 10:
-                    print("Cannot connect to SSH")
+                    print "Cannot connect to SSH"
                     break
 
 
-            print("Connected!")
+            print "Connected!"
             return True
             # break
 
@@ -2360,7 +2360,7 @@ class ChessProgram_app(App):
                 use_ref_db = self.use_ref_db
                 self.use_ref_db = True
                 # print ("Before sorted pos_stats")
-                sorted_position_stats = sorted(list(position_stats.values()), key=lambda book_move: int(book_move['freq']), reverse=True)
+                sorted_position_stats = sorted(position_stats.values(), key=lambda book_move: int(book_move['freq']), reverse=True)
                 # print("sorted_position_stats: {}".format(sorted_position_stats))
                 for i, m in enumerate(sorted_position_stats):
 
@@ -2396,10 +2396,10 @@ class ChessProgram_app(App):
                             top_black_players = []
                             # print "white_players:"
                             # print white_players
-                            for k,v in white_players.items():
+                            for k,v in white_players.iteritems():
                                 if v > 1:
                                     top_white_players.append(k)
-                            for k,v in black_players.items():
+                            for k,v in black_players.iteritems():
                                 if v > 1:
                                     top_black_players.append(k)
                             self.chessboard.comment = "Key position"
@@ -2415,7 +2415,7 @@ class ChessProgram_app(App):
                             # db_game.whiteelo = tokens[1]
                             # db_game.black = tokens[2]
                         else:
-                            print(("Cannot go to move with hash: {}".format(hash)))
+                            print("Cannot go to move with hash: {}".format(hash))
 
                 self.use_ref_db = use_ref_db
 
@@ -2464,7 +2464,7 @@ class ChessProgram_app(App):
         position_iter = None
         if params["use_medal_positions"] == "down":
             # for p in self.chessboard.positions.values():
-            for p in list(self.chessboard.positions.values()):
+            for p in self.chessboard.positions.values():
                 comment_lower = p.comment.lower()
                 if comment_lower.find("medal") > -1:
                     interesting_positions.append(p)
@@ -2541,9 +2541,9 @@ class ChessProgram_app(App):
                         move_symbol = NAG_DUBIOUS_MOVE
                         # print "Played move is bad"
 
-            except ValueError as e:
-                print(e)
-                print("mate?")
+            except ValueError, e:
+                print e
+                print "mate?"
 
             # last_eng_first_move = self.internal_engine_raw_output.split()[0]
             # print "eng_rec_first_move : {0}".format(last_eng_first_move)
@@ -2743,10 +2743,10 @@ class ChessProgram_app(App):
                 self.dgtnix.test_for_dgt_clock()
                 # p
                 if self.dgtnix.dgt_clock:
-                    print("Found DGT Clock")
+                    print "Found DGT Clock"
                     self.dgt_clock_ack_thread()
                 else:
-                    print("No DGT Clock found")
+                    print "No DGT Clock found"
                 self.dgtnix.get_board()
 
 
@@ -2764,13 +2764,13 @@ class ChessProgram_app(App):
                         self.lcd.printString('Kivy Chess')
                     except OSError:
                         self.lcd = None
-                        print("No LCD found")
+                        print "No LCD found"
 
 
                 if not self.dgtnix:
-                    print("Unable to connect to the device on {0}".format(self.device))
+                    print "Unable to connect to the device on {0}".format(self.device)
                 else:
-                    print("The board was found")
+                    print "The board was found"
                     self.dgt_connected = True
 
 
@@ -2806,7 +2806,7 @@ class ChessProgram_app(App):
                 break
             device = port
 
-        print("DGT device found: {0}".format(device))
+        print "DGT device found: {0}".format(device)
 
         self.dgt_dev_input = TextInput(text=device, focus=False, multiline=False, use_bubble = True)
         self.dgt_dev_input.bind(on_text_validate=on_dgt_dev_input)
@@ -2846,7 +2846,7 @@ class ChessProgram_app(App):
         fen_input.bind(on_text_validate=on_fen_input)
         setup_pos_item.add_widget(fen_input)
 
-        for k,v in sf.get_options().items():
+        for k,v in sf.get_options().iteritems():
             self.gen_uci_menu_item(k, v, engine_panel)
 
         board_panel.add_widget(setup_pos_item) # add item1 to left side panel
@@ -3018,7 +3018,7 @@ class ChessProgram_app(App):
             #         self.write_to_lcd(str(self.chessboard.variations[0].san),clear=True)
 
     def dgt_button_event(self, event):
-         print("You pressed", end=' ')
+         print "You pressed",
          button = event.pin_num
 
          if button == 4:
@@ -3063,12 +3063,12 @@ class ChessProgram_app(App):
             elif new_dgt_fen:
                 self.dgt_fen = new_dgt_fen
         if attr.type == CLOCK_BUTTON_PRESSED:
-            print("Clock button {0} pressed".format(attr.message))
+            print "Clock button {0} pressed".format(attr.message)
             e = ButtonEvent(attr.message)
             self.dgt_button_event(e)
         if attr.type == CLOCK_ACK:
             self.clock_ack_queue.put('ack')
-            print("Clock ACK Received")
+            print "Clock ACK Received"
         if attr.type == CLOCK_LEVER:
             if self.clock_lever != attr.message:
                 if self.clock_lever:
@@ -3332,7 +3332,7 @@ class ChessProgram_app(App):
         if os.path.isfile('book/book.ctg') and self.ctg_reader_cmd:
             self.ctg_book = 'book/book.ctg'
 
-        print(("ctg_book: {}".format(self.ctg_book)))
+        print("ctg_book: {}".format(self.ctg_book))
 
         self.book = None
         self.book_display = True
@@ -3748,7 +3748,7 @@ class ChessProgram_app(App):
         # print ("Got pos_hash: {}".format(pos_hash))
         # print "finding move"
         # print "Current pos hash : {0}".format(Game.positions)
-        if pos_hash in Game.positions:
+        if Game.positions.has_key(pos_hash):
             # print("key present")
             self.chessboard = Game.positions[pos_hash]
             if update_board:
@@ -4032,7 +4032,7 @@ class ChessProgram_app(App):
         # print self.chessboard.headers.headers
         self.chessboard_root = self.chessboard
         # print(self.chessboard_root)
-        if 'FEN' in self.chessboard_root.headers.headers and len(self.chessboard_root.headers.headers['FEN']) > 1:
+        if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
             self.custom_fen = self.chessboard_root.headers.headers['FEN']
         else:
             self.custom_fen = 'startpos'
@@ -4269,12 +4269,12 @@ class ChessProgram_app(App):
             tokens = line
         try:
             score_index = tokens.index('score')
-        except ValueError as e:
+        except ValueError, e:
             score_index = -1
 
         try:
             nps_index = tokens.index('nps') + 1
-        except ValueError as e:
+        except ValueError, e:
             nps_index = -1
         nps = None
         score = None
@@ -4296,16 +4296,16 @@ class ChessProgram_app(App):
                 score = float(tokens[score_index + 2]) / 100 * 1.0
                 try:
                     score = float(score)
-                except ValueError as e:
-                    print("Cannot convert score to a float")
-                    print(e)
+                except ValueError, e:
+                    print "Cannot convert score to a float"
+                    print e
             elif tokens[score_index + 1] == "mate":
                 score = int(tokens[score_index + 2])
                 try:
                     score = int(score)
-                except ValueError as e:
-                    print("Cannot convert Mate number of moves to a int")
-                    print(e)
+                except ValueError, e:
+                    print "Cannot convert Mate number of moves to a int"
+                    print e
             # print self.chessboard.position.turn
             if self.chessboard.position.turn == 'b':
                 if score:
@@ -4349,7 +4349,7 @@ class ChessProgram_app(App):
             # first_mv = tokens[line_index+1]
             try:
                 multi_pv_index = tokens.index('multipv')
-            except ValueError as e:
+            except ValueError, e:
                 multi_pv_index = -1
             pv_tokens = tokens[line_index+1:]
 
@@ -4405,7 +4405,7 @@ class ChessProgram_app(App):
             # variation = self.generate_move_list(move_list, start_move_num=self.chessboard.half_move_num) if line_index!= -1 else None
 
             # print move_list
-        except ValueError as e:
+        except ValueError, e:
             line_index = -1
             # raise
 
@@ -4430,14 +4430,14 @@ class ChessProgram_app(App):
 
                 # print "variation:"
                 # print variation
-                pretty_var = ""
+                pretty_var = u""
                 if i == 0:
                     if not raw:
-                        pretty_var += "[color=3333ff][ref={0}]Stop[/ref]{1}[/color]".format(ENGINE_ANALYSIS, tail)
+                        pretty_var += u"[color=3333ff][ref={0}]Stop[/ref]{1}[/color]".format(ENGINE_ANALYSIS, tail)
                 if raw:
                     pretty_var += variation
                 else:
-                    pretty_var += "\n[color=000000]{0}[/color]".format(variation)
+                    pretty_var += u"\n[color=000000]{0}[/color]".format(variation)
                 # print "pretty_var:"
                 # print pretty_var
 
@@ -4487,7 +4487,7 @@ class ChessProgram_app(App):
             spoken_san = spoken_san.replace('O-O-O', ' castles long ')
             spoken_san = spoken_san.replace('+', ' check ')
 
-            for k, v in SPOKEN_PIECE_SOUNDS.items():
+            for k, v in SPOKEN_PIECE_SOUNDS.iteritems():
                 spoken_san = spoken_san.replace(k, v)
             spoken_san = spoken_san.replace('x', ' captures ')
             spoken_san = spoken_san.replace('=', ' promotes to ')
@@ -4508,7 +4508,7 @@ class ChessProgram_app(App):
                     if line:
                         cleaned_line, infos = self.parse_analysis(line)
                         if cleaned_line:
-                            external_engine_output = "\n[color=3333ff]{0}[/color]".format(self.uci_engine.engine_info['name']) + ': ' + cleaned_line
+                            external_engine_output = u"\n[color=3333ff]{0}[/color]".format(self.uci_engine.engine_info['name']) + ': ' + cleaned_line
 
                             self.external_engine_raw_output, self.external_engine_raw_scores = self.parse_analysis(line, figurine=False, raw=True)
 
@@ -4525,7 +4525,7 @@ class ChessProgram_app(App):
 
     def parse_analysis(self, line, figurine=True, raw=False):
         out_scores = self.parse_score(line, figurine=figurine, raw=raw)
-        output_buffer = ''
+        output_buffer = u''
         infos = []
         if out_scores:
             for i, out_score in enumerate(out_scores):
@@ -4560,7 +4560,7 @@ class ChessProgram_app(App):
                 if cleaned_line:
                     # print "cleaned_line:"
                     # print cleaned_line
-                    self.internal_engine_output = "\n[color=000000]{0}[/color]".format(self.get_internal_engine_info()[0]) + ' ' + cleaned_line
+                    self.internal_engine_output = u"\n[color=000000]{0}[/color]".format(self.get_internal_engine_info()[0]) + ' ' + cleaned_line
                     self.internal_engine_raw_output, self.internal_engine_raw_scores = self.parse_analysis(line, figurine=False, raw=True)
 
                     if not self.uci_engine:
@@ -4613,7 +4613,7 @@ class ChessProgram_app(App):
                     # print "san: {0}".format(san)
 
                     score = ""
-                    if random_depth in self.train_eng_score:
+                    if self.train_eng_score.has_key(random_depth):
                         score = self.train_eng_score[random_depth]
                         self.train_move_info["score"] = score
 
@@ -4630,7 +4630,7 @@ class ChessProgram_app(App):
 
     def write_to_dgt(self, message, move=False, dots=False, beep=True, max_num_tries = 5):
         if self.dgtnix:
-            print("sending message")
+            print "sending message"
             self.dgt_clock_msg_queue.put(DGT_Clock_Message(message, move=move, dots=dots, beep=beep, max_num_tries=max_num_tries))
 
     def write_to_lcd(self, message, clear = False):
@@ -4734,7 +4734,7 @@ class ChessProgram_app(App):
             # Write to the open database
             pgn_file = self.db_index_book.Get("pgn_filename")
             if replace:
-                print("replacing game_num: {0}".format(self.loaded_game_num))
+                print "replacing game_num: {0}".format(self.loaded_game_num)
                     # offsets = list(chess.pgn.scan_offsets(pgn))
                     # self.assertEqual(len(offsets), 6)
                 with open(pgn_file+".tmp", "wb") as tmp_pgn_file:
@@ -4942,13 +4942,13 @@ class ChessProgram_app(App):
             else:
                 self.add_try_variation(move)
                 self.refresh_board()
-        except Exception as e:
-            print(e)
+        except Exception, e:
+            print e
             raise
             # TODO: log error
 
     def generate_move_list(self, all_moves, eval = None, tail = None, start_move_num = 1, move_num = True):
-        score = ""
+        score = u""
         if move_num and start_move_num % 2 == 0:
             turn_sep = '..'
         else:
@@ -5092,8 +5092,8 @@ class ChessProgram_app(App):
 
             # game_ids = db_index.Get(pos_hash)
 
-        except KeyError as e:
-            print("key not found!")
+        except KeyError, e:
+            print "key not found!"
             game_ids = []
         db_game_list = []
         filter_text = []
@@ -5112,7 +5112,7 @@ class ChessProgram_app(App):
             if not operator_match:
                 filter_text = [db_text]
 
-        print(("len_game_ids: {}".format(len(game_ids))))
+        print("len_game_ids: {}".format(len(game_ids)))
         # if len(game_ids) > SQLITE_GAME_LIMIT:
         #     # There are more than 1K games in this position, this means we can do string search first if string search is indicated
         #     print("LETS DO SQLITE search first")
@@ -5179,11 +5179,11 @@ class ChessProgram_app(App):
             self.database_list_view.scroll_to(0)
 
     def get_move_from_int(self, move):
-        source_x = ((move >> 6) & 0o77) & 0x7
-        source_y = (((move >> 6) & 0o77) >> 3) & 0x7
+        source_x = ((move >> 6) & 077) & 0x7
+        source_y = (((move >> 6) & 077) >> 3) & 0x7
 
-        target_x = (move & 0o77) & 0x7
-        target_y = ((move & 0o77) >> 3) & 0x7
+        target_x = (move & 077) & 0x7
+        target_y = ((move & 077) >> 3) & 0x7
 
         promote = (move >> 12) & 0x7
         # print promote
@@ -5340,7 +5340,7 @@ class ChessProgram_app(App):
                 else:
                     pct = 0
                 if format:
-                    records.append({'move': str(m.uci), 'san': str(self.convert_san_to_figurine(m.san)),
+                    records.append({'move': str(m.uci), 'san': unicode(self.convert_san_to_figurine(m.san)),
                                 'pct': "{0:.2f}".format(pct), 'freq': m.freq,
                                 'wins': locale.format("%d", m.wins, grouping=True),
                                 'draws': locale.format("%d", m.draws, grouping=True),
@@ -5442,7 +5442,7 @@ class ChessProgram_app(App):
                 try:
                     self.book_panel.reset_grid()
                 except Exception as e:
-                    print((e.message))
+                    print(e.message)
 
                 # print("fen : {0}".format(fen))
                 if not self.book:
@@ -5470,20 +5470,20 @@ class ChessProgram_app(App):
                             move_info = pos.make_move(Move.from_uci(str(move)))
                             san = move_info.san
                             self.book_panel.grid.add_row(
-                                ["[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(e['san'])), str(games), "{:0.1f}".format((wins+0.5*draws)*100.0/(wins+draws+losses)),
+                                [u"[ref={0}]{1}[/ref]".format(move, self.convert_san_to_figurine(e['san'])), str(games), "{:0.1f}".format((wins+0.5*draws)*100.0/(wins+draws+losses)),
                                  str(wins), str(draws), str(losses), str(weight)],
                                 callback=self.add_book_moves)
                             book_entries += 1
                         except Exception as e:
                             print("Could not convert move to san")
-                            print(("move: {0}".format(move)))
+                            print("move: {0}".format(move))
                             # print("move wi")
                             # weight = str(e.weight)
-                            print(("move weight: {0}".format(weight)))
+                            print("move weight: {0}".format(weight))
                             # raise
-                            print((e.message))
+                            print(e.message)
                     except Exception as ex:
-                        print((ex.message))
+                        print(ex.message)
 
                 current_eval = self.user_book[pos_hash]["eval"]
                 # print "current_eval:"+str(current_eval)
@@ -5531,7 +5531,7 @@ class ChessProgram_app(App):
 
     @staticmethod
     def convert_san_to_figurine(san):
-        for k, v in PIECE_FONT_MAP.items():
+        for k, v in PIECE_FONT_MAP.iteritems():
             san = san.replace(k, v)
         return san
 
@@ -5544,7 +5544,7 @@ class ChessProgram_app(App):
         san = self.chessboard.san
         if figurine:
             san = self.convert_san_to_figurine(san)
-        return "{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
+        return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
 
     # def get_prev_moves(self, board, format="raw"):
     #     # temp_board = self.chessboard
@@ -5592,7 +5592,7 @@ class ChessProgram_app(App):
         san = self.chessboard.san
         if figurine:
             san = self.convert_san_to_figurine(san)
-        return "[size=19][color=000000]{0}.{1} {2}[/color][/size]".format(
+        return u"[size=19][color=000000]{0}.{1} {2}[/color][/size]".format(
             self.chessboard.half_move_num / 2, filler, san)
 
         # return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
@@ -5602,7 +5602,7 @@ class ChessProgram_app(App):
             self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
             all_moves = self.chessboard_root.game_score(figurine=True)
             if all_moves:
-                self.game_score.children[0].text = "[color=000000]{0}[/color]".format(all_moves)
+                self.game_score.children[0].text = u"[color=000000]{0}[/color]".format(all_moves)
                 self.game_score.children[0].texture_update()
 
         else:
@@ -5611,7 +5611,7 @@ class ChessProgram_app(App):
     def refresh_engine(self):
         if self.engine_mode != ENGINE_PLAY:
             self.sf_stop()
-        if 'FEN' in self.chessboard_root.headers.headers and len(self.chessboard_root.headers.headers['FEN']) > 1:
+        if self.chessboard_root.headers.headers.has_key('FEN') and len(self.chessboard_root.headers.headers['FEN']) > 1:
             self.custom_fen = self.chessboard_root.headers.headers['FEN']
         if self.custom_fen:
             self.pyfish_fen = self.custom_fen
@@ -5674,7 +5674,7 @@ class ChessProgram_app(App):
         if update:
             all_moves = self.chessboard_root.game_score(figurine=True)
             if all_moves:
-                self.game_score.children[0].text = "[color=000000]{0}[/color]".format(all_moves)
+                self.game_score.children[0].text = u"[color=000000]{0}[/color]".format(all_moves)
             # # all_moves = self.chessboard_root.game_score(figurine=True)
             # exporter = StringExporter(columns=None)
             # self.chessboard_root.export_ref(exporter)
