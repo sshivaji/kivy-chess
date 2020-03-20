@@ -1654,11 +1654,14 @@ class DBGame(object):
 #        self.eco = eco
 #        self.event = event
 
+
 class DBSortCriteria(object):
     def __init__(self, key, rank, asc, **kwargs):
         self.key = key
         self.rank = rank
         self.asc = asc
+    def __str__( self):
+        return "key: {}, rank: {}, asc: {}".format(self.key, self.rank, self.asc)
 
 
 class DBHeaderButton(Button):
@@ -5018,19 +5021,43 @@ class ChessProgram_app(App):
     def query_data(self, db, game_ids=None, order_by_list=None, page_number=None, items_per_page=None,
                    search_terms=None):
 
+        sqlite_db = peewee.SqliteDatabase(db)
+
         class Game(peewee.Model):
-            white = peewee.CharField()
-            white_elo = peewee.IntegerField()
-            black = peewee.CharField()
-            black_elo = peewee.IntegerField()
-            result = peewee.CharField()
-            date = peewee.DateField()
-            event = peewee.CharField()
-            site = peewee.CharField()
-            eco = peewee.CharField()
+            offset = peewee.IntegerField(primary_key=True)
+            offset_8 = peewee.IntegerField(index=True)
+            white = peewee.CharField(index=True)
+            white_elo = peewee.IntegerField(index=True)
+            black = peewee.CharField(index=True)
+            black_elo = peewee.IntegerField(index=True)
+            result = peewee.CharField(index=True)
+            date = peewee.DateField(index=True)
+            event = peewee.CharField(index=True)
+            site = peewee.CharField(index=True)
+            eco = peewee.CharField(index=True)
 
             class Meta:
-                database = peewee.SqliteDatabase(db)
+                database = sqlite_db
+
+                # def __str__(self):
+                #     return "White: {0}, white_elo: {1}, black: {2}, black_elo: {3}, result: {4}, date: {5}, event: {6}, site: {7}, " \
+                #            "eco: {8}".format(white, white_elo, black, black_elo, result, date, event, site, eco)
+                #
+
+            def as_dict(self):
+                return {
+                    'offset': self.offset,
+                    'offset_8': self.offset_8,
+                    'white': self.white,
+                    'white_elo': self.white_elo,
+                    'black': self.black,
+                    'black_elo': self.black_elo,
+                    'result': self.result,
+                    'date': self.date,
+                    'event': self.event,
+                    'site': self.site,
+                    'eco': self.eco,
+                }
 
         query = Game.select()
         # query = query.where(Game.black ** ('%%%s%%' % ('Carlsen')) | Game.white ** ('%%%s%%' % ('Carlsen')))
@@ -5053,23 +5080,29 @@ class ChessProgram_app(App):
                     query = query.where(Game.black ** ('%%%s%%' % (t)) | Game.white ** ('%%%s%%' % (t)))
 
         if len(game_ids) <= SQLITE_GAME_LIMIT:
-            query = query.where(getattr(Game, 'id') << game_ids)
+            query = query.where(getattr(Game, 'offset') << game_ids)
 
         if order_by_list:
             # Construct peewee order by clause
             order_by_cond = []
+
             for sort_key in order_by_list:
-                if sort_key.direction > 0:
-                    order_by_cond.append(getattr(Game, sort_key.name).asc())
+                # print("sort_key: {}".format(sort_key))
+                if sort_key.key == 'whiteelo':
+                    sort_key.key = "white_elo"
+                if sort_key.key == 'blackelo':
+                    sort_key.key = "black_elo"
+                if sort_key.asc:
+                    order_by_cond.append(getattr(Game, sort_key.key).asc())
                 else:
-                    order_by_cond.append(getattr(Game, sort_key.name).desc())
+                    order_by_cond.append(getattr(Game, sort_key.key).desc())
 
             query = query.order_by(*order_by_cond)
             # getattr(Game,'black_elo').asc(), getattr(Game,'eco').asc()
         if page_number and items_per_page:
             query = query.paginate(page_number, items_per_page)
 
-        # print query
+        # print(query)
         # query = query.limit(limit)
 
         results = [p for p in query]
@@ -5113,16 +5146,25 @@ class ChessProgram_app(App):
                 filter_text = [db_text]
 
         print("len_game_ids: {}".format(len(game_ids)))
-        # if len(game_ids) > SQLITE_GAME_LIMIT:
-        #     # There are more than 1K games in this position, this means we can do string search first if string search is indicated
-        #     print("LETS DO SQLITE search first")
-        #
-        #     self.query_data('book.sqlite', game_ids=game_ids, order_by_list=None, page_number=None, items_per_page=None,
-        #                    search_terms=None)
+        sqlite_results = []
+        sqlite_set = set()
+        if len(game_ids) > SQLITE_GAME_LIMIT and len(filter_text) > 0:
+            # There are more than 1K games in this position, this means we can do string search first if string search is indicated
+            print("LETS DO SQLITE search first")
+            # sort_key = attrgetter(self.db_sort_criteria[0].key)
+            # if self.db_sort_criteria[0].key == 'id':
+            #     sort_key = lambda v: int(v.id)
+            sqlite_results = self.query_data('book.sqlite', game_ids=game_ids, order_by_list=self.db_sort_criteria, page_number=None, items_per_page=None,
+                           search_terms=filter_text)
+            # sqlite_set = [g.offset for g in sqlite_results]
+            # print("sqlite_results: {0}".format(sqlite_results))
+            # print("sqlite_set: {}".format(sqlite_set))
+
+            game_ids = [g.offset for g in sqlite_results]
 
         for i in game_ids:
             db_game = DBGame(i)
-            if self.db_sort_criteria or len(filter_text) > 0 or create_headers:
+            if (self.db_sort_criteria or create_headers) and not sqlite_results:
 
                 record = self.get_game_header(i, "ALL")
                 # print("record: {}".format(record))
@@ -5139,20 +5181,24 @@ class ChessProgram_app(App):
 
                 db_game.black, db_game.blackelo, db_game.date, db_game.eco, db_game.event, db_game.result, db_game.white, db_game.whiteelo = self.extract_record(record)
 
-            if len(filter_text) > 0:
+            if len(filter_text) > 0 and not sqlite_results:
+
                 match = True
                 # print filter_text
                 for f in filter_text:
-                    if f in db_game.white.decode('utf-8') or f in db_game.black.decode('utf-8') or f in db_game.event.decode('utf-8') or f in db_game.event.decode('utf-8'):
-                        pass
-                    else:
+                    try:
+                        if f in db_game.white.decode('utf-8') or f in db_game.black.decode('utf-8') or f in db_game.event.decode('utf-8') or f in db_game.event.decode('utf-8'):
+                            pass
+                        else:
+                            match = False
+                    except UnicodeDecodeError:
                         match = False
                 if match:
                     db_game_list.append(db_game)
-                    # db_game_list.append(db_game)
+                # db_game_list.append(db_game)
             else:
                 db_game_list.append(db_game)
-        if self.db_sort_criteria:
+        if self.db_sort_criteria and not sqlite_results:
             # print self.db_sort_criteria[0].key
             sort_key = attrgetter(self.db_sort_criteria[0].key)
             if self.db_sort_criteria[0].key == 'id':
