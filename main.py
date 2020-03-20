@@ -5182,6 +5182,28 @@ class ChessProgram_app(App):
                 db_game.black, db_game.blackelo, db_game.date, db_game.eco, db_game.event, db_game.result, db_game.white, db_game.whiteelo = self.extract_record(record)
 
             if len(filter_text) > 0 and not sqlite_results:
+                try:
+                    wh = db_game.white
+                    
+                except AttributeError:
+                    record = self.get_game_header(i, "ALL")
+                    # print("record: {}".format(record))
+                    # tokens = record.split("|")
+                    # db_game.white = tokens[0]
+                    # db_game.whiteelo = tokens[1]
+                    # db_game.black = tokens[2]
+                    # db_game.blackelo = tokens[3]
+                    # db_game.result = tokens[4]
+                    # db_game.date = tokens[5]
+                    # db_game.event = tokens[6]
+                    # db_game.site = tokens[7]
+                    # db_game.eco = tokens[8]
+
+                    db_game.black, db_game.blackelo, db_game.date, db_game.eco, db_game.event, db_game.result, db_game.white, db_game.whiteelo = self.extract_record(
+                        record)
+
+
+
 
                 match = True
                 # print filter_text
