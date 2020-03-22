@@ -26,7 +26,6 @@ class Game(chess.GameNode):
         chess.GameNode.positions={}
         # chess.GameNode.interesting_positions=[]
 
-
         if headers is None:
             self.__headers = chess.GameHeaderBag(self)
         else:

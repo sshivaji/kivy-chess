@@ -1954,6 +1954,9 @@ class ChessProgram_app(App):
     def gen_polyglot_path(self, fname):
         return os.path.splitext(fname)[0] + '.bin'
 
+    def gen_sqlite_path(self, fname):
+        return os.path.splitext(fname)[0] + '.sqlite'
+
     def process_database(self, obj, f, mevent):
         self.open_db(f, ref=False)
 
@@ -3215,14 +3218,14 @@ class ChessProgram_app(App):
 
     def extract_record(self, record_list):
         record = record_list[0]
-        white = record.get('White', '')
+        white = unicode(record.get('White', ''), "utf-8", 'ignore')
         # print("white: {}".format(white))
         whiteelo = str(record.get('WhiteElo', 0))
-        black = record.get('Black', '')
+        black = unicode(record.get('Black', ''), "utf-8", 'ignore')
         blackelo = str(record.get('BlackElo', 0))
         result = record.get('Result', '')
         date = record.get('Date', '')
-        event = record.get('Event', '')
+        event = unicode(record.get('Event', ''), "utf-8", 'ignore')
         eco = record.get('ECO', '')
         return black, blackelo, date, eco, event, result, white, whiteelo
 
@@ -3757,6 +3760,15 @@ class ChessProgram_app(App):
             if update_board:
                 self.refresh_board(update=False, highlight=False)
             return True
+        else:
+            # Go to start of game
+            while self.chessboard.previous_node:
+                self.chessboard = self.chessboard.previous_node
+                # self.refresh_board(update=False)
+            # self.refresh_board(update=False)
+            if update_board:
+                self.refresh_board(update=False, highlight=False)
+
         return False
         # pass
 
@@ -5147,20 +5159,28 @@ class ChessProgram_app(App):
 
         print("len_game_ids: {}".format(len(game_ids)))
         sqlite_results = []
-        sqlite_set = set()
+        # sqlite_set = set()
         if len(game_ids) > SQLITE_GAME_LIMIT and len(filter_text) > 0:
             # There are more than 1K games in this position, this means we can do string search first if string search is indicated
             print("LETS DO SQLITE search first")
+            # print("DB regular name is {}".format(self.db_index_book.book_parser.db))
+            sqlite_path = self.gen_sqlite_path(self.db_index_book.book_parser.db)
+            print("sqlite_path: {}".format(sqlite_path))
             # sort_key = attrgetter(self.db_sort_criteria[0].key)
             # if self.db_sort_criteria[0].key == 'id':
             #     sort_key = lambda v: int(v.id)
-            sqlite_results = self.query_data('book.sqlite', game_ids=game_ids, order_by_list=self.db_sort_criteria, page_number=None, items_per_page=None,
-                           search_terms=filter_text)
-            # sqlite_set = [g.offset for g in sqlite_results]
-            # print("sqlite_results: {0}".format(sqlite_results))
-            # print("sqlite_set: {}".format(sqlite_set))
 
-            game_ids = [g.offset for g in sqlite_results]
+            if os.path.exists(sqlite_path):
+
+                sqlite_results = self.query_data(sqlite_path, game_ids=game_ids, order_by_list=self.db_sort_criteria, page_number=None, items_per_page=None,
+                               search_terms=filter_text)
+                # sqlite_set = [g.offset for g in sqlite_results]
+                # print("sqlite_results: {0}".format(sqlite_results))
+                # print("sqlite_set: {}".format(sqlite_set))
+
+                game_ids = [g.offset for g in sqlite_results]
+            else:
+                print("SQLITE file : {} not found, skipping SQLITE search".format(sqlite_path))
 
         for i in game_ids:
             db_game = DBGame(i)
@@ -5184,7 +5204,7 @@ class ChessProgram_app(App):
             if len(filter_text) > 0 and not sqlite_results:
                 try:
                     wh = db_game.white
-                    
+
                 except AttributeError:
                     record = self.get_game_header(i, "ALL")
                     # print("record: {}".format(record))
@@ -5202,18 +5222,16 @@ class ChessProgram_app(App):
                     db_game.black, db_game.blackelo, db_game.date, db_game.eco, db_game.event, db_game.result, db_game.white, db_game.whiteelo = self.extract_record(
                         record)
 
-
-
-
                 match = True
                 # print filter_text
                 for f in filter_text:
                     try:
-                        if f in db_game.white.decode('utf-8') or f in db_game.black.decode('utf-8') or f in db_game.event.decode('utf-8') or f in db_game.event.decode('utf-8'):
+                        if f in db_game.white.decode() or f in db_game.black.decode() or f in db_game.event.decode():
                             pass
                         else:
                             match = False
                     except UnicodeDecodeError:
+                        raise
                         match = False
                 if match:
                     db_game_list.append(db_game)
