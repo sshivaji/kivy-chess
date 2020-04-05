@@ -123,6 +123,7 @@ class DataGrid(GridLayout):
                     self.add_widget(tmp)
                     count_02 += 1
                 count_01 += 1
+
         if footer != None:
             for cell in footer:
                 pass

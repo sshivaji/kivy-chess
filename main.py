@@ -255,7 +255,7 @@ COLOR_MAPS = {
 DARK_SQUARE = "img/board/dark/"
 LIGHT_SQUARE = "img/board/light/"
 
-MERIDA = "img/pieces/Merida-shadow/"
+MERIDA = "img/pieces/Merida/"
 
 INITIAL_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
 INDEX_FILE_POS = "last_pos"
@@ -3218,14 +3218,22 @@ class ChessProgram_app(App):
 
     def extract_record(self, record_list):
         record = record_list[0]
-        white = unicode(record.get('White', ''), "utf-8", 'ignore')
+        white = record.get('White', '')
+        white = white.decode('cp1252').encode('utf-8')
+
         # print("white: {}".format(white))
         whiteelo = str(record.get('WhiteElo', 0))
-        black = unicode(record.get('Black', ''), "utf-8", 'ignore')
+        black = record.get('Black', '')
+        black = black.decode('cp1252').encode('utf-8')
+
         blackelo = str(record.get('BlackElo', 0))
         result = record.get('Result', '')
         date = record.get('Date', '')
-        event = unicode(record.get('Event', ''), "utf-8", 'ignore')
+
+        event = record.get('Event', '')
+        event = event.decode('cp1252').encode('utf-8')
+
+
         eco = record.get('ECO', '')
         return black, blackelo, date, eco, event, result, white, whiteelo
 
@@ -3246,6 +3254,7 @@ class ChessProgram_app(App):
 
     def to_window(self, x, y):
         return [100,100]
+
 
     def build(self):
         self.y = None
@@ -3364,6 +3373,8 @@ class ChessProgram_app(App):
         self.dgt_clock_lock = RLock()
         self.dgt_pause_clock = False
         self.dgt_clock_msg_queue = Queue()
+
+
 
         # user book
         try:
@@ -5164,7 +5175,12 @@ class ChessProgram_app(App):
             # There are more than 1K games in this position, this means we can do string search first if string search is indicated
             print("LETS DO SQLITE search first")
             # print("DB regular name is {}".format(self.db_index_book.book_parser.db))
-            sqlite_path = self.gen_sqlite_path(self.db_index_book.book_parser.db)
+            if self.use_ref_db:
+                db_index = self.ref_db_index_book
+            else:
+                db_index = self.db_index_book
+
+            sqlite_path = self.gen_sqlite_path(db_index.book_parser.db)
             print("sqlite_path: {}".format(sqlite_path))
             # sort_key = attrgetter(self.db_sort_criteria[0].key)
             # if self.db_sort_criteria[0].key == 'id':
