@@ -414,10 +414,13 @@ class DGTBoard(object):
         with self.dgt_clock_lock:
             # self.clock_ack_recv = False
                   #     time.sleep(5)
-            self._sendMessageToClock(self.char_to_lcd_code(message[0]), self.char_to_lcd_code(message[1]),
+            try:
+                self._sendMessageToClock(self.char_to_lcd_code(message[0]), self.char_to_lcd_code(message[1]),
                                 self.char_to_lcd_code(message[2]), self.char_to_lcd_code(message[3]),
                                 self.char_to_lcd_code(message[4]), self.char_to_lcd_code(message[5]),
                                 beep, dots, test_clock=test_clock, max_num_tries = max_num_tries)
+            except:
+                pass
             # self.clock_ack_recv = False
             if test_clock and not self.dgt_clock:
                 tries = 1

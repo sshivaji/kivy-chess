@@ -2698,8 +2698,8 @@ class ChessProgram_app(App):
                     textmsg = textmsg.lower()
                     textmsg = textmsg.ljust(7, ' ')
                     self.dgtnix.send_message_to_clock(textmsg, move=msg.move, dots=msg.dots, beep=msg.beep, max_num_tries=msg.max_num_tries)
-                    sleep(1)
-                    ack_msg = self.clock_ack_queue.get(1)
+                    # sleep(1)
+                    ack_msg = self.clock_ack_queue.get()
                     if ack_msg:
                         break
 
@@ -3397,6 +3397,7 @@ class ChessProgram_app(App):
         self.dgt_fen = None
         self.dgt_clock_sound = False
         self.dgt_show_next_move = True
+        self.dgt_last_msg = None
 
         self.clock_ack_queue = Queue()
         self.clock_lever = None
@@ -4644,11 +4645,11 @@ class ChessProgram_app(App):
                                 # self.write_to_dgt(cleaned_line, beep=False)
                                 if not self.dgt_clock_start_time:
                                     self.dgt_clock_start_time = time.time()
-                                print("start_time: {}".format(self.dgt_clock_start_time))
+                                # print("start_time: {}".format(self.dgt_clock_start_time))
                                 current_time = time.time()
-                                print("current_time: {}".format(current_time))
-                                if current_time - self.dgt_clock_start_time >= 1:
-                                    print("One second has passed, writing to dgt clock")
+                                # print("current_time: {}".format(current_time))
+                                if current_time - self.dgt_clock_start_time >= 5:
+                                    print("One second has passed, writing {} to dgt clock".format(mv))
                                     self.write_to_dgt(str(mv), move=True, beep=False)
                                     self.dgt_clock_start_time = time.time()
 
@@ -4715,8 +4716,15 @@ class ChessProgram_app(App):
     def write_to_dgt(self, message, move=False, dots=False, beep=True, max_num_tries = 5):
         if self.dgtnix:
             # print "sending message"
-            self.dgt_clock_msg_queue.put(DGT_Clock_Message(message, move=move, dots=dots, beep=beep, max_num_tries=max_num_tries))
-            # sleep(1)
+            if not self.dgt_last_msg:
+                self.dgt_last_msg = message
+                self.dgt_clock_msg_queue.put(DGT_Clock_Message(message, move=move, dots=dots, beep=beep, max_num_tries=max_num_tries))
+                return
+            # Dont write message if its a duplicate as the DGT clock is slow
+            if message != self.dgt_last_msg:
+                self.dgt_clock_msg_queue.put(DGT_Clock_Message(message, move=move, dots=dots, beep=beep, max_num_tries=max_num_tries))
+
+
 
     def write_to_lcd(self, message, clear = False):
         if self.lcd:
