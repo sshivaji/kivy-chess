@@ -5008,7 +5008,7 @@ class ChessProgram_app(App):
             print e
             raise
             # TODO: log error
-    @mainthread
+
     def generate_move_list(self, all_moves, eval = None, tail = None, start_move_num = 1, move_num = True):
         score = u""
         if move_num and start_move_num % 2 == 0:
