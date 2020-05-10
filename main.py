@@ -87,6 +87,7 @@ import cloud_eng
 import itertools
 import locale
 import re
+import time
 
 from uci import UCIEngine
 from Queue import Queue
@@ -2692,7 +2693,11 @@ class ChessProgram_app(App):
                 msg = self.dgt_clock_msg_queue.get()
                 # print "got message!"
                 while True:
-                    self.dgtnix.send_message_to_clock(msg.message, move=msg.move, dots=msg.dots, beep=msg.beep, max_num_tries=msg.max_num_tries)
+                    print("message: {}, move: {}".format(msg.message, msg.move))
+                    textmsg = msg.message
+                    textmsg = textmsg.lower()
+                    textmsg = textmsg.ljust(7, ' ')
+                    self.dgtnix.send_message_to_clock(textmsg, move=msg.move, dots=msg.dots, beep=msg.beep, max_num_tries=msg.max_num_tries)
                     sleep(1)
                     ack_msg = self.clock_ack_queue.get(1)
                     if ack_msg:
@@ -3073,9 +3078,8 @@ class ChessProgram_app(App):
 
                         else:
                             # Position not reached in analysis mode, go to that position
-                            print("Going to position from DGT board")
                             new_dgt_stripped_fen = self.strip_fen(new_dgt_fen, terms=1)
-                            print("DGT stripped fen: {}".format(new_dgt_stripped_fen))
+                            print("Going to DGT position, DGT stripped fen: {}".format(new_dgt_stripped_fen))
                             # temp_pos = Position(new_dgt_stripped_fen)
                             # pos_hash = str(self.chessboard.position.__hash__())
                             # print("Looking up position hash: {}".format(str(temp_pos.__hash__())))
@@ -3345,6 +3349,7 @@ class ChessProgram_app(App):
         self.setup_board_squares = []
         self.use_internal_engine = False
         self.internal_engine_output = ""
+        self.dgt_clock_start_time = None
         self.internal_engine_raw_output = ""
         self.internal_engine_raw_scores = []
         self.external_engine_raw_output = ""
@@ -4508,7 +4513,6 @@ class ChessProgram_app(App):
         # print outputs
         return outputs
 
-
     @staticmethod
     def format_time_str(time_a):
         seconds = time_a
@@ -4535,7 +4539,6 @@ class ChessProgram_app(App):
 
         return fmt_time_a+" "*num_spaces+fmt_time_b
 
-
     def speak_move(self, san, immediate=False):
         if self.is_mac():
             # print "best_move:{0}".format(best_move)
@@ -4561,7 +4564,6 @@ class ChessProgram_app(App):
                     self.speak_move_queue.append(spoken_san)
             # os.system("say " + spoken_san)
 
-
     def update_external_engine_output(self, callback):
         while True:
             if self.uci_engine and self.engine_mode == ENGINE_ANALYSIS:
@@ -4585,13 +4587,15 @@ class ChessProgram_app(App):
             else:
                 sleep(0.01)
 
-    def parse_analysis(self, line, figurine=True, raw=False):
+    def parse_analysis(self, line, figurine=True, raw=False, get_only_move=False):
         out_scores = self.parse_score(line, figurine=figurine, raw=raw)
         output_buffer = u''
         infos = []
         if out_scores:
             for i, out_score in enumerate(out_scores):
                 first_mv, can_line, raw_line, cleaned_line, info = out_score
+                if get_only_move:
+                    return first_mv
                 infos.append(info)
 
                 if first_mv:
@@ -4616,8 +4620,10 @@ class ChessProgram_app(App):
                 self.grid._highlight_square_name(self.hint_move[:2])
 
         if self.use_internal_engine:
+
             output = self.engine_score
             if self.engine_mode == ENGINE_ANALYSIS:
+                # start_time =  time.time()
                 cleaned_line, infos = self.parse_analysis(line)
 
                 if cleaned_line:
@@ -4628,10 +4634,25 @@ class ChessProgram_app(App):
 
                     if not self.uci_engine:
                         output.children[0].text = self.internal_engine_output
-                        if self.dgt_connected and self.lcd:
-                            cleaned_line, infos = self.parse_analysis(line, figurine=False, raw=True)
+                        if self.dgt_connected:
+                            # cleaned_line, infos = self.parse_analysis(line, figurine=False, raw=True)
+                            mv = self.parse_analysis(line, figurine=False, raw=True, get_only_move=True)
                             # print cleaned_line
-                            self.write_to_lcd(cleaned_line, clear=True)
+                            if self.lcd:
+                                self.write_to_lcd(cleaned_line, clear=True)
+                            else:
+                                # self.write_to_dgt(cleaned_line, beep=False)
+                                if not self.dgt_clock_start_time:
+                                    self.dgt_clock_start_time = time.time()
+                                print("start_time: {}".format(self.dgt_clock_start_time))
+                                current_time = time.time()
+                                print("current_time: {}".format(current_time))
+                                if current_time - self.dgt_clock_start_time >= 1:
+                                    print("One second has passed, writing to dgt clock")
+                                    self.write_to_dgt(str(mv), move=True, beep=False)
+                                    self.dgt_clock_start_time = time.time()
+
+
             elif self.engine_mode == ENGINE_PLAY:
                 if self.engine_computer_move:
                     best_move, self.ponder_move = self.parse_bestmove(line)
@@ -4693,8 +4714,9 @@ class ChessProgram_app(App):
 
     def write_to_dgt(self, message, move=False, dots=False, beep=True, max_num_tries = 5):
         if self.dgtnix:
-            print "sending message"
+            # print "sending message"
             self.dgt_clock_msg_queue.put(DGT_Clock_Message(message, move=move, dots=dots, beep=beep, max_num_tries=max_num_tries))
+            # sleep(1)
 
     def write_to_lcd(self, message, clear = False):
         if self.lcd:
