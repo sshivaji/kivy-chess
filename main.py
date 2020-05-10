@@ -4605,6 +4605,7 @@ class ChessProgram_app(App):
 
         return output_buffer, infos
 
+    @mainthread
     def update_engine_output(self, line):
         if not self.use_internal_engine:
             self.hint_move, self.ponder_move = self.parse_bestmove(line)
