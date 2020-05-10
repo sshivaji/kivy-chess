@@ -111,8 +111,9 @@ class GameNode(object):
             self.__position = chess.Position(previous_node.position)
             self.__position.make_move(move)
 #            print GameNode.positions
-
             GameNode.positions[str(self.__position.__hash__())] = self
+            GameNode.fens[self.strip_fen(self.__position.fen, terms=1)] = self
+            # print("fen of position: {}, zobrist: {}".format(self.__position.fen, str(self.__position.__hash__())))
 
         self.__nags = nags
         self.__evaluation = {}
@@ -120,6 +121,10 @@ class GameNode(object):
         self.start_comment = start_comment
 
         self.__variations = []
+
+    @staticmethod
+    def strip_fen(fen, terms=3):
+        return " ".join(fen.split(' ')[:terms])
 
     @property
     def previous_node(self):

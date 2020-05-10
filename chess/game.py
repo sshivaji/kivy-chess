@@ -19,11 +19,16 @@
 import chess
 import re
 
+INITIAL_BOARD_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"
+
+
 class Game(chess.GameNode):
     """The root node of a game."""
     def __init__(self, start_comment="", headers=None):
         chess.GameNode.__init__(self, None, None, (), start_comment)
-        chess.GameNode.positions={}
+        chess.GameNode.positions = {}
+        chess.GameNode.fens = {}
+
         # chess.GameNode.interesting_positions=[]
 
         if headers is None:

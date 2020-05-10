@@ -112,6 +112,7 @@ from libchess import Piece
 from libchess import Square
 from chess.game_header_bag import GameHeaderBag
 from chess import polyglot_opening_book
+from kivy.clock import mainthread
 
 CLOUD_ENGINE_EXEC = './stockfish'
 THINKING_TIME = "[color=000000]Thinking..\n[size=24]{0}    [b]{1}[/size][/b][/color]"
@@ -2032,7 +2033,7 @@ class ChessProgram_app(App):
         uci_engine = self.start_uci_engine(f)
         # print uci_engine.engine_info
 
-        self.gen_uci_menu_item("Name", uci_engine.engine_info['name'], self.other_engine_panel, internal = False)
+        self.gen_uci_menu_item("Name", uci_engine.engine_info.get('name', ""), self.other_engine_panel, internal = False)
 
         for k,v in uci_engine.get_options().iteritems():
             self.gen_uci_menu_item(k, v, self.other_engine_panel, internal = False)
@@ -2170,8 +2171,8 @@ class ChessProgram_app(App):
             return True
             # break
 
-    def strip_fen(self, fen):
-        return " ".join(fen.split(' ')[:3])
+    def strip_fen(self, fen, terms=3):
+        return " ".join(fen.split(' ')[:terms])
 
     def analyze_opening(self, params, max_pos_occurrence=50):
 
@@ -2947,6 +2948,7 @@ class ChessProgram_app(App):
                 grid.add_widget(bt)
 
         return grid
+
     # def try_dgt_legal_moves(self, from_fen, to_fen):
     #     dgt_first_tok = to_fen.split()[0]
     #     for m in Position(from_fen).get_legal_moves():
@@ -2961,6 +2963,7 @@ class ChessProgram_app(App):
 
     def try_dgt_legal_moves(self, from_fen, to_fen):
         to_fen_first_tok = to_fen.split()[0]
+        # try:
         for m in sf.legal_moves(from_fen):
             cur_fen = sf.get_fen(from_fen,[m])
             cur_fen_first_tok = str(cur_fen).split()[0]
@@ -2969,8 +2972,13 @@ class ChessProgram_app(App):
             if cur_fen_first_tok == to_fen_first_tok:
                 self.dgt_fen = to_fen
                 self.process_move(move=str(m))
-                return True
+                # Clock.schedule_once(partial(self.process_move, str(m)), timeout=0)
+                # Clock.schedule_once(partial(self.update, message), 0)
 
+                return True
+        # except:
+        #     sleep(1)
+            # self.refresh_board(update=True)
 
     def update_clocks(self, *args):
         if self.engine_mode == ENGINE_PLAY:
@@ -3045,23 +3053,40 @@ class ChessProgram_app(App):
     def dgt_probe(self, attr, *args):
         if attr.type == FEN:
             new_dgt_fen = attr.message
-#            print "length of new dgt fen: {0}".format(len(new_dgt_fen))
-#            print "new_dgt_fen just obtained: {0}".format(new_dgt_fen)
+            # print "length of new dgt fen: {0}".format(len(new_dgt_fen))
+            print "new_dgt_fen just obtained: {0}".format(new_dgt_fen)
             if self.dgt_fen and new_dgt_fen:
                 if new_dgt_fen != self.dgt_fen:
                     if self.engine_mode == ENGINE_PLAY:
                         self.computer_move_FEN_reached = False
 
-                    if not self.try_dgt_legal_moves(self.chessboard.board().fen(), new_dgt_fen):
+                    current_fen = self.chessboard.position.fen
+                    # if new_dgt_fen != current_fen:
+                    #     # temp_pos = Chess(new_dgt_fen)
+                    #     temp_pos = Position(new_dgt_fen)
+                    #     self.go_to_move(None, str(temp_pos.__hash__()))
+                    if not self.try_dgt_legal_moves(current_fen, new_dgt_fen):
                         dgt_fen_start = new_dgt_fen.split()[0]
-                        curr_fen_start = self.chessboard.board().fen().split()[0]
+                        curr_fen_start = current_fen.split()[0]
                         if curr_fen_start == dgt_fen_start and self.engine_mode == ENGINE_PLAY:
                             self.computer_move_FEN_reached = True
 
-                        if self.chessboard.parent:
-                            prev_fen_start = self.chessboard.parent.board().fen().split()[0]
-                            if dgt_fen_start == prev_fen_start:
-                                self.back('dgt')
+                        else:
+                            # Position not reached in analysis mode, go to that position
+                            print("Going to position from DGT board")
+                            new_dgt_stripped_fen = self.strip_fen(new_dgt_fen, terms=1)
+                            print("DGT stripped fen: {}".format(new_dgt_stripped_fen))
+                            # temp_pos = Position(new_dgt_stripped_fen)
+                            # pos_hash = str(self.chessboard.position.__hash__())
+                            # print("Looking up position hash: {}".format(str(temp_pos.__hash__())))
+                            self.go_to_fen(new_dgt_stripped_fen)
+                        # if self.chessboard.previous_node:
+                        # # if self.chessboard.parent:
+                        #     prev_fen_start = current_fen.split()[0]
+                        #     if dgt_fen_start == prev_fen_start:
+                        #         self.back('dgt')
+                        #         print("calling back")
+                        # print("Position not playable on board")
                     if self.engine_mode != ENGINE_PLAY and self.engine_mode != ENGINE_ANALYSIS:
                         if self.lcd:
                             self.write_lcd_prev_move()
@@ -3761,18 +3786,28 @@ class ChessProgram_app(App):
     def go_to_settings(self, instance):
         self.root.current='settings'
 
+    def go_to_fen(self, fen, update_board=True):
+        # print("Fens in Game: {}".format(Game.fens))
+        if fen in Game.fens:
+            position = Game.fens[fen]
+            self.chessboard = position
+            if update_board:
+                self.refresh_board(update=False, highlight=False)
+            return True
+
     def go_to_move(self, label, pos_hash, update_board=True):
         # print ("Got pos_hash: {}".format(pos_hash))
         # print "finding move"
-        # print "Current pos hash : {0}".format(Game.positions)
+        # print "All positions : {0}".format(Game.positions)
         if Game.positions.has_key(pos_hash):
-            # print("key present")
+            print("position present")
             self.chessboard = Game.positions[pos_hash]
             if update_board:
                 self.refresh_board(update=False, highlight=False)
             return True
         else:
             # Go to start of game
+            print("position not present")
             while self.chessboard.previous_node:
                 self.chessboard = self.chessboard.previous_node
                 # self.refresh_board(update=False)
@@ -4227,6 +4262,7 @@ class ChessProgram_app(App):
         self.custom_fen = 'startpos'
         self.refresh_board(update=True)
 
+    @mainthread
     def back(self, obj):
         if self.chessboard.previous_node:
             self.chessboard = self.chessboard.previous_node
@@ -4534,7 +4570,7 @@ class ChessProgram_app(App):
                     if line:
                         cleaned_line, infos = self.parse_analysis(line)
                         if cleaned_line:
-                            external_engine_output = u"\n[color=3333ff]{0}[/color]".format(self.uci_engine.engine_info['name']) + ': ' + cleaned_line
+                            external_engine_output = u"\n[color=3333ff]{0}[/color]".format(self.uci_engine.engine_info.get('name', 'Noname')) + ': ' + cleaned_line
 
                             self.external_engine_raw_output, self.external_engine_raw_scores = self.parse_analysis(line, figurine=False, raw=True)
 
@@ -4938,7 +4974,7 @@ class ChessProgram_app(App):
         else:
             # Auto queen for now
             return move + "q"
-
+    @mainthread
     def process_move(self, move=None):
         # print "process_move"
         # print "move:{0}".format(move)
@@ -4972,7 +5008,7 @@ class ChessProgram_app(App):
             print e
             raise
             # TODO: log error
-
+    @mainthread
     def generate_move_list(self, all_moves, eval = None, tail = None, start_move_num = 1, move_num = True):
         score = u""
         if move_num and start_move_num % 2 == 0:
@@ -5322,7 +5358,10 @@ class ChessProgram_app(App):
 
         output = run_command(self.ctg_reader_cmd + ' '+self.ctg_book+ ' \"'+fen+'\"')
         for line in output:
-            j = json.loads(line)
+            try:
+                j = json.loads(line)
+            except:
+                continue
             # print(j)
             for m in j['moves']:
                 # print(m)
@@ -5484,7 +5523,7 @@ class ChessProgram_app(App):
             #                               ("[color=3333ff][ref=%s]Remove[/ref][/color]" % DELETE_FROM_USER_BOOK), '',''], callback=self.add_book_moves_white)
             # self.book_panel.grid.add_row(["[ref=add_to_user_book]+Black[/ref]",
             #                               ("[ref=%s]Remove[/ref]" % DELETE_FROM_USER_BOOK)], callback=self.add_book_moves_black)
-
+    @mainthread
     def update_book_panel(self, ev=None):
         with self.book_lock:
             # print "ev:"+str(ev)
@@ -5701,7 +5740,7 @@ class ChessProgram_app(App):
             self.chessboard.half_move_num / 2, filler, san)
 
         # return u"{0}.{1} {2}".format(self.chessboard.half_move_num / 2, filler, san)
-
+    @mainthread
     def update_board_position(self, *args):
         if self.game_analysis:
             self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
@@ -5765,6 +5804,7 @@ class ChessProgram_app(App):
         # the texture and increase downwards
         return label.center_y + label.texture_size[1] * 0.5 - ref_y
 
+    @mainthread
     def refresh_board(self, update=True, spoken=False, highlight=True):
         self.grid._update_position(self.chessboard.move, self.chessboard.position.fen)
 
@@ -5806,7 +5846,6 @@ class ChessProgram_app(App):
             #     # then add the button inside the dropdown
             #     self.variation_dropdown.add_widget(btn)
 
-
             if len(self.chessboard.variations) > 1:
                 for i,v in enumerate(self.chessboard.variations):
                                         # san = pos.san(mv)
@@ -5828,7 +5867,7 @@ class ChessProgram_app(App):
             # engine_thread.start()
         # self.invoke_book_thread()
         # self.update_book_panel()
-        if self.dgt_show_next_move and len(self.chessboard.variations)>0:
+        if self.dgt_show_next_move and len(self.chessboard.variations) > 0:
             self.write_to_dgt(str(self.chessboard.variations[0].move), move=True, beep=False)
         # print self.speak_move_queue
         if spoken:

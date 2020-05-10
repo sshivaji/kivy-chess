@@ -55,6 +55,8 @@ class UCIEngine:
         # "engines/stockfish4-mac-64"
         try:
             if not cloud:
+                print("Engine path: {}".format(exe))
+                exe[0] = "./"+exe[0]
                 shell = spur.LocalShell()
                 self.eng_process = shell.spawn(exe, stdout=subprocess.PIPE, store_pid=True)
 
@@ -81,6 +83,7 @@ class UCIEngine:
             t.start()
 
         except OSError:
+            raise
             print("OS error in starting engine")
 
     def enqueue_output(self, p, queue):
