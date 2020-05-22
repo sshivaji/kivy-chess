@@ -3059,7 +3059,7 @@ class ChessProgram_app(App):
         if attr.type == FEN:
             new_dgt_fen = attr.message
             # print "length of new dgt fen: {0}".format(len(new_dgt_fen))
-            print "new_dgt_fen just obtained: {0}".format(new_dgt_fen)
+            print "new_dgt_fen just obtained: {}, old fen: {}".format(new_dgt_fen, self.dgt_fen)
             if self.dgt_fen and new_dgt_fen:
                 if new_dgt_fen != self.dgt_fen:
                     if self.engine_mode == ENGINE_PLAY:
@@ -3076,14 +3076,9 @@ class ChessProgram_app(App):
                         if curr_fen_start == dgt_fen_start and self.engine_mode == ENGINE_PLAY:
                             self.computer_move_FEN_reached = True
 
-                        else:
-                            # Position not reached in analysis mode, go to that position
-                            new_dgt_stripped_fen = self.strip_fen(new_dgt_fen, terms=1)
-                            print("Going to DGT position, DGT stripped fen: {}".format(new_dgt_stripped_fen))
-                            # temp_pos = Position(new_dgt_stripped_fen)
-                            # pos_hash = str(self.chessboard.position.__hash__())
-                            # print("Looking up position hash: {}".format(str(temp_pos.__hash__())))
-                            self.go_to_fen(new_dgt_stripped_fen)
+                        # else:
+                    # Position not reached in analysis mode, go to that position
+
                         # if self.chessboard.previous_node:
                         # # if self.chessboard.parent:
                         #     prev_fen_start = current_fen.split()[0]
@@ -3094,6 +3089,12 @@ class ChessProgram_app(App):
                     if self.engine_mode != ENGINE_PLAY and self.engine_mode != ENGINE_ANALYSIS:
                         if self.lcd:
                             self.write_lcd_prev_move()
+                new_dgt_stripped_fen = self.strip_fen(new_dgt_fen, terms=1)
+                print("Going to DGT position, DGT stripped fen: {}".format(new_dgt_stripped_fen))
+                # temp_pos = Position(new_dgt_stripped_fen)
+                # pos_hash = str(self.chessboard.position.__hash__())
+                # print("Looking up position hash: {}".format(str(temp_pos.__hash__())))
+                self.go_to_fen(new_dgt_stripped_fen)
 
             elif new_dgt_fen:
                 self.dgt_fen = new_dgt_fen
@@ -3793,12 +3794,13 @@ class ChessProgram_app(App):
         self.root.current='settings'
 
     def go_to_fen(self, fen, update_board=True):
-        # print("Fens in Game: {}".format(Game.fens))
+        print("Fens in Game: {}, sent fen: {}".format(Game.fens, fen))
         if fen in Game.fens:
+            print("Fen is found in game: {} ".format(fen))
             position = Game.fens[fen]
             self.chessboard = position
             if update_board:
-                self.refresh_board(update=False, highlight=False)
+                self.refresh_board(update=True, highlight=True)
             return True
 
     def go_to_move(self, label, pos_hash, update_board=True):
@@ -4242,7 +4244,7 @@ class ChessProgram_app(App):
         elif value == ENGINE_PLAY_HINT:
             self.show_hint = True
         elif value == ENGINE_TRAIN_HINT:
-            self.engine_score.children[0].text = TRAIN_MENU.format(self.get_san([self.train_move_info["move"]], figurine=True)[0], self.train_move_info["score"])
+            self.engine_score.children[0].text = TRAIN_MENU.format(self.get_san([self.train_move_info["move"]], figurine=True)[0], self.train_move_info.get("score", "0.0"))
             return
             # Do not generate new training hints
         else:
